@@ -1,8 +1,8 @@
-# Aisenhubsass 技术栈专项架构
+# AisenCore 技术栈专项架构
 
 > 状态：以下已确认的是技术选型与架构边界；**尚未获准初始化、安装、连接第三方服务或部署**。
 >
-> 适用范围：Aisenhubsass **多 SaaS 公共后端及内部 Admin**。各产品独立的业务前端、业务服务器和业务数据库不因本文而强制采用相同技术。
+> 适用范围：AisenCore **多 SaaS 公共后端及内部 Admin**。各产品独立的业务前端、业务服务器和业务数据库不因本文而强制采用相同技术。
 
 ## 1. 已确定的总体技术选型
 
@@ -17,7 +17,7 @@
 | 统一身份认证 | **Supabase Auth** | 全平台统一用户身份与会话；各产品权益隔离 | 首版邮箱 + 密码；邮箱确认、找回密码的发信服务正式上线前落实 |
 | 可信服务端函数 | **Supabase Edge Functions** | 首版优先承接需要服务器保护的公共业务逻辑和 API | Deno 兼容运行时、TypeScript；具体函数及接口仍待设计 |
 | 对象存储 | **Cloudflare R2** | 云端用户文件、按需的配置备份等文件本体 | 用户与产品访问控制、对象组织方式后续确定 |
-| 会员开通首要入口 | **Aisenhubsass 自有兑换码** | 管理员创建并分发，用户兑换后由公共权益系统开通相应产品会员 | 先于外部支付渠道实施，具体码规则待定 |
+| 会员开通首要入口 | **AisenCore 自有兑换码** | 管理员创建并分发，用户兑换后由公共权益系统开通相应产品会员 | 先于外部支付渠道实施，具体码规则待定 |
 | 初期外部支付 | **爱发电（暂定）** | 打赏/支付后凭可靠订单结果同步会员权益 | 用户曾在此前项目简单跑通基本回调，新平台未对接 |
 | 后续支付扩展 | **支付宝个体工商户支付 → Stripe** | 以后按主体资质与业务需要接入 | 本阶段不开发，避免提前构建复杂多渠道支付框架 |
 
@@ -42,6 +42,8 @@
 - 依赖和版本随实际使用的 React-admin **兼容发行版本**确定，不预先逐个锁版本。
 - **未确定的可选集成**：[ra-supabase](https://github.com/marmelab/ra-supabase) 是否使用，或者自行编写局部 Data Provider；专用图表、Schema 验证库等只有真实需求出现时才选。
 - React-admin 可通过 Data Provider 对接 Supabase 普通数据或可信管理 API，不意味着浏览器能直接执行所有高权限操作。
+
+**身份与成员边界**：Supabase Auth 管理公共用户身份；公共 PostgreSQL 管理产品目录、按需创建的产品成员关系及独立的产品权益。React-admin 复用现有前端管理组件，成员状态变更通过可信 Edge Functions 鉴权；逻辑 API 已在后端专项定义，具体 HTTP 路由与 Schema 仍待实施。管理应用的信息架构与交互见[Admin 管理前端架构](../applications/admin-console.md)，用户领域与 API 入口见[架构总索引](../README.md)。
 
 ## 3. Supabase 后端技术组成与职责
 
@@ -107,7 +109,7 @@
 
 **待产品对接或实施时决定**：
 
-- React-admin 的具体兼容版本、`ra-supabase` / Data Provider 接入方式、Admin 页面和最小权限细则。
+- React-admin 的具体兼容版本、`ra-supabase` / Data Provider 接入方式、Admin 页面最终字段与布局（应用层 MVP 逻辑见[Admin 专项](../applications/admin-console.md)），以及敏感操作的最终权限配置。
 - Pages 项目、域名、仓库连接、构建设置、分支环境、发布权限与密钥配置。
 - Edge Functions 的具体接口、权限校验细节、异常处理和必要操作审计。
 - 自有兑换码规则、爱发电订单到平台用户/产品的可信关联和回调核验；以后支付宝、Stripe 的商户资质及接入细节；订阅生命周期、免费试用与永久购买权益规则。
@@ -116,11 +118,11 @@
 
 ## 对应文档
 
-- [当前主架构](./current-main-architecture.md)
-- [统一计费与权益专项](./billing-and-entitlements.md)
-- [产品业务数据与文件专项](./product-data-and-files.md)
-- [本地优先专项](./local-first.md)
-- [当前统一需求](../spec/requirements.md)
+- [当前主架构](../current-main-architecture.md)
+- [统一计费与权益专项](../domains/billing-and-entitlements.md)
+- [产品业务数据与文件专项](../database/product-data-and-files.md)
+- [本地优先专项](../applications/local-first.md)
+- [当前统一需求](../../spec/requirements.md)
 
 ## 官方参考
 

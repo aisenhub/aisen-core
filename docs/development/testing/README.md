@@ -13,4 +13,4 @@
 
 选定与代码栈相符的测试框架、测试分层、用例模板、测试数据管理、持续集成、测试覆盖范围、上线前验收。**此处不提前确定 Vitest、Playwright 或其它具体工具**。
 
-相关需求：[当前统一需求](../../spec/requirements.md)；相关架构：[计费与权益专项](../../architecture/billing-and-entitlements.md)。
+相关需求：[当前统一需求](../../spec/requirements.md)；相关架构：[计费与权益专项](../../architecture/domains/billing-and-entitlements.md)。

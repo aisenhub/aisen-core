@@ -7,7 +7,7 @@
 - 内部 Admin 以 **React-admin 默认技术栈**开发，主要是 React / TypeScript、Material UI / Emotion、React Router、TanStack Query、React Hook Form、React-admin i18n；Vite 是已确认的优先构建路线。
 - 优先复用 React-admin 的页面组件、资源和 Data Provider / Auth Provider 机制，不同时叠加另一套完整 UI、路由、表单、请求缓存或状态管理框架。
 - Admin 前端托管于 **Cloudflare Pages**，高权限管理动作必须通过可信服务端授权 API，而非在浏览器直接操作高权限凭据。
-- 用户与产品级权益、登录、订单和后台管理需求以[现行需求](../../spec/requirements.md)及[技术栈专项](../../architecture/tech-stack.md)为准。
+- 用户与产品级权益、登录、订单和后台管理需求以[现行需求](../../spec/requirements.md)为准；Admin 页面/资源、数据接入与安全交互以[Admin 管理前端架构](../../architecture/applications/admin-console.md)为准，框架选型以[技术栈专项](../../architecture/infrastructure/tech-stack.md)为准。
 
 ## 官方参考
 
