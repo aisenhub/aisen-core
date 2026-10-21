@@ -1,0 +1,22 @@
+# Local secrets and credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Dependencies, builds, coverage
+node_modules/
+dist/
+build/
+coverage/
+.vercel/
+.wrangler/
+
+# Local logs and OS/editor files
+*.log
+.DS_Store
+Thumbs.db
+*.local
