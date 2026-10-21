@@ -19,7 +19,7 @@
 ## 2. 公共读取与变更调用路径
 
 - **登录与重置密码**：各应用直接用 Supabase Auth SDK；不新建登录、刷新、确认邮件或 SSO 接口。
-- **只读**：`get_my_products`、`check_access` 由调用方携带有效用户 JWT 访问公共 RPC；前者查看本人产品概览，后者无副作用地检查指定产品/能力。不在只读路径隐式加入。管理列表则由 React-admin 复用 Data API 的筛选、排序和分页，依靠管理员 RLS；Auth 用户的邮箱/ID 查找通过只读 Edge Function。
+- **只读**：`get_my_products`、`check_access` 由调用方携带有效用户 JWT 访问公共 RPC；前者查看本人产品概览，后者无副作用地检查指定产品/能力。已认证且可可信计算时，`check_access` 的准入拒绝返回 **HTTP 200 + `allowed=false/reason`**，认证失败为 401、可信计算故障为 503/5xx；不在只读路径隐式加入。管理列表则由 React-admin 复用 Data API 的筛选、排序和分页，依靠管理员 RLS；Auth 用户的邮箱/ID 查找通过只读 Edge Function。
 - **状态变更**：`ensure_membership`、`leave_product`、`rejoin_product`、`redeem_code` 和管理函数均是单次受保护 PostgreSQL RPC；函数内按当前状态执行锁定、写入、审计。Edge Function 的多个独立 Supabase SDK 调用不是事务，不能代替此路径。
 - **权益与额度**：公共 `check_access` 返回允许性及所需功能/上限，不扣减、预留产品用量；产品对自己的数据拥有计数和执行职责，见[权益专项](../domains/billing-and-entitlements.md#3-mvp-权益逻辑模型)。
 

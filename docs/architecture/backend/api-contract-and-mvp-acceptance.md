@@ -40,31 +40,34 @@
   - 不带 `capability`：判断能否使用该产品需成员资格的服务；
   - 带 `capability`：按产品 `free` 基础套餐 + 有效未撤销授权引用的套餐版本，功能取并集、同名额度取最大值；额度键返回 `limit`，`allowed` 只表示上限大于 0，**不替产品判断剩余额度**。无 Free 配置则无额外能力。
   - 返回 `allowed`、稳定 `reason`、`product_status`、`membership_status`（未加入表示为 `none`，不是持久化状态）、可选 `entitlement`（有效套餐键与最晚 `ends_at`）、`evaluated_at`。
+  - **响应语义固定**：请求已认证且服务能够可信计算时，即使平台被限制、产品不可用、成员不是 `active` 或缺少权益，也返回 **HTTP 200 + `allowed=false` + 对应 `reason`**；`allowed=true` 同样为 200。无效/缺失认证返回 401，可信计算失败返回 5xx/503，不伪装成 `allowed=false`。调用 SaaS 据 `allowed` 决定禁止新的受保护业务操作。
   - 无副作用；不返回订单秘密、管理员封禁原因或他人信息；`allowed=true` 不代表对任意项目/文件有权限，也**不**扣减额度。
-- **`RedeemCode(code)`**：成功返回产品、套餐、`starts_at`、`ends_at`、是否新建成员；预期业务失败返回 `ok=false` / `code` / 可选 `retry_after_seconds`，不提交成员/码/授权更改（限流尝试计数除外）；成员规则见[计费权益 §5](../domains/billing-and-entitlements.md#5-授权与产品成员状态的关系唯一权威)。
+- **`RedeemCode(code)`**：成功返回产品、套餐、`starts_at`、`ends_at`、是否新建成员；预期业务失败返回 `ok=false` / `code` / 可选 `retry_after_seconds`，不提交成员/码/授权更改（限流尝试计数除外）。已通过身份、平台限制及限流检查后，**本人已兑换**优先于该码后续用尽/过期/撤销，返回 `REDEEM_ALREADY_USED`；其他未兑换者只能得到统一的 `REDEEM_CODE_INVALID`。成员规则见[计费权益 §5](../domains/billing-and-entitlements.md#5-授权与产品成员状态的关系唯一权威)。
 - **成员变更**：成功返回新状态；不向客户端透露 `pre_suspend_status` 或内部管理原因；重复无状态变化请求不重复写事件。
-- **`CreateCodes(request_id)`**：首次创建成功返回本次明文码列表，**仅此一次**；重试同一 `request_id` 不重复发码且不返回明文。**`GrantEntitlement(request_id)`** 同样以独立幂等键防管理重试重复授权。
+- **`CreateCodes(request_id)`**：首次创建成功返回本次明文码列表，**仅此一次（可在该响应内复制/下载）**；重试同一 `request_id` 不重复发码且不返回明文，后续不存在明文导出接口。**`GrantEntitlement(request_id)`** 同样以独立幂等键防管理重试重复授权。
+- **`BlockAccount` / `RevokeAdmin`**：对目标操作使用共同的“至少保留一名 `active` 且未全局 `blocked` 的管理员”事务保护；违反或并发冲突返回 `STATE_CONFLICT`，不写变更。该约束仅用于防止管理入口被规则性锁死，不替代 MFA 设备丢失时的受控运维恢复。
 - **`AdminFindUser / AdminSearchUsers`**：只读管理员 Edge Function 在 JWT + `aal2` 与当前管理员资格复核后执行。ID 查用 Auth Admin `getUserById`，列表用分页 `listUsers`；**邮箱不是该 SDK 的原生过滤参数**，MVP 仅对有限分页集合做服务端精确匹配并返回 `search_incomplete` 表示未完整扫描，绝不能将未覆盖部分认定为查无此人。成员页按本页有限 UUID 逐个补邮箱，限制并发。返回字段仅 ID、邮箱等管理必需信息。
 
 ## 4. 错误模型
 
 两种承载方式共享**同一套稳定业务码**：
 
-- **一般 RPC（经 PostgREST）**：通过经过版本核验的 PostgreSQL/PostgREST 异常映射返回 HTTP 状态及稳定业务 `code`；**特殊情况是 `RedeemCode` 的预期失败与限流**，必须正常提交数据库失败尝试计数，因而返回 HTTP 200 + `ok=false, code, retry_after_seconds?`，不得在此路径抛出事务回滚的业务异常。技术错误仍回滚并按 5xx 处理；
+- **无副作用的 `CheckAccess`**：对已认证且**完成可信计算**的授权结论固定使用 **HTTP 200 + `allowed` / `reason`**；业务层的 `ACCOUNT_RESTRICTED`、`PRODUCT_UNAVAILABLE`、`MEMBERSHIP_REQUIRED/LEFT/SUSPENDED`、`ENTITLEMENT_REQUIRED` 在这里是响应 `reason`，**不是 HTTP 403**。未认证用 401，无法可信判定用 503/5xx；不返回“伪造的 deny”掩盖故障。
+- **有副作用的普通 RPC（经 PostgREST）**：通过经过版本核验的 PostgreSQL/PostgREST 异常映射返回 HTTP 状态及稳定业务 `code`；**特殊情况是 `RedeemCode` 的预期失败与限流**，必须正常提交数据库失败尝试计数，因而返回 HTTP 200 + `ok=false, code, retry_after_seconds?`，不得在此路径抛出事务回滚的业务异常。技术错误仍回滚并按 5xx 处理；
 - **Edge Functions**：参考 RFC 9457 Problem Details（`type/title/status/detail`）并扩展同一 `code`。
 
-客户端根据明确的 HTTP 状态与稳定的业务 `code`（包括兑换 RPC 的 `ok=false`）做分支，不依赖文案。除兑换的业务拒绝特例外，成功响应用正常 HTTP 状态 + 简洁 JSON，不强制 `success/data` 包装。
+客户端根据具体接口的 HTTP 状态、`CheckAccess.allowed/reason` 或稳定业务 `code`（包括兑换 RPC 的 `ok=false`）做分支，不依赖文案。除查询准入结论和兑换业务拒绝这两项明确例外外，表中 HTTP 是**写入/拒绝性操作或 SaaS 业务 API** 的默认映射；成功响应用正常 HTTP 状态 + 简洁 JSON，不强制 `success/data` 包装。
 
 | 稳定业务码 | HTTP | 语义 | 客户端建议 |
 | --- | --- | --- | --- |
 | `AUTH_REQUIRED` | 401 | 身份/令牌不合格 | 使用 Auth 现有登录或刷新流程 |
 | `ADMIN_REQUIRED` | 403 | 非管理员或未完成 MFA | 阻断管理界面 |
-| `ACCOUNT_RESTRICTED` | 403 | 平台账号被限制 | 不尝试加入或兑换 |
-| `PRODUCT_UNAVAILABLE` | 403/404 | 产品不存在、未开放或暂停 | 不尝试隐式加入 |
-| `MEMBERSHIP_REQUIRED` | 403 | 尚未加入 | 由合法首次业务触发 ensure |
-| `MEMBERSHIP_LEFT` | 403 | 已主动退出 | 提示用户明确 rejoin |
-| `MEMBERSHIP_SUSPENDED` | 403 | 产品成员被限制 | 禁止客户端解封 |
-| `ENTITLEMENT_REQUIRED` | 403 | 缺少所需权益 | 保留正常 Free 能力 |
+| `ACCOUNT_RESTRICTED` | 403（`CheckAccess` 为 200 + reason） | 平台账号被限制 | 不尝试加入或兑换 |
+| `PRODUCT_UNAVAILABLE` | 403/404（`CheckAccess` 为 200 + reason） | 产品不存在、未开放或暂停 | 不尝试隐式加入 |
+| `MEMBERSHIP_REQUIRED` | 403（`CheckAccess` 为 200 + reason） | 尚未加入 | 由合法首次业务触发 ensure |
+| `MEMBERSHIP_LEFT` | 403（`CheckAccess` 为 200 + reason） | 已主动退出 | 提示用户明确 rejoin |
+| `MEMBERSHIP_SUSPENDED` | 403（`CheckAccess` 为 200 + reason） | 产品成员被限制 | 禁止客户端解封 |
+| `ENTITLEMENT_REQUIRED` | 403（`CheckAccess` 为 200 + reason） | 缺少所需权益 | 保留正常 Free 能力 |
 | `REDEEM_CODE_INVALID` | 400（兑换 RPC 业务拒绝为 HTTP 200） | 码不存在、已撤销、已过期或已用尽（不细分，避免泄露码状态） | 提示核对码 |
 | `REDEEM_ALREADY_USED` | 409（兑换 RPC 业务拒绝为 HTTP 200） | 本人已兑换过该码 | 查询本人授权 |
 | `RESOURCE_FORBIDDEN` | 403 | SaaS 业务资源权限不足（由 SaaS 返回） | 不泄露他人内容 |
@@ -77,7 +80,7 @@
 
 - `EnsureMembership`：`UNIQUE(user_id, product_id)` + 原子创建；重复 `active` 无新事件，`left/suspended` 不自动复活。
 - `LeaveProduct`、`RejoinProduct`、封禁/解封：在当前状态条件下原子执行；旧并发请求不能覆盖新封禁。
-- `RedeemCode`：码行锁 + 同用户/套餐续期事务锁 + `UNIQUE(code_id,user_id)` + `UNIQUE(source_type,source_ref)`；预期业务拒绝不改变码/授权/成员（仅保留限流尝试计数），真正的 SQL 异常整体回滚。
+- `RedeemCode`：码行锁 + 同用户/套餐续期事务锁 + `UNIQUE(code_id,user_id)` + `UNIQUE(source_type,source_ref)`；锁定已存在的码后先检测**本人重复兑换**，再校验未兑换用户的码是否用尽/撤销/过期；预期业务拒绝不改变码/授权/成员（仅保留限流失败尝试计数），真正的 SQL 异常整体回滚。
 - 请求超时后不得断定失败，先读取本人授权/兑换状态再安全重试；`CreateCodes` 带稳定 `request_id` 重试不得重复生成，若首次明文丢失，只能按批次查询、撤销并以新的请求重新创建，不能从哈希恢复明文。
 - 客户端缓存仅用于 UI；新的云端关键操作由可信服务端复核当前状态。不设 Redis 跨请求授权缓存或自签产品 JWT。
 - 封禁或产品暂停后的下一次可信检查应拒绝新受保护操作；已开始任务和已签发短期 R2 URL 的撤权边界按产品风险定义。本地 Free 离线继续可用。
@@ -106,7 +109,7 @@
 | I-15 | 状态变更成功但审计写入失败 | 整体事务回滚 |
 | I-16 | JWT 有效但当前已被产品封禁 | 新关键授权请求拒绝 |
 | I-17 | 产品 A 封禁、产品 B 正常 | B 不受影响 |
-| I-18 | 平台级封禁后 | 所有产品的准入、加入、兑换均返回 `ACCOUNT_RESTRICTED`；成员原状态保留；解除后按原状态恢复 |
+| I-18 | 平台级封禁后 | 所有产品的 `CheckAccess` 返回 HTTP 200 + `allowed=false,reason=ACCOUNT_RESTRICTED`；加入等写入 RPC 按错误契约拒绝、兑换为 HTTP 200 + `ok=false,code=ACCOUNT_RESTRICTED`；成员原状态保留，解除后按原状态恢复 |
 | I-19 | 缓存显示旧 Pro、真实授权已失效 | 云端新 Pro 操作拒绝 |
 | I-20 | SaaS 无目标资源权限但有 Pro | 业务服务拒绝访问他人资源 |
 | I-21 | 公共授权超时或 503 | 新云端受保护操作不放行，展示“不可验证”而非封禁 |
@@ -115,6 +118,8 @@
 | I-24 | 在产品 A 本地登出，产品 B 会话 | B 不受影响 |
 | I-25 | 用户经人工渠道申请注销 | 管理员可先施加平台限制；对外不提前声称全系统已删除 |
 | I-26 | 管理员被撤销资格或未完成 MFA | 管理读取与管理函数均被拒绝 |
+| I-27 | 仅剩一名合格管理员被自封禁/撤权，或两名管理员并发相互封禁/撤权 | 不得导致合格管理员变为零；冲突返回 `STATE_CONFLICT`，原状态/管理读写入口仍可用，拒绝操作无变更审计 |
+| I-28 | `CheckAccess` 对未加入、已退出/封禁、产品暂停、缺少权益、全局 block 及验证故障 | 可可信计算的拒绝为 HTTP 200 + `allowed=false/reason`；无效 JWT 为 401，公共服务故障为 503 且 SaaS 不放行 |
 
 **权益与兑换码**
 
@@ -124,8 +129,8 @@
 | R-02 | 未加入用户兑换有效码 | 同一事务内创建 `active` 成员、兑换记录与授权 |
 | R-03 | `left` 或 `suspended` 用户兑换 | 拒绝，码的已用次数不变 |
 | R-04 | 两个用户并发兑换只剩 1 次的码 | 仅一人成功，`redeemed_count` 不超过上限 |
-| R-05 | 同一用户重复提交同一码 | 只产生一条授权，第二次返回 `REDEEM_ALREADY_USED` |
-| R-06 | 码不存在/撤销/过期/用尽 | 统一返回 `REDEEM_CODE_INVALID`，不泄露具体原因，失败计数保留 |
+| R-05 | 同一用户重复提交已成功兑换的单次码，后续该码已用尽/过期/撤销 | 只产生一条授权；第二次始终返回 `REDEEM_ALREADY_USED`（在身份、全局限制及限流允许后），不增加失败计数 |
+| R-06 | 尚未兑换过该码的用户输入不存在/撤销/过期/用尽码 | 统一返回 `REDEEM_CODE_INVALID`，不泄露具体原因，失败计数保留 |
 | R-07 | 已有同套餐有效授权时再兑换周期码 | 新授权从现有最晚到期时间顺延 |
 | R-08 | 永久授权码 | `ends_at` 为空，`CheckAccess` 持续允许直至撤销 |
 | R-09 | 撤销兑换码 | 已产生的授权仍有效；撤销授权后 `CheckAccess` 立即拒绝对应能力 |
@@ -133,7 +138,8 @@
 | R-11 | 同一用户连续提交无效随机码 | 每用户滚动 15 分钟失败次数达到 10 后返回 `RATE_LIMITED`；计数不因预期业务拒绝被回滚 |
 | R-12 | 明文丢失的 `CreateCodes(request_id)` 重试 | 不重复创建新码、不回显明文；可撤销原批次再以新 request_id 发码 |
 | R-13 | 两个设备并发续期同用户同套餐 | 周期授权从串行化后的最新最晚到期时间顺延，不错误重叠 |
-| R-14 | 套餐已有授予后尝试修改原 features/limits | 拒绝就地修改；新建套餐版本，已有 grant 对应权益不变 |
+| R-14 | 套餐已有 grant **或已发行未兑 code** 时尝试修改原 features/limits（含与发码并发） | 拒绝就地修改；新建套餐版本，旧 grant/code 均引用冻结版本 |
+| R-15 | 套餐在发码后被停用，但已发行码未过期、未撤销且仍有次数 | 可继续按旧套餐版本兑换；新发码/管理员新授予被拒绝，显式撤码才阻止旧码后续兑换 |
 
 验收还应覆盖 401/403/404/409/429/503 区别、超时后的状态确认、资源不可枚举检查以及 RLS 正反向测试（推荐 pgTAP）；以上为**测试场景规格**，尚未创建自动测试或运行数据库。
 
