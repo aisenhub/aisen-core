@@ -71,7 +71,7 @@
 | `active` | NOT NULL |
 | `granted_by`, `created_at`, `updated_at` | 可信端维护 |
 
-初始所有者通过受控且不携带固定真实用户 ID 的迁移/运维 SQL 将**已存在且确认拥有者身份的** Auth 用户加入名单；后续增减只经管理函数，并写 `admin_audit_log`。撤销最后一名有效管理员必须在锁定资格集合后拒绝，防止并发分别撤销导致无人可管；管理人自身也不能绕过鉴权。业务规则见[平台管理员与账号生命周期](../domains/platform-admin-and-account-lifecycle.md)。
+初始所有者通过受控且不携带固定真实用户 ID 的迁移/运维 SQL 将**已存在且确认拥有者身份的** Auth 用户加入名单；后续增减只经管理函数，并写 `admin_audit_log`。`RevokeAdmin` 与 `BlockAccount` 共用事务级串行化保护，变更后必须剩余至少一名 `active=true` 且**未被全局 blocked** 的管理员；不得仅数 `active` 行，防止并发分别撤销/封禁导致无人可管。管理人自身也不能绕过鉴权。业务规则见[平台管理员与账号生命周期](../domains/platform-admin-and-account-lifecycle.md)。
 
 ### 2.6 `platform_account_restrictions`（平台级账号限制）
 
@@ -81,7 +81,7 @@
 | `kind` | NOT NULL；MVP 仅 `blocked`；管理鉴权与业务准入读取此表的当前状态 |
 | `reason_code`, `created_by`, `created_at` | 可信端维护 |
 
-解除限制即删除该行（同事务写审计）。所有需登录的公共准入与写入函数先检查此表，**平台管理员资格判定也排除当前被限制用户**。
+解除限制即删除该行（同事务写审计）。受保护业务的加入、重新加入、兑换和准入查询先检查此表，**平台管理员资格判定也排除当前被限制用户**。对合格管理员施加 `blocked` 之前，管理函数必须与管理员撤销函数使用相同的事务级互斥/锁序，原子复核剩余合格管理员数；不能封禁最后一名合格管理员，拒绝时不改变限制或审计事实。
 
 ### 2.7 `admin_audit_log`（非成员类管理审计）
 
@@ -124,6 +124,7 @@
 5. **`RestoreMembership`**：管理员有权操作时，从可信记录读取 `pre_suspend_status`，恢复为该状态并清空 `pre_suspend_status`，记录 `restore`。原来 `left` 必须回 `left`；用户仍要明确重新加入。恢复不自动重启产品，也不复活过期会员。
 6. **产品暂停/恢复**：只变更产品状态并同事务写 `admin_audit_log`，不批量更新成员。新操作要重新校验产品状态。
 7. **平台账号限制**：`EnsureMembership`、`RejoinProduct`、兑换及准入查询都先检查 `platform_account_restrictions`；限制存在时拒绝，不改写成员。
+8. **管理入口保底**：`BlockAccount` 与 `RevokeAdmin` 必须在同一事务内通过统一的串行化规则检查“变更后至少一名 active 且未 blocked 管理员”，否则返回 `STATE_CONFLICT`；不得用两个互不加锁的 SELECT 计数实现。合法封禁与撤权成功时均写入 `admin_audit_log`。
 
 并发重点：双设备首次加入、封禁与重新加入竞争、产品暂停与新加入竞争、请求超时重试。应使用数据库唯一性、锁或条件更新，以及明确的事务顺序保证旧请求不能覆盖新封禁；禁止靠“先 SELECT 再无条件 UPDATE”或客户端缓存决定转换。产品状态与成员首次加入的竞争需要在同一可信事务边界内定义先后次序，不能宣称普通跨请求查询提供强原子保证。
 

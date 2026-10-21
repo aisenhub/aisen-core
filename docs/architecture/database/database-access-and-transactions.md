@@ -28,6 +28,10 @@ Edge Function 中的 `supabase-js` 每次调用都是独立请求，**无法跨�
 | 管理操作（产品状态、成员封禁/解封、套餐、发码/撤码、授予/撤销权益、管理员授予/撤销、全局限制） | 函数内 `auth.uid()` | 函数首行要求 `private.is_platform_admin()`，否则拒绝 | React-admin 以管理员 JWT 调用 RPC |
 | 只读准入（`get_my_products`、`check_access`） | 函数内 `auth.uid()` | 只返回本人结果，无副作用 | 同上 |
 
+`RevokeAdmin` 与 `BlockAccount` 是同一个**管理入口保底不变量**的两个写入路径：在共同的数据库事务级锁/确定性锁序下检查目标变更后仍有至少一名 `active` 且未被全局 `blocked` 的管理员。条件不满足返回 `STATE_CONFLICT` 并保持原状；不能仅从当前 JWT 的管理员身份推断目标操作安全，也不能把两次独立 SDK 调用当作一个检查事务。
+
+`check_access` 属于**无副作用的准入查询**：认证成功且数据库能够可信判定时，包含全局 `blocked` 在内的业务拒绝均按 API 契约正常返回 `allowed=false/reason`（HTTP 200），而不是在函数内抛出 HTTP 403；无效身份和真正的技术故障分别以 401、503/5xx 表示。其他有副作用的函数仍按各自的拒绝契约执行。
+
 函数实现约束：`SECURITY DEFINER` **只用于上述定点函数**；固定空 `search_path`、完全限定数据库对象名，指定最小权限函数所有者；`EXECUTE` 先从 `PUBLIC`/`anon` 撤销再按需授予 `authenticated`。**可由 PostgREST 调用的 RPC 包装函数位于 Data API 暴露 Schema（如 public）**，私有权限辅助函数/敏感表在非暴露 Schema；不要把所有 RPC 放入 private 后却无法调用。禁止公共业务函数任意执行动态 SQL，所有管理函数进入时逐次鉴权，身份不可由请求参数冒充。业务错误转换见[API 契约](../backend/api-contract-and-mvp-acceptance.md)；`redeem_code` 的限流与预期业务拒绝须正常提交计数，因此按约定返回业务失败结构而不是抛出可回滚的异常。底层表对 `authenticated` 不授予 INSERT / UPDATE / DELETE。
 
 ### 2.3 Edge Functions：只承载必须持有密钥的场景
