@@ -1,13 +1,13 @@
-# 公共身份与产品成员数据库逻辑约束及最小审计模型
+# 公共身份、产品成员与管理审计数据库逻辑约束
 
-> 状态：**当前有效架构决定**：采用“当前状态表 + 轻量审计事件表”（方案 A）。本文件给出逻辑模型、数据不变量和一致性边界；字段名称是建议，不是已执行或最终批准的 SQL DDL、迁移脚本或 RLS 策略。未经另行授权，不建库、不执行 SQL、不编写业务代码或部署。
+> 状态：**当前有效架构决定**：采用“当前状态表 + 轻量审计事件表”（方案 A），非成员类管理操作统一写 `admin_audit_log`。本文件给出产品、成员、管理员、平台限制与审计的逻辑模型、数据不变量和一致性边界；套餐/授权/兑换码见[权益与兑换码数据约束](./entitlements-and-redemption-constraints.md)。字段名称是建议，不是已执行或最终批准的 SQL DDL、迁移脚本或 RLS 策略。未经另行授权，不建库、不执行 SQL、不编写业务代码或部署。
 
 ## 1. 设计目标与已确认的取舍
 
 - **`product_memberships` 是当前成员状态的唯一权威**：直接读取当前 `status`，不回放事件推导状态。
 - **`membership_events` 只保存必要状态变化的审计事实**：不承载实时授权、不用作事件溯源或异步事件总线。
 - **`products` 存储当前产品目录与运行状态**；认证用户由现有 Supabase Auth `auth.users` 承担。
-- MVP 优先复用 PostgreSQL 主键、UNIQUE、外键、CHECK、事务、原子条件更新及 Supabase 的 RLS、Edge Functions。**不引入**独立审计服务、Redis、通用工作流引擎、复杂触发器链或分布式事务框架。
+- MVP 优先复用 PostgreSQL 主键、UNIQUE、外键、CHECK、事务、原子条件更新、受保护函数及 Supabase 的 RLS。**不引入**独立审计服务、Redis、通用工作流引擎、复杂触发器链或分布式事务框架。
 - 平台成员状态与**会员权益、支付事实、产品级业务数据、账号禁用状态**分开存储及判断。产品暂停不修改所有成员状态，成员退出不自动取消订阅、删除数据或撤销历史权益。
 
 ## 2. 核心逻辑实体及最小字段建议
@@ -59,9 +59,43 @@
 | `reason_code` | 必要原因/操作依据 | 对需要说明的管理操作要求，其他按需 |
 | `created_at` | 事件发生时间 | 可信端生成，不允许客户端指定 |
 
-审计只记录**成功且实际发生的关键状态变更**；普通登录、查询 `GetProductAccess`、重复无变化的 `EnsureMembership`、普通 Pro 查询不写入成员事件。访问拒绝和失败请求如有安全记录需要，应归入适当的运维/安全日志，而不是伪造状态变更事件。
+审计只记录**成功且实际发生的关键状态变更**；普通登录、准入查询 `CheckAccess`、重复无变化的 `EnsureMembership`、普通 Pro 查询不写入成员事件。访问拒绝和失败请求如有安全记录需要，应归入适当的运维/安全日志，而不是伪造状态变更事件。
 
 事件数据应限制读取和修改，正常成员操作只新增事件、不由普通用户任意改写或删除历史。保留时长、必要的个人资料最小化以及删除请求下的去标识化/法定保留原则仍需按法规和具体业务确定。
+
+### 2.5 `platform_admins`（平台管理员资格）
+
+| 建议字段 | 逻辑约束 |
+| --- | --- |
+| `user_id` | PRIMARY KEY，引用 `auth.users.id` |
+| `active` | NOT NULL |
+| `granted_by`, `created_at`, `updated_at` | 可信端维护 |
+
+初始所有者通过受控且不携带固定真实用户 ID 的迁移/运维 SQL 将**已存在且确认拥有者身份的** Auth 用户加入名单；后续增减只经管理函数，并写 `admin_audit_log`。撤销最后一名有效管理员必须在锁定资格集合后拒绝，防止并发分别撤销导致无人可管；管理人自身也不能绕过鉴权。业务规则见[平台管理员与账号生命周期](../domains/platform-admin-and-account-lifecycle.md)。
+
+### 2.6 `platform_account_restrictions`（平台级账号限制）
+
+| 建议字段 | 逻辑约束 |
+| --- | --- |
+| `user_id` | PRIMARY KEY，引用 `auth.users.id`；正常账号无记录 |
+| `kind` | NOT NULL；MVP 仅 `blocked`；管理鉴权与业务准入读取此表的当前状态 |
+| `reason_code`, `created_by`, `created_at` | 可信端维护 |
+
+解除限制即删除该行（同事务写审计）。所有需登录的公共准入与写入函数先检查此表，**平台管理员资格判定也排除当前被限制用户**。
+
+### 2.7 `admin_audit_log`（非成员类管理审计）
+
+| 建议字段 | 逻辑约束 |
+| --- | --- |
+| `id` | PRIMARY KEY |
+| `actor_user_id` | NOT NULL |
+| `action` | NOT NULL；如 `product.status`、`plan.upsert`、`code.create`、`code.revoke`、`grant.create`、`grant.revoke`、`admin.grant`、`admin.revoke`、`account.block`、`account.unblock` |
+| `target_type`, `target_id` | NOT NULL |
+| `before`, `after` | 可空的精简 JSON，只含必要字段；不得包含兑换码明文、令牌、密码 |
+| `reason` | 可空；高风险操作要求填写 |
+| `created_at` | 可信端生成 |
+
+由各管理函数在同一事务内插入；只新增、不修改。**成员事件仍只写 `membership_events`**，两张表不合并。管理员撤销、产品修改等必须保留可信 actor 和精简前后差异；高风险操作必须填写 reason，审计不记录秘密或不必要的邮箱信息。
 
 ## 3. 数据库与可信服务端的职责分工
 
@@ -70,14 +104,14 @@
 | 主键、稳定产品标识、唯一成员配对 | PostgreSQL PRIMARY KEY / UNIQUE | 防重复与引用歧义 |
 | 合法状态值、封禁前状态搭配、非空字段 | PostgreSQL CHECK / NOT NULL | 禁止非法静态数据 |
 | 用户/产品/成员引用存在 | PostgreSQL FOREIGN KEY | 保证关系完整性 |
-| 是否有权创建产品、暂停/恢复成员 | 可信 Edge Functions / 管理员鉴权 | 依赖调用人和操作意图 |
+| 是否有权创建产品、暂停/恢复成员 | 受保护管理函数内的 `private.is_platform_admin()` 检查 | 依赖调用人和操作意图 |
 | `left → active` 仅明确重新加入 | 可信成员状态转换 | 不能由 CHECK 判断请求来源 |
 | `suspended` 解封恢复原状态 | 可信事务读取当前记录 | `pre_suspend_status` 不能被客户端控制 |
 | 产品 active 才允许普通首次加入 | 可信流程中读取产品当前状态 | CHECK 不可用作跨表动态权限判定 |
 | 当前成员变更与关键审计同步 | 同一 PostgreSQL 事务 | 一起提交或一起回滚 |
 | Pro、额度与业务资源访问 | 各领域可信授权 / 计量 | 不混入成员表 |
 
-业务变更可通过 Edge Function 协调受保护的数据库事务（必要时采用局部受保护的数据库例程或等价事务方案），**不能误以为多个独立的数据库 API 请求天然共享事务**。若引入高权限数据库例程，必须显式限制执行权限、搜索路径、暴露 Schema 和调用方；不得为解决 RLS 问题随意使用 `SECURITY DEFINER`。
+已确定：**每个状态转换由一个受保护 PostgreSQL 函数在单事务内完成**（执行机制、`SECURITY DEFINER` 使用边界与调用方式见[数据库访问与可信事务](./database-access-and-transactions.md#2-执行机制决定)）。多个独立的数据库 API 请求不共享事务。
 
 ## 4. 事务及状态转换不变量
 
@@ -88,7 +122,8 @@
 3. **`RejoinProduct`**：用户明确操作、产品/账号允许时，`left → active` 并记录 `rejoin`；不通过普通登录触发。
 4. **`SuspendMembership`**：管理员有权操作时，`active` / `left → suspended`；原子保存原状态到 `pre_suspend_status`，记录 `suspend`。重复封禁不得覆盖最初的原状态或重复记录状态变化。
 5. **`RestoreMembership`**：管理员有权操作时，从可信记录读取 `pre_suspend_status`，恢复为该状态并清空 `pre_suspend_status`，记录 `restore`。原来 `left` 必须回 `left`；用户仍要明确重新加入。恢复不自动重启产品，也不复活过期会员。
-6. **产品暂停/恢复**：只变更产品状态（管理操作另作适当审计），不批量更新成员。新操作要重新校验产品状态。
+6. **产品暂停/恢复**：只变更产品状态并同事务写 `admin_audit_log`，不批量更新成员。新操作要重新校验产品状态。
+7. **平台账号限制**：`EnsureMembership`、`RejoinProduct`、兑换及准入查询都先检查 `platform_account_restrictions`；限制存在时拒绝，不改写成员。
 
 并发重点：双设备首次加入、封禁与重新加入竞争、产品暂停与新加入竞争、请求超时重试。应使用数据库唯一性、锁或条件更新，以及明确的事务顺序保证旧请求不能覆盖新封禁；禁止靠“先 SELECT 再无条件 UPDATE”或客户端缓存决定转换。产品状态与成员首次加入的竞争需要在同一可信事务边界内定义先后次序，不能宣称普通跨请求查询提供强原子保证。
 
@@ -98,8 +133,8 @@
 
 - 当表位于 Supabase Data API 可暴露的 Schema 中，应有明确表级授权与合适的 RLS；仅 `TO authenticated` 不能代替“只能看到自己”这一行级条件。
 - 普通用户最多读取自己的必要成员状态和公开的产品资料；**不直接 INSERT/UPDATE/DELETE 成员状态，也不直接编辑审计**。
-- 所有状态转换由可信公共服务端执行用户身份、产品状态、成员状态及管理员身份检查，再经受限的数据库写入路径完成。
-- Admin 通过 React-admin 复用现成的列表/表单组件，但后端必须再次校验平台管理权；不要从 `user_metadata` 或仅凭界面隐藏判断管理员。
+- 所有状态转换由受保护函数执行用户身份、产品状态、成员状态及管理员身份检查后完成。
+- Admin 通过 React-admin 复用现成的列表/表单组件，管理员读取依靠 `private.is_platform_admin()` 策略，写入函数再次校验平台管理权；不要从 `user_metadata` 或仅凭界面隐藏判断管理员。
 - 普通客户端和独立 SaaS 后端不能获得整个平台范围的 service_role/secret key；需要真正的服务端机器身份时再限定范围设计。
 - 正常使用读取当前成员状态只查询 `product_memberships`，不因审计表复杂化读取路径。
 
@@ -111,17 +146,18 @@
 - `membership_events` 保留时间、匿名化和查询权限应按管理与法律需要定；禁止把“审计”解释为所有个人数据都必须永久保留。
 - 对产品权限的最终判断仍结合产品状态、成员当前状态和具体权益；成员表不承载产品业务资源权限。
 
-关于普通用户与平台管理层的 RLS/GRANT 访问矩阵、可信 Edge Functions 写入与**单 PostgreSQL 事务**执行边界，见[数据库访问隔离与可信事务](./database-access-and-transactions.md)；账号级管理员和最小限制记录见[管理员与账号生命周期](../domains/platform-admin-and-account-lifecycle.md)。
+关于普通用户与平台管理员的 RLS/GRANT 访问矩阵、受保护函数写入与**单 PostgreSQL 事务**执行边界，见[数据库访问隔离与可信事务](./database-access-and-transactions.md)；管理员与平台限制的业务规则见[管理员与账号生命周期](../domains/platform-admin-and-account-lifecycle.md)。
 
 ## 7. MVP 不建设与待确定
 
 **不建设**：事件回放作为成员权威、跨库事件总线、通用审计平台、复杂状态机框架、无限字段的审计大表、跨系统分布式事务、自研 Auth/ORM 基础框架。
 
-**待实施前确定**：最终字段类型/DDL、标识格式、必要索引、时间字段更新策略、受保护数据库事务的具体封装方式、RLS 逐表 SQL 策略、管理员资格记录的最终 DDL、产品操作审计载体、事件保留/匿名化期限、用户/产品删除协调、实际权限测试和并发测试验收。未做 SQL、迁移文件或服务配置。
+**待实施前确定**：最终字段类型/DDL、标识格式、必要索引、时间字段更新策略、RLS 逐表 SQL 策略、审计 JSON 字段白名单、事件与审计保留/匿名化期限、用户/产品删除协调、实际权限测试和并发测试验收。未做 SQL、迁移文件或服务配置。
 
 ## 相关架构
 
 - [身份、产品及成员领域模型](../domains/identity-and-product-model.md)
 - [成员生命周期与数据保留](../domains/membership-lifecycle.md)
 - [公共 API MVP 与 SaaS 接入](../backend/public-api-and-saas-integration.md)
+- [权益与兑换码数据约束](./entitlements-and-redemption-constraints.md)
 - [产品数据与文件专项](./product-data-and-files.md)

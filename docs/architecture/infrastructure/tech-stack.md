@@ -9,17 +9,16 @@
 | 层级 | 已选择的技术或服务 | 主要职责 | 说明 |
 | --- | --- | --- | --- |
 | 代码托管与版本管理 | **GitHub + Git** | 源代码、版本记录、未来与部署平台连接 | 仓库结构、分支与 CI 细则待实施时决定 |
-| Admin 前端 | **React-admin（Marmelab）** | 管理平台公共用户、产品、套餐、订单/订阅、权益等 | 仅内部少数可信管理员使用，遵循框架默认技术栈 |
+| Admin 前端 | **React-admin（Marmelab）** | 首版管理产品、成员、套餐/权益与兑换码；订单/订阅后续接入 | 仅内部少数可信管理员使用，遵循框架默认技术栈 |
 | Admin 构建工具 | **Vite** | 前端开发构建与生成静态资源 | 采用 React-admin 官方推荐路线；不是 React-admin 核心强制依赖 |
 | Admin 网站部署 | **Cloudflare Pages** | 托管 React-admin 静态前端站点 | 已明确选定；域名、仓库连接、环境及自动部署尚未设置 |
 | 当前公共后端平台 | **Supabase** | 公共身份、产品级权益和必要公共后端能力 | 未来按用户规模与需要评估可靠迁移或自部署 |
 | 公共关系数据库 | **PostgreSQL（由 Supabase 托管）** | 公共结构化数据，例如用户关联、产品、权益和必要的计费状态 | 无需再为公共核心额外采购/选择另一款数据库 |
 | 统一身份认证 | **Supabase Auth** | 全平台统一用户身份与会话；各产品权益隔离 | 首版邮箱 + 密码；邮箱确认、找回密码的发信服务正式上线前落实 |
-| 可信服务端函数 | **Supabase Edge Functions** | 首版优先承接需要服务器保护的公共业务逻辑和 API | Deno 兼容运行时、TypeScript；具体函数及接口仍待设计 |
+| 可信数据库接口 | **PostgreSQL 受保护 RPC + PostgREST/RLS** | 状态变更与同事务审计、按权限读取列表 | 事务/权限边界见数据库专项 |
+| 需秘密的辅助函数 | **Supabase Edge Functions** | Auth Admin 查询、后续支付 Webhook/R2 签名 | TypeScript/Deno；不拆分数据库状态事务 |
 | 对象存储 | **Cloudflare R2** | 云端用户文件、按需的配置备份等文件本体 | 用户与产品访问控制、对象组织方式后续确定 |
-| 会员开通首要入口 | **AisenCore 自有兑换码** | 管理员创建并分发，用户兑换后由公共权益系统开通相应产品会员 | 先于外部支付渠道实施，具体码规则待定 |
-| 初期外部支付 | **爱发电（暂定）** | 打赏/支付后凭可靠订单结果同步会员权益 | 用户曾在此前项目简单跑通基本回调，新平台未对接 |
-| 后续支付扩展 | **支付宝个体工商户支付 → Stripe** | 以后按主体资质与业务需要接入 | 本阶段不开发，避免提前构建复杂多渠道支付框架 |
+
 
 **角色区别**：GitHub 存代码；Cloudflare Pages 部署/交付 **Admin 前端**；Supabase 托管 **PostgreSQL 数据库、Auth 与 Edge Functions**；R2 存文件对象。自有兑换码与外部支付订单只提供授权来源，**最终产品级会员权益由公共核心维护**。React-admin 并不等于后端 API 服务器，Pages 不负责替代 PostgreSQL 和可信业务接口。
 
@@ -43,7 +42,7 @@
 - **未确定的可选集成**：[ra-supabase](https://github.com/marmelab/ra-supabase) 是否使用，或者自行编写局部 Data Provider；专用图表、Schema 验证库等只有真实需求出现时才选。
 - React-admin 可通过 Data Provider 对接 Supabase 普通数据或可信管理 API，不意味着浏览器能直接执行所有高权限操作。
 
-**身份与成员边界**：Supabase Auth 管理公共用户身份；公共 PostgreSQL 管理产品目录、按需创建的产品成员关系及独立的产品权益。React-admin 复用现有前端管理组件，成员状态变更通过可信 Edge Functions 鉴权；逻辑 API 已在后端专项定义，具体 HTTP 路由与 Schema 仍待实施。管理应用的信息架构与交互见[Admin 管理前端架构](../applications/admin-console.md)，用户领域与 API 入口见[架构总索引](../README.md)。
+**身份与成员边界**：Supabase Auth 管理公共用户身份；公共 PostgreSQL 管理产品目录、按需创建的产品成员关系及独立的产品权益。React-admin 复用现有前端管理组件，成员状态变更经受保护 PostgreSQL RPC 鉴权并与审计同事务提交；逻辑 API 在后端专项定义，具体 HTTP 路由与 Schema 仍待实施。管理应用的信息架构与交互见[Admin 管理前端架构](../applications/admin-console.md)，用户领域与 API 入口见[架构总索引](../README.md)。
 
 ## 3. Supabase 后端技术组成与职责
 
@@ -52,10 +51,11 @@
 | 身份与登录 | Supabase Auth | 全平台统一用户身份；第一版邮箱密码 |
 | 数据库引擎 | Supabase 托管 PostgreSQL | 产品注册、用户与产品关联、会员套餐及权益、必要公共业务记录 |
 | 数据安全 | PostgreSQL 授权与 RLS（按实际访问设计） | 控制普通用户和不同产品的数据可见、可操作范围 |
-| 可信服务端 | Supabase Edge Functions（TypeScript / Deno 运行时） | 需要保守机密、校验管理员权限或执行可信业务的服务端入口 |
-| 对外数据访问 | Supabase 数据 API 或经 Edge Functions 提供的业务 API | 按适当权限和业务职责调用；接口形态未最终确定 |
+| 可信业务变更 | 受保护 PostgreSQL 函数 | 成员、产品、套餐、兑换、管理操作和审计均在单个事务内 |
+| 必须保管密钥 | Supabase Edge Functions（TypeScript / Deno） | Auth Admin 用户检索、未来支付通知和 R2 临时签名 |
+| 对外数据访问 | PostgREST + RLS 读取 / 受保护 RPC 写入 | 已确定读写路径；最终函数签名与兼容版本待实施 |
 
-**Edge Functions 已选为公共受保护逻辑的优先实现载体**，可能用于支付通知接收、订单与权益同步、敏感 Admin 操作、生成短期 R2 文件访问授权等；这里列的是**适用场景，而非确认已经设计或必须实现的接口清单**。Edge Functions 的运行时是 Supabase Edge Runtime（Deno 兼容，TypeScript 优先），不是把 React-admin 部署在 Edge Functions 上。
+**数据库 RPC 是公共状态变更与审计的唯一事务载体**。Edge Functions 只承担需要机密凭据的 Auth Admin 查询、未来支付核验/回调、R2 短期授权等辅助入口；不得通过多个独立 Data API 请求拆分状态与审计。Edge Functions 的运行时是 Supabase Edge Runtime（Deno 兼容，TypeScript 优先），不是把 React-admin 部署在 Edge Functions 上。
 
 **安全底线**：Supabase 的 `service_role` / secret key、R2 长期访问密钥以及支付服务商的机密密钥只留在可信服务端，**不能嵌入 React-admin、网页或本地客户端**。管理员是否有权限必须经可信端判定；RLS 及接口权限不能简单照搬开放式示例。
 
@@ -74,11 +74,11 @@
  Supabase 公共后端
    +-- Supabase Auth：统一登录、管理员身份基础
    +-- PostgreSQL：公共关系数据与必要计费/权益记录
-   +-- Edge Functions：可信管理 API、支付回调、必要业务处理
-        |
-        | 授权后按产品需要提供文件对象访问能力
-        v
- Cloudflare R2：用户文件与可选配置备份
+   +-- PostgREST/RLS：普通和管理员按权限读取
+   +-- 受保护 PostgreSQL RPC：状态变更和同事务审计
+   +-- Edge Functions：Auth Admin 查询、后续支付与 R2 签名
+
+ 客户端 ──► 授权签发流程 ──► Cloudflare R2（并列的对象存储）
 
  独立 SaaS A / B / C
    +-- 可接入同一公共身份、权益和计费能力
@@ -89,13 +89,9 @@
 
 **R2 保存文件本体，PostgreSQL 或相应产品业务库保存文件的属主、产品、对象标识和关联记录。** 私有文件需要按用户和产品授权，不能因为放在 R2 就直接开放访问。拉片产品的用户配置备份由客户端在获得受限授权后直接与 R2 传输文件字节，不经 Supabase 中转；视频、AI 结果和用户自己的 AI 密钥仍留在本地。
 
-## 5. 首版业务范围与技术选型边界
+## 5. 业务范围以领域架构为准
 
-- **公共最小核心**：统一账号、产品注册与管理、产品级 Free/Pro 功能开关、数量/使用额度、云端存储/备份配额、权益有效期、**优先建设自有兑换码授权，再分阶段接入订单/订阅支付**，以及必要的内部 Admin。
-- **会员开通与支付顺序**：先建设平台**自有兑换码**（React-admin 创建、所有者分发），初期**暂定爱发电**打赏/支付及可靠订单回调；待个体工商户与商户资格具备后再接**支付宝**，更后期再评估 **Stripe**。月付、年付、一次性永久购买和免费试用仍是目标业务模式，不意味着初期渠道必须一次性实现所有自动续费能力。收款地区、各模式实际承载规则及计费事实存储边界待确定。
-- **本地 Pro**：启动时在线校验、运行中按产品实际关键操作或适当时机合理复核；首版不做通用桌面离线会员授权，未来有需要再扩展。
-- **产品独立性**：不强制各 SaaS 使用 React、Supabase 同一个数据库/Project、Cloudflare Pages 或统一的业务服务器。公共用户与权益有权威归属；每个产品可以选择自身的业务数据库和部署方式。
-- **未来迁移**：Supabase 为当前托管选择，未来若迁移自托管环境，优先保证 PostgreSQL 数据、身份、服务端业务逻辑及 R2 文件关联能够可靠迁移；迁移目标与实施细则尚未确定。
+本文只确认技术承载；MVP 业务范围参见[主架构](../current-main-architecture.md)，自有兑换码与支付渠道顺序参见[计费与权益专项](../domains/billing-and-entitlements.md)，本地 Pro 在线校验参见[本地优先专项](../applications/local-first.md)。独立 SaaS 不被强制使用相同的业务数据库或前端框架。
 
 ## 6. 不做与待确定
 
@@ -109,12 +105,20 @@
 
 **待产品对接或实施时决定**：
 
-- React-admin 的具体兼容版本、`ra-supabase` / Data Provider 接入方式、Admin 页面最终字段与布局（应用层 MVP 逻辑见[Admin 专项](../applications/admin-console.md)），以及敏感操作的最终权限配置。
+- React-admin 的具体兼容版本、`ra-supabase` 与已确定 PostgREST 读路径的适配方式、Admin 页面最终字段与布局（应用层 MVP 逻辑见[Admin 专项](../applications/admin-console.md)），以及敏感操作的最终权限配置。
 - Pages 项目、域名、仓库连接、构建设置、分支环境、发布权限与密钥配置。
-- Edge Functions 的具体接口、权限校验细节、异常处理和必要操作审计。
-- 自有兑换码规则、爱发电订单到平台用户/产品的可信关联和回调核验；以后支付宝、Stripe 的商户资质及接入细节；订阅生命周期、免费试用与永久购买权益规则。
+- 受保护 RPC 的签名、数据库 RLS 逐表 SQL、Edge Functions 中真正需要密钥的辅助接口与管理权限核验。
+- 自有兑换码的 UI 批量上限和分发细节、未来支付订单到公共用户/产品的可信关联及回调核验；渠道资质与自动订阅/退款规则。MVP 兑换码与权益逻辑规则已在计费专项定稿。
 - 各 SaaS 业务数据库与部署拓扑、R2 Bucket/对象组织及配额计量方式。
 - 未来自托管目标、迁移策略和可靠性验收指标。
+
+## 7. 环境、迁移与最小变更管理（实施时执行）
+
+- **环境隔离**：至少有本地/开发环境与生产环境，使用各自独立的 Supabase 项目、回调域名和管理员初始化流程；测试环境不得连接生产数据库或复用生产密钥。
+- **迁移版本化**：用 Supabase CLI 创建可复现的 SQL 迁移文件并纳入 Git，按版本应用到开发并验证，再进入生产；禁止以控制台手改作为唯一真实状态。上线前执行数据库备份、明确回滚/前向修复方案并核查迁移权限。
+- **Secrets**：数据库 service_role/secret、支付凭据、R2 长期访问密钥仅放在 Supabase Secrets 或 Cloudflare Pages 的服务端环境配置等可信存储；**Cloudflare Pages 静态前端公开构建变量绝不能存放服务端秘密**，浏览器只允许 publishable/anon 配置。
+- **安全验证门槛**：在隔离环境使用 Supabase CLI 和 pgTAP 对 GRANT/RLS 进行匿名、本人、他人、管理员、管理员撤销与 aal2 缺失的正反向测试，并补充 RPC 状态转换、并发核销、审计回滚与限流测试；每次策略/权限变更都重新测试。
+- **部署流程**：先核对环境差异与迁移，再部署受保护函数和应用，最后用非生产账号检查管理读写、邮箱回调和关键准入；保留失败时停止发布/修复的明确措施。具体 CI 系统与发布命令在代码实施阶段确认，不预建设大型流水线。
 
 ## 对应文档
 
