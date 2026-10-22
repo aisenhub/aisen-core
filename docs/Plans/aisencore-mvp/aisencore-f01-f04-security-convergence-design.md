@@ -1,6 +1,6 @@
 # F01～F04｜安全设计收敛定稿（实施候选，待真实验证）
 
-> **状态：DESIGN RESOLVED / RUNTIME NOT VERIFIED**。本文件保留有效的安全设计；完成的阶段执行清单按 Plans 规则删除。本文件给 D1、D2、D3 的后续实际代码/迁移提供**优先遵循的安全实施约束**；不替换 [现行需求](../spec/requirements.md)与[逻辑 API/43 项验收](../architecture/backend/api-contract-and-mvp-acceptance.md)，不表示任何数据库函数、Edge、R2 或 MFA 已运行。
+> **状态：DESIGN RESOLVED / RUNTIME NOT VERIFIED**。本文件保留有效的安全设计；完成的阶段执行清单按 Plans 规则删除。本文件给 D1、D2、D3 的后续实际代码/迁移提供**优先遵循的安全实施约束**；不替换 [现行需求](../../spec/requirements.md)与[逻辑 API/43 项验收](../../architecture/backend/api-contract-and-mvp-acceptance.md)，不表示任何数据库函数、Edge、R2 或 MFA 已运行。
 >
 > **2026-10-22 追加用户决定**：Admin **TOTP MFA 明确纳入 MVP**。原 F04 `aal1→TOTP→aal2→管理员资格` 安全链不改变；性能/体验补充以[低请求量 Auth/Pro/Admin 专项](./aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)为准：有效 `aal2` 会话的普通 Data API/管理 RPC **不会另起 MFA challenge/verify 网络请求**，后台从当前经验证 JWT + 资格表在原业务请求内鉴权，Auth Admin Edge 保留服务器资格检查。
 >

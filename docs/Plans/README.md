@@ -4,21 +4,22 @@
 
 ## 当前待办与唯一实施导航
 
-- [MVP 实施设计总计划（ACTIVE）](./aisencore-mvp-implementation-design-master-plan.md)：阶段依赖、实际开发准入、U03～U11/安全/视觉阻塞；**计划仍未结束**。
+- [MVP 实施设计总计划（ACTIVE）](aisencore-mvp/aisencore-mvp-implementation-design-master-plan.md)：阶段依赖、实际开发准入、U03～U11/安全/视觉阻塞；**计划仍未结束**。
+- [2026-10-22 审查整改专项总计划（DRAFT）](./20261022-review-remediation/master-plan.md)：14 项审查问题、4 项跨模块任务与 MCP 延期评估；按阶段列出修复步骤、决策和验收。
 - [MVP 当前待办（TODO）](./TODO.md)：真实运行/用户确认/上线前检查；不把已完成的文档型任务长期作为新计划。
-- [D0 需求范围与阶段基线](./aisencore-mvp-d0-scope-and-baseline.md)：**保留的阶段结果基线**，含 U01/U02 初始决定及 D1 输入；最新 U03～U11 决定看下方专文。
-- [D1 数据库实施设计](./aisencore-mvp-d1-database-implementation-design.md)：PostgreSQL/RLS/GRANT/锁序与 M1～M5，SQL/事务尚未运行。
-- [D2 API/Auth/Aisenlens 实施设计](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)：RPC、JWT、产品边界与 R2 恢复/授权，**未实现**。
-- [D3 Admin/环境实施设计](./aisencore-mvp-d3-admin-infrastructure-design.md)：React-admin Resource/Provider/环境/密钥/部署与 MFA，**未创建前端/云环境**。
-- [D3-UI 页面线框与交互设计](./aisencore-mvp-d3-ui-admin-uiux-design.md)：导航、列表/表单、发码/MFA/响应式、D3-UI-X01～X18 全部 NOT RUN。
+- [D0 需求范围与阶段基线](aisencore-mvp/aisencore-mvp-d0-scope-and-baseline.md)：**保留的阶段结果基线**，含 U01/U02 初始决定及 D1 输入；最新 U03～U11 决定看下方专文。
+- [D1 数据库实施设计](aisencore-mvp/aisencore-mvp-d1-database-implementation-design.md)：PostgreSQL/RLS/GRANT/锁序与 M1～M5，SQL/事务尚未运行。
+- [D2 API/Auth/Aisenlens 实施设计](aisencore-mvp/aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)：RPC、JWT、产品边界与 R2 恢复/授权，**未实现**。
+- [D3 Admin/环境实施设计](aisencore-mvp/aisencore-mvp-d3-admin-infrastructure-design.md)：React-admin Resource/Provider/环境/密钥/部署与 MFA，**未创建前端/云环境**。
+- [D3-UI 页面线框与交互设计](aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md)：导航、列表/表单、发码/MFA/响应式、D3-UI-X01～X18 全部 NOT RUN。
 - [Admin UI-G0 全局视觉规范](../architecture/applications/admin-ui-design-system.md)：**强制编码前关口仍 NOT APPROVED / BLOCKED**；高保真画面与用户签收待完成。
 - [Admin 前端设计与规则入口](../development/frontend/README.md)：唯一开发目录内维护视觉基础、共享组件、62 条 UX 原则与后续 UI-G3 审查。
-- [D4 测试与就绪评审](./aisencore-mvp-d4-test-and-readiness-review.md)：原 55 项 I/R/A 用例和增量风险，均未真实运行。
-- [F01～F04 安全收敛设计](./aisencore-f01-f04-security-convergence-design.md)：Design Resolved / Runtime Not Verified。
-- [F05～F08 契约与兼容测试准备](./aisencore-f05-f08-contract-compatibility-readiness-design.md)：F05 合同、F06/F07 待决、F08 V00～V07 待运行。
-- [U03～U11 用户确认及待定子项](./aisencore-u03-u11-user-decisions-2026-10-22.md)：已确认行为、仍需明确参数和公开运营门槛。
-- [Auth/Pro 与 Admin MFA 低请求量设计](./aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)：AUTH-P01～P12 待运行。
-- [BaaS/RPC 配额与 JWT/Redis 技术评审](./aisencore-mvp-baas-quota-security-lessons.md)：BAAS-Q01～Q10 待运行，条件性积分功能不纳 MVP。
+- [D4 测试与就绪评审](aisencore-mvp/aisencore-mvp-d4-test-and-readiness-review.md)：原 55 项 I/R/A 用例和增量风险，均未真实运行。
+- [F01～F04 安全收敛设计](aisencore-mvp/aisencore-f01-f04-security-convergence-design.md)：Design Resolved / Runtime Not Verified。
+- [F05～F08 契约与兼容测试准备](aisencore-mvp/aisencore-f05-f08-contract-compatibility-readiness-design.md)：F05 合同、F06/F07 待决、F08 V00～V07 待运行。
+- [U03～U11 用户确认及待定子项](aisencore-mvp/aisencore-u03-u11-user-decisions-2026-10-22.md)：已确认行为、仍需明确参数和公开运营门槛。
+- [Auth/Pro 与 Admin MFA 低请求量设计](aisencore-mvp/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)：AUTH-P01～P12 待运行。
+- [BaaS/RPC 配额与 JWT/Redis 技术评审](aisencore-mvp/aisencore-mvp-baas-quota-security-lessons.md)：BAAS-Q01～Q10 待运行，条件性积分功能不纳 MVP。
 
 **清理说明（2026-10-22）**：13 份已完成且只用于指导当次文档修改的独立 `*-plan.md` 执行清单已按规则清理；关键业务决定/风险/验收仍由上列权威文档和 TODO 承接。D0 阶段基线有独立决策参照价值，因此保留；不是将所有 `COMPLETED` 文档无差别删除。
 

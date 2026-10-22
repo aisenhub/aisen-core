@@ -2,7 +2,7 @@
 
 > **实施设计状态（2026-10-22）**：F05 **DESIGN RESOLVED / RUNTIME NOT VERIFIED**；F06/F07 **GATES DEFINED / USER DECISIONS PENDING**；F08 **VALIDATION PLAN READY / VERSIONS & RUNS NOT VERIFIED**。已完成的执行清单按 Plans 规则删除，真实待验收合同以本文为准。**不是**已经编写的 SQL、SDK、API、测试或创建的云资源。
 >
-> 业务权威：[spec](../spec/requirements.md)、[D1 数据和安全](./aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/Aisenlens](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3 管理/运维](./aisencore-mvp-d3-admin-infrastructure-design.md)、[D4 43+12 验收](./aisencore-mvp-d4-test-and-readiness-review.md)；与 [F01～F04 私有内核/锁序/R2/MFA 收敛](./aisencore-f01-f04-security-convergence-design.md) 一起使用。U01 Aisenlens 本地优先、U02 首批 R2 私有备份已确认；U03～U11 仍待用户决定，本文**不替用户设定**额度、试用、备份字段、域名、发码上限或管理员。
+> 业务权威：[spec](../../spec/requirements.md)、[D1 数据和安全](./aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/Aisenlens](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3 管理/运维](./aisencore-mvp-d3-admin-infrastructure-design.md)、[D4 43+12 验收](./aisencore-mvp-d4-test-and-readiness-review.md)；与 [F01～F04 私有内核/锁序/R2/MFA 收敛](./aisencore-f01-f04-security-convergence-design.md) 一起使用。U01 Aisenlens 本地优先、U02 首批 R2 私有备份已确认；U03～U11 仍待用户决定，本文**不替用户设定**额度、试用、备份字段、域名、发码上限或管理员。
 >
 > **2026-10-22 补充费用与资源安全审查**：未来如新增真实消费型业务，则费用需可信确定、严格 `>0` 且上限、同 actor/请求指纹幂等与事务回滚；拒绝直接复制 `public SECURITY DEFINER` 的示例扣减 SQL，详见[专项评审及 BAAS-Q01～Q10](./aisencore-mvp-baas-quota-security-lessons.md)。现有 F05 发码/管理员 grant 的真实请求幂等契约不变，**本轮不新增未来消费 API 或公共表**；F08 真实 SDK/DB/R2 执行仍 NOT RUN。
 

@@ -1,6 +1,6 @@
 # AisenCore 内部 Admin 管理前端架构
 
-> 状态：MVP **应用层架构设计**；原 D3 确立 Resource/Provider/可信交互，**新增 [D3-UI 页面级 UI/UX 详细设计](../../Plans/aisencore-mvp-d3-ui-admin-uiux-design.md)** 补充信息架构/推荐路由、桌面与窄屏线框、逐页字段与交互状态、MFA/发码/无障碍和验收。两者仍是**未开发的设计候选**，不代表真实页面、图形设计稿或后端已运行。
+> 状态：MVP **应用层架构设计**；原 D3 确立 Resource/Provider/可信交互，**新增 [D3-UI 页面级 UI/UX 详细设计](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md)** 补充信息架构/推荐路由、桌面与窄屏线框、逐页字段与交互状态、MFA/发码/无障碍和验收。两者仍是**未开发的设计候选**，不代表真实页面、图形设计稿或后端已运行。
 >
 > **UI-G0 强制编码前置条件**：所有 Admin 字体/字号/色彩、空间、Shell、统一组件与页面模板的**唯一全局权威**为 [Admin UI Design System](./admin-ui-design-system.md)。必须在任何正式 Admin Theme/Layout/页面编码前准备四类可见高保真基准并由用户明确批准，只有 `UI-G0 APPROVED` 才允许编码；**当前 UI-G0 = NOT APPROVED / BLOCKED，规范文档不等于已通过视觉验收**。页面业务 IA/权限仍以 D3-UI/D3 为准。
 >
@@ -45,7 +45,7 @@ Admin 是 AisenCore 的**公共能力管理门面**：查看必要的平台用�
    `BlockAccount` 与 `RevokeAdmin` 必须由可信 RPC 共同保护最后一名未被全局封禁的有效管理员；UI 仅展示冲突和确认，不通过前端计数替代事务校验。
 5. 账号级封禁与产品成员封禁彼此独立。Admin 登录不会给管理员自动创建所有产品的成员身份，也不自动恢复任何已退出或封禁的成员。
 6. **首版强制 Supabase Auth TOTP MFA**。管理员进入资源前需要当前会话 `aal2`；未完成 MFA 由 Auth Provider 引导验证；服务端 RLS/管理 RPC 同时复核管理员资格与 `aal2`。丢失设备通过受控运维恢复，不能只靠 UI 判断 MFA 状态。
-7. **2026-10-22 用户明确把 TOTP MFA 列为 MVP 必做**，同时要求低打扰/低请求量：登录时必要的 TOTP enroll/challenge/verify 建立 `aal2`，有效管理会话中**不因为每次读列表、翻页、操作按钮而重新向 Auth MFA 服务器发起挑战**；普通管理 RLS/RPC 在原本一次业务请求中检查已签发 JWT 的 `aal2` + 当前名册/blocked。UI `checkAuth/canAccess` 可短暂缓存只供导航，不每次导航另行 `getUser()` + `admin_check_access`，并在 JWT 等级变化/401/403 时失效。真正的 Auth Admin Edge 仍需服务器额外资格校验。完整要求与 AUTH-P06～P11 验收见 [专项 Auth/MFA 优化](../../Plans/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)。
+7. **2026-10-22 用户明确把 TOTP MFA 列为 MVP 必做**，同时要求低打扰/低请求量：登录时必要的 TOTP enroll/challenge/verify 建立 `aal2`，有效管理会话中**不因为每次读列表、翻页、操作按钮而重新向 Auth MFA 服务器发起挑战**；普通管理 RLS/RPC 在原本一次业务请求中检查已签发 JWT 的 `aal2` + 当前名册/blocked。UI `checkAuth/canAccess` 可短暂缓存只供导航，不每次导航另行 `getUser()` + `admin_check_access`，并在 JWT 等级变化/401/403 时失效。真正的 Auth Admin Edge 仍需服务器额外资格校验。完整要求与 AUTH-P06～P11 验收见 [专项 Auth/MFA 优化](../../Plans/aisencore-mvp/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)。
 
 完整权限与账号生命周期以[平台管理员专项](../domains/platform-admin-and-account-lifecycle.md)为准；登录/会话以[多 SaaS 会话专项](./auth-and-multi-saas-sessions.md)为准。
 
@@ -84,7 +84,7 @@ Admin 是 AisenCore 的**公共能力管理门面**：查看必要的平台用�
 ## 6. UI 设计与复杂度控制
 
 - 使用 React-admin 默认布局、资源页面、筛选、详情、操作确认、表单校验及通知；避免另建一套 Ant Design/Tailwind 前端体系或自研表格/路由/数据缓存框架。
-- **D3-UI 已补齐页面细节（实施默认候选）**：按 [D3-UI 设计](../../Plans/aisencore-mvp-d3-ui-admin-uiux-design.md) 的工作台快捷入口/产品与用户/权益运营/安全审计分组布局，使用内建 Layout/MUI、左侧桌面导航及窄屏 Drawer、一次明文结果和 MFA 登录门禁；无复杂 BI、无额外 API 统计要求。**视觉 token、菜单路径仍需真实 React-admin 版本与运营者验收，不是已开发 UI**。
+- **D3-UI 已补齐页面细节（实施默认候选）**：按 [D3-UI 设计](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md) 的工作台快捷入口/产品与用户/权益运营/安全审计分组布局，使用内建 Layout/MUI、左侧桌面导航及窄屏 Drawer、一次明文结果和 MFA 登录门禁；无复杂 BI、无额外 API 统计要求。**视觉 token、菜单路径仍需真实 React-admin 版本与运营者验收，不是已开发 UI**。
 - **全局主题约束**：Admin 必须复用[UI-G0 统一 Token/Theme、Layout 与共享模板](./admin-ui-design-system.md)，不能每个 Resource 页面各自声明字体/主题色/按钮/表格密度/断点，也不能把局部 `sx` 魔法数演化为第二套布局。主题颜色/字体与四种基准页尚未获用户视觉批准，**D3-UI 文档设计已完成不解除 UI-G0 阻断**。
 - 管理人数少，优先简单可用、可审计，暂不设计复杂可配置工作台、企业组织导航、精细化角色编辑器、重型仪表板或 BI 图表。
 - 不将 Admin 变为普通用户中心；用户本人退出/重加、订阅取消或数据删除请求由合适的独立用户入口处理。

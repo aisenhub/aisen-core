@@ -2,9 +2,9 @@
 
 - **状态：ACTIVE（D0～D4 设计已完成、F01～F05 仅设计收敛、MVP Admin TOTP MFA 已确认必须交付；全量开发/上线仍 BLOCKED）**。D4 原 43 个逻辑场景 + 12 个 R2 场景全部 NOT RUN，后续新增 12 个 Auth/权益/性能/MFA 待执行场景。**2026-10-22 用户明确选择 U03 公众开放、U04～U11 的部分产品/运营方向，并进一步将 Admin MFA 纳入 MVP**；U05 的 MFA 是否取消不再是待决冲突，但真实备用管理员/设备恢复责任及体验仍待落实。真实 SDK/SQL/云资源/测试未运行。
 - **目的**：作为后续逐项实施设计、交叉评审和开发前验收的统一导航，不替代需求或架构权威。
-- **需求基线**：[统一需求](../spec/requirements.md)
-- **架构基线**：[当前主架构](../architecture/current-main-architecture.md)、[架构索引](../architecture/README.md)及五类专项。
-- **API/验收基线**：[公共 API 契约与 MVP 验收](../architecture/backend/api-contract-and-mvp-acceptance.md)：现有 I-01～I-28 与 R-01～R-15，共 43 项逻辑场景。
+- **需求基线**：[统一需求](../../spec/requirements.md)
+- **架构基线**：[当前主架构](../../architecture/current-main-architecture.md)、[架构索引](../../architecture/README.md)及五类专项。
+- **API/验收基线**：[公共 API 契约与 MVP 验收](../../architecture/backend/api-contract-and-mvp-acceptance.md)：现有 I-01～I-28 与 R-01～R-15，共 43 项逻辑场景。
 - **授权边界**：本轮仅新建计划文档；总计划不授权编码、安装依赖、执行 SQL/迁移、连接或创建云资源、修改配置、提交/推送或部署。
 
 ## 1. 目标与方法
@@ -54,15 +54,15 @@
 2. **显式列出用户决定**：阶段计划须区分“架构已定”“纯技术选择由本阶段详设”“必须由用户确定的业务/产品/运营事项”，每个用户事项标注建议（非批准）、最迟确认阶段和阻塞影响；不代用户定案。
 3. **实施与核验**：每完成一个工作包按计划回填实际产物和未完成问题；阶段结束重新检查 `docs/spec/`、五类 `docs/architecture/`、`docs/development/`、`docs/Plans/` 索引及本总计划中所有相关事实/引用，**应更新的才修改**，不制造重复权威。
 4. **阶段关口**：记录实际验证与未验证内容；只有满足该阶段的退出条件才把阶段标成完成。仍需用户确定但不影响下一阶段的事项应保留编号与截止节点，不得写成已确认。
-5. **完成即清理**：真实待办转入 [TODO](./TODO.md)、长期规则与证据归档至现行权威，修复交叉引用后删除完成的执行清单；遵守 [Plans README](./README.md#完成与删除)，不保留重复进度副本。
+5. **完成即清理**：真实待办转入 [TODO](../TODO.md)、长期规则与证据归档至现行权威，修复交叉引用后删除完成的执行清单；遵守 [Plans README](../README.md#完成与删除)，不保留重复进度副本。
 
-**当前设计基线（2026-10-22）**：[D0 决策基线](./aisencore-mvp-d0-scope-and-baseline.md)、[D1 数据库](./aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/Aisenlens](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3 Admin](./aisencore-mvp-d3-admin-infrastructure-design.md)、[D3-UI 页面](./aisencore-mvp-d3-ui-admin-uiux-design.md)与 [D4 测试风险](./aisencore-mvp-d4-test-and-readiness-review.md)已有实施文档，但 SQL/SDK/云资源、浏览器与性能测试仍未运行。**13 份已完成的独立阶段执行清单按 [Plans 清理规则](./README.md#完成与删除) 删除**；后续任务汇总至[当前 TODO](./TODO.md)，不把完成文档当实现成功。
+**当前设计基线（2026-10-22）**：[D0 决策基线](./aisencore-mvp-d0-scope-and-baseline.md)、[D1 数据库](./aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/Aisenlens](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3 Admin](./aisencore-mvp-d3-admin-infrastructure-design.md)、[D3-UI 页面](./aisencore-mvp-d3-ui-admin-uiux-design.md)与 [D4 测试风险](./aisencore-mvp-d4-test-and-readiness-review.md)已有实施文档，但 SQL/SDK/云资源、浏览器与性能测试仍未运行。**13 份已完成的独立阶段执行清单按 [Plans 清理规则](../README.md#完成与删除) 删除**；后续任务汇总至[当前 TODO](../TODO.md)，不把完成文档当实现成功。
 
 **安全与兼容性**：[F01～F04](./aisencore-f01-f04-security-convergence-design.md) 规定最小权限 INVOKER/DEFINER、统一锁序、R2 staging→final、Admin `aal2` 与当前资格；[F05～F08](./aisencore-f05-f08-contract-compatibility-readiness-design.md) 规定发码指纹/重放、actor-scoped grant、完整套餐字段及 F05-C/V00～V07 未来测试。**F01～F05 只是 DESIGN RESOLVED / RUNTIME NOT VERIFIED，F06/F07 未定，F08 NOT RUN**；开发/上线就绪仍 BLOCKED，真实版本/GRANT/迁移安全须实测。
 
 **产品决策与性能**：[U03～U11 决议](./aisencore-u03-u11-user-decisions-2026-10-22.md) 已确认公众注册目标、单人运营、30/365/永久 Pro、Admin MVP **TOTP MFA 必做**等方向；100/批、15 分钟缓存、配置白名单/保留、SMTP/管理员恢复仍是待批/待测。[Auth/Pro/MFA](./aisencore-mvp-auth-entitlement-mfa-efficiency-design.md) 要求官方 SDK、按需 single-flight、管理低打扰且 R2 实时授权；[BaaS 安全评审](./aisencore-mvp-baas-quota-security-lessons.md) 拒绝未经授权的 Redis/AI 代理/危险负数消费 RPC；相关真实用例仍 NOT RUN。
 
-**Admin UI/UX 关口**：[D3-UI](./aisencore-mvp-d3-ui-admin-uiux-design.md) 仅提供页面/文字线框；[UI-G0 全局视觉](../architecture/applications/admin-ui-design-system.md) 和 [frontend 设计规范](../development/frontend/README.md) 约束统一 MUI Theme、组件和 62 条规则，**尚无四类高保真参考和用户明确视觉签收**；UI-G0 仍 **NOT APPROVED / BLOCKED**，正式 Admin 页面/Theme/Layout 编码须获真正视觉批准及独立开发授权；之后仍要真实执行 UI-G3、D3-UI-X 等浏览器与安全测试。
+**Admin UI/UX 关口**：[D3-UI](./aisencore-mvp-d3-ui-admin-uiux-design.md) 仅提供页面/文字线框；[UI-G0 全局视觉](../../architecture/applications/admin-ui-design-system.md) 和 [frontend 设计规范](../../development/frontend/README.md) 约束统一 MUI Theme、组件和 62 条规则，**尚无四类高保真参考和用户明确视觉签收**；UI-G0 仍 **NOT APPROVED / BLOCKED**，正式 Admin 页面/Theme/Layout 编码须获真正视觉批准及独立开发授权；之后仍要真实执行 UI-G3、D3-UI-X 等浏览器与安全测试。
 
 ## 4. 八项实施设计工作包
 
@@ -136,7 +136,7 @@
 
 ### 4.6B 新增 UI0-GATE — Admin 全局设计系统及视觉基线确认（UI-G0）
 
-- [x] **全局规则文档已编写（仅规范准备）**：[UI-G0 Admin Design System](../architecture/applications/admin-ui-design-system.md) 有字体、字号、语义颜色、8px 间距、组件/模板、布局断点、样式例外与审查清单；**此项完成不算 Gate 通过**。
+- [x] **全局规则文档已编写（仅规范准备）**：[UI-G0 Admin Design System](../../architecture/applications/admin-ui-design-system.md) 有字体、字号、语义颜色、8px 间距、组件/模板、布局断点、样式例外与审查清单；**此项完成不算 Gate 通过**。
 - [ ] **制作/选定四类高保真基准页面**：登录/TOTP、兑换码列表+一次明文结果、套餐、用户/成员，需真实可见/可追溯版本并对比桌面/窄屏。
 - [ ] **用户明确视觉签收与 Token/版本冻结**：提交真实画板/图片/静态设计参考、各宽度问题清单与审批日期，用户明确同意唯一方向，`UI-G0 APPROVED` 才可释放 Admin 正式前端编码；当前 **NOT APPROVED / BLOCKED**。
 - [ ] **后续浏览器 UI-G3 质量验收**：编码/部署后验证截图对比、跨屏幕排版、无障碍和后端权限 E2E；视觉基线批准本身**不意味着页面开发已经完成**。
@@ -155,7 +155,7 @@
 
 ### 4.8 工作 8 — 分层测试与设计审查（贯穿 D0–D4）
 
-- [x] 将 [API 验收场景](../architecture/backend/api-contract-and-mvp-acceptance.md) 的 I-01～I-28、R-01～R-15 **逐案**映射到数据库约束、RLS、RPC、公共 API、SaaS 与 Admin（43/43，**均 NOT RUN**）。
+- [x] 将 [API 验收场景](../../architecture/backend/api-contract-and-mvp-acceptance.md) 的 I-01～I-28、R-01～R-15 **逐案**映射到数据库约束、RLS、RPC、公共 API、SaaS 与 Admin（43/43，**均 NOT RUN**）。
 - [x] 设计 pgTAP 或等价数据库权限正反向测试、事务回滚、行锁竞争、核销限流/幂等、多产品隔离、Aisenlens R2 补充用例和关键安全回归。
 - [x] 覆盖管理员 MFA 与最后管理员保护、套餐冻结、兑换码明文泄露、重复兑换优先级、`CheckAccess` 200/401/503 语义。
 - [x] **新增设计规格**：AUTH-P01～P12 的普通用户会话/权益按需复核、Admin MFA 登录/AAL 刷新/因素恢复、MFA 低打扰和免费资源/延迟验收方案已经列出（**均 NOT RUN**）。
@@ -178,7 +178,7 @@
 | E. Admin 前端实施设计 | D3 工作 6 + **D3-UI UI1 + UI-G0 硬关口** | Resource/Provider、页面 IA/路由、全局设计 Token/基准视觉明确批准、共享布局组件与逐屏验收 |
 | F. 环境与验收方案 | D3 工作 7、D4 | 环境/密钥/恢复、测试矩阵、评审门槛 |
 
-这六组是**内容集合**，不是必须创建六个文件。依据 [计划目录规范](README.md)，未实施的任务计划与设计决策优先留在 `docs/Plans/`；通用实施指南/模板归 `docs/development/`，正式确立的逻辑规则归 `docs/architecture/`。按实际复杂度建文档，不预先生成空文件或重复维护需求全文。
+这六组是**内容集合**，不是必须创建六个文件。依据 [计划目录规范](../README.md)，未实施的任务计划与设计决策优先留在 `docs/Plans/`；通用实施指南/模板归 `docs/development/`，正式确立的逻辑规则归 `docs/architecture/`。按实际复杂度建文档，不预先生成空文件或重复维护需求全文。
 
 ## 6. 上轮五项架构修复的实施设计验证清单
 

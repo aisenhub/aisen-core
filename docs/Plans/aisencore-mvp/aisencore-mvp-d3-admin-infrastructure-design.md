@@ -1,6 +1,6 @@
 # D3｜React-admin 与 Supabase/Cloudflare 基础设施实施设计
 
-> **状态：设计候选，未开发、未安装、未配置、未部署。** 本文为 D3 保留的实施设计，完成的执行清单已删除；业务唯一权威为[现行需求](../spec/requirements.md)，逻辑规则看 [Admin 架构](../architecture/applications/admin-console.md)、[D1 数据与安全设计](./aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/R2 设计](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)。U01 Aisenlens 本地优先、U02 首批 R2 备份已确认；U03～U11 仍未确认。
+> **状态：设计候选，未开发、未安装、未配置、未部署。** 本文为 D3 保留的实施设计，完成的执行清单已删除；业务唯一权威为[现行需求](../../spec/requirements.md)，逻辑规则看 [Admin 架构](../../architecture/applications/admin-console.md)、[D1 数据与安全设计](./aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/R2 设计](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)。U01 Aisenlens 本地优先、U02 首批 R2 备份已确认；U03～U11 仍未确认。
 >
 > **F01～F04 安全收敛修订（2026-10-22）**：实施时按 [F01～F04 安全收敛方案](./aisencore-f01-f04-security-convergence-design.md) 使用 public `SECURITY INVOKER` / private `SECURITY DEFINER` 最小内核、统一 L0～L8 锁序、暂存/最终 R2 双键，以及 Auth Admin 先原 JWT+`aal2`+当前资格再高权限读取。本 D3 页面、资源及部署说明不代表真实实现已经通过验证。
 >
@@ -12,7 +12,7 @@
 >
 > **新增 D3-UI 详细页面阶段（2026-10-22）**：本 D3 的 Resource/Provider/认证/基础设施属于**技术实施设计**，不是页面线框与视觉规范完成的证明。用户已要求补入独立 [D3-UI 实施设计](./aisencore-mvp-d3-ui-admin-uiux-design.md)与[逐页面 UI/UX 实施设计](./aisencore-mvp-d3-ui-admin-uiux-design.md)：工作台/运营页面导航、宽窄屏线框、发码明文仅一次、TOTP MFA、全字段套餐与受保护操作，以及 D3-UI-X01～X18 **待执行**验收。**未创建实际 Admin 工程、原型或线上管理后台**。
 >
-> **UI-G0 强制视觉基线关口（2026-10-22 最新用户决定）**：按 [Admin 全局 UI 规范](../architecture/applications/admin-ui-design-system.md)，先统一 MUI 字体/字号/间距/组件与布局，并准备**四类可见高保真参考 + 多宽度变体 + 用户明确视觉批准记录**，只有 `UI-G0 APPROVED` 后才能启动正式 `apps/admin` Theme/Layout/页面编码。**当前只是规范候选，UI-G0 = BLOCKED**；D3 Resource/Provider 映射与 D3-UI 文字线框不能替代这个门槛。不为本次 UI 方案增加任何服务器或绕过 `aal2`/RPC 安全逻辑。
+> **UI-G0 强制视觉基线关口（2026-10-22 最新用户决定）**：按 [Admin 全局 UI 规范](../../architecture/applications/admin-ui-design-system.md)，先统一 MUI 字体/字号/间距/组件与布局，并准备**四类可见高保真参考 + 多宽度变体 + 用户明确视觉批准记录**，只有 `UI-G0 APPROVED` 后才能启动正式 `apps/admin` Theme/Layout/页面编码。**当前只是规范候选，UI-G0 = BLOCKED**；D3 Resource/Provider 映射与 D3-UI 文字线框不能替代这个门槛。不为本次 UI 方案增加任何服务器或绕过 `aal2`/RPC 安全逻辑。
 
 ## 1. 前置事实、范围及推荐架构
 

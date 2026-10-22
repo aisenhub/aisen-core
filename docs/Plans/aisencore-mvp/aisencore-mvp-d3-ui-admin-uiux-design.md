@@ -2,13 +2,13 @@
 
 > **状态：DESIGN SPECIFICATION / NOT IMPLEMENTED / NOT TESTED** · 日期 2026-10-22。原阶段执行计划曾先于本文创建，完成后已按 Plans 清理规则删除；适用 MVP 正式前端实施，不宣称已有 React 页面、可点击原型、Figma 视觉稿或真实 Supabase 环境。
 >
-> **唯一业务权威**：[需求 spec](../spec/requirements.md)；资源/字段/RPC/安全路径：[D3 实施设计](./aisencore-mvp-d3-admin-infrastructure-design.md)、[Admin 架构](../architecture/applications/admin-console.md)、[D2 业务 API](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[F05 精确签名/幂等](./aisencore-f05-f08-contract-compatibility-readiness-design.md)、[M1～M5/F01～F04](./aisencore-f01-f04-security-convergence-design.md)；登录与性能：[Auth/Pro/Admin MFA](./aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)；尚待业务审批：[U03～U11](./aisencore-u03-u11-user-decisions-2026-10-22.md)。出现字段/业务差异时**不按本线框发明新的受保护 API**，必须先对齐上述权威。
+> **唯一业务权威**：[需求 spec](../../spec/requirements.md)；资源/字段/RPC/安全路径：[D3 实施设计](./aisencore-mvp-d3-admin-infrastructure-design.md)、[Admin 架构](../../architecture/applications/admin-console.md)、[D2 业务 API](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[F05 精确签名/幂等](./aisencore-f05-f08-contract-compatibility-readiness-design.md)、[M1～M5/F01～F04](./aisencore-f01-f04-security-convergence-design.md)；登录与性能：[Auth/Pro/Admin MFA](./aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)；尚待业务审批：[U03～U11](./aisencore-u03-u11-user-decisions-2026-10-22.md)。出现字段/业务差异时**不按本线框发明新的受保护 API**，必须先对齐上述权威。
 >
 > **用途**：把 D3 的“有哪些 Resource/能做哪些操作”延伸为“在哪里、如何填写、如何知道完成/失败”，供未来 `apps/admin` React-admin / MUI 开发和逐页验收直接使用。尺寸/配色/中文文案/路径均标明为 **UI 实施默认候选**，用户尚未正式确认品牌视觉。本文不更改 API 或增加公共权限实体。
 >
-> **UI-G0 新增强制前置关口（2026-10-22）**：字体/字号/语义颜色/8px spacing、全局 AppBar/Sidebar/Content、断点、共享表格/表单/按钮与视觉变更治理，现以 [Admin 全局 UI 设计系统唯一规范](../architecture/applications/admin-ui-design-system.md) 为权威。本 D3-UI 负责**业务页面内容与交互**，不能自己为每个页面定义另一套主题。**必须先完成可见的四类高保真基准页和用户明确视觉签收，UI-G0 才能 APPROVED；当前 UI-G0 = BLOCKED，不得开始 Admin 正式前端编码。**
+> **UI-G0 新增强制前置关口（2026-10-22）**：字体/字号/语义颜色/8px spacing、全局 AppBar/Sidebar/Content、断点、共享表格/表单/按钮与视觉变更治理，现以 [Admin 全局 UI 设计系统唯一规范](../../architecture/applications/admin-ui-design-system.md) 为权威。本 D3-UI 负责**业务页面内容与交互**，不能自己为每个页面定义另一套主题。**必须先完成可见的四类高保真基准页和用户明确视觉签收，UI-G0 才能 APPROVED；当前 UI-G0 = BLOCKED，不得开始 Admin 正式前端编码。**
 >
-> **Admin 开发规范迁入（2026-10-22）**：[开发设计入口](../development/frontend/admin-design-guide.md)和[规则/页面验证矩阵](../development/frontend/admin-design-verification.md)对本文件中的列表/详情、MFA、发行表单/一次性结果、套餐与成员查询新增可逐项核对的视觉/交互原则，机器目录保留 62 个 `UX-*` 参考编号。**具体业务字段、M1～M5/F05、页面路由/流转仍以本文件和 D3 权威为准**，62 项并非新功能或 62 项已运行测试，也不解除 UI-G0 阻断。
+> **Admin 开发规范迁入（2026-10-22）**：[开发设计入口](../../development/frontend/admin-design-guide.md)和[规则/页面验证矩阵](../../development/frontend/admin-design-verification.md)对本文件中的列表/详情、MFA、发行表单/一次性结果、套餐与成员查询新增可逐项核对的视觉/交互原则，机器目录保留 62 个 `UX-*` 参考编号。**具体业务字段、M1～M5/F05、页面路由/流转仍以本文件和 D3 权威为准**，62 项并非新功能或 62 项已运行测试，也不解除 UI-G0 阻断。
 
 ## 1. 设计目标与非目标
 
@@ -87,7 +87,7 @@ Admin（受保护，未通过 aal2 不渲染业务壳）
 
 设计语言：**简体中文优先、低噪声、操作优先**，表格是主角、重点危险动作清晰；“永久”、“到期”、“已撤销”、“left/已退出”不能只用颜色区分。示例品牌名为 **AisenCore Admin**，真实品牌 Logo/颜色与暗色策略未获用户审批。
 
-**禁止在本文件与每个页面重复维护同一组像素值**；以下是使用 [UI-G0 全局规范](../architecture/applications/admin-ui-design-system.md) 的映射，不是新的 Token 来源：
+**禁止在本文件与每个页面重复维护同一组像素值**；以下是使用 [UI-G0 全局规范](../../architecture/applications/admin-ui-design-system.md) 的映射，不是新的 Token 来源：
 
 | 本 D3-UI 使用位置 | UI-G0 唯一权威 Token / 模板 | 本阶段业务规则 |
 | --- | --- | --- |
@@ -99,7 +99,7 @@ Admin（受保护，未通过 aal2 不渲染业务壳）
 
 ### 3.2 布局断点与表格退化
 
-**全局来源**：[UI-G0 §3.2](../architecture/applications/admin-ui-design-system.md#32-响应式与尺寸断点保证和-d3-ui-一致)。以下行为性描述继续有效；布局具体断点必须由**一个全局 Theme/页面容器**实现，不得各页面分别设断点。
+**全局来源**：[UI-G0 §3.2](../../architecture/applications/admin-ui-design-system.md#32-响应式与尺寸断点保证和-d3-ui-一致)。以下行为性描述继续有效；布局具体断点必须由**一个全局 Theme/页面容器**实现，不得各页面分别设断点。
 
 - **≥1200 px**：完整固定/可折叠左侧导航、页头、横向筛选和表格；表格可按资源列宽布局。
 - **768～1199 px**：缩窄/折叠导航，筛选条件可折行，数据表横向滚动但保留最重要标识/状态列。
@@ -369,7 +369,7 @@ Admin（受保护，未通过 aal2 不渲染业务壳）
 
 - 官方 React-admin [Layout](https://marmelab.com/react-admin/Layout)：默认顶部栏、侧栏与主体，优先覆盖局部组件；[Menu](https://marmelab.com/react-admin/doc/5.13/Menu.html)：资源菜单和自定义项的官方路线。官方页面当前示例并不代表已在本仓库安装/锁定 5.x 版本。
 - [D3 前端资源和 Provider 设计](./aisencore-mvp-d3-admin-infrastructure-design.md)：字段、业务操作、Data/ Auth Provider、Cloudflare Pages 与 Edge 角色权威。
-- [Admin 应用层架构](../architecture/applications/admin-console.md)：仅内部公共管理，管理资源与数据库的权限边界。
+- [Admin 应用层架构](../../architecture/applications/admin-console.md)：仅内部公共管理，管理资源与数据库的权限边界。
 - [F05/F08 接口幂等与兼容](./aisencore-f05-f08-contract-compatibility-readiness-design.md)：发行默认/NULL/actor request、真实版本冻结和测试。
 - [D4 跨阶段验收](./aisencore-mvp-d4-test-and-readiness-review.md) 与 [当前用户决议](./aisencore-u03-u11-user-decisions-2026-10-22.md)：设计状态与尚待实际验收。
 - **本文所有线框图是 Markdown 字符文本；本阶段没有 Figma 文件、设计图片、真实前端、运行截图、MFA 设备测试或开发/生产环境验证**。

@@ -1,6 +1,6 @@
 # Admin 设计原则与 UI-G0/UI-G3 逐页面验收矩阵
 
-> **设计检查的输入**：[机器可读 62 条规则](./admin-design-rules.json)、[单一 UI-G0 Token 规范](../../architecture/applications/admin-ui-design-system.md)、[D3-UI 逐页面业务规范与 X01～X18](../../Plans/aisencore-mvp-d3-ui-admin-uiux-design.md)。**所有真实基准视觉、浏览器、键盘、网络和运行证据均未执行（NOT RUN）**；UI-G0 仍 `NOT APPROVED / BLOCKED`。
+> **设计检查的输入**：[机器可读 62 条规则](./admin-design-rules.json)、[单一 UI-G0 Token 规范](../../architecture/applications/admin-ui-design-system.md)、[D3-UI 逐页面业务规范与 X01～X18](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md)。**所有真实基准视觉、浏览器、键盘、网络和运行证据均未执行（NOT RUN）**；UI-G0 仍 `NOT APPROVED / BLOCKED`。
 
 ## 1. UI-G0：在正式 Admin 编码前准备的材料
 

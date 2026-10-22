@@ -41,8 +41,8 @@
 - 账号已认证不等于获得任何产品 Pro 权益，也不等于具备 Admin 管理权限。授权必须按用户、产品和具体操作核验。
 - **产品成员 API 最小原则**：首次合法使用需登录的产品服务时按需幂等创建成员；可信 SaaS 后端用现有用户 JWT 代用户调用公共接口，纯本地客户端可直接以本人 JWT 调用。状态查询无副作用，云端受保护的关键操作由可信服务端复核，客户端状态缓存不作为最终授权证明；不预建独立授权 Token、通用 API 网关或复杂缓存。详见[公共 API MVP 与 SaaS 接入](../architecture/backend/public-api-and-saas-integration.md)。
 - **统一用户 MVP 安全与会话**：必须避免普通用户读取/修改他人资料；成员变更和最小审计不可出现部分成功；管理员权限需可信、可及时撤销；产品级封禁与全局限制相互独立；邮箱确认和密码找回需可靠，跨 SaaS 不强求共享登录态。具体隔离与事务方案见[数据库权限](../architecture/database/database-access-and-transactions.md)，平台限制见[账号生命周期](../architecture/domains/platform-admin-and-account-lifecycle.md)，接口错误/验收见[API 契约](../architecture/backend/api-contract-and-mvp-acceptance.md)。
-- **首版低请求量身份认证**：Supabase Auth SDK 统一维护登录/会话/必要的自动刷新；**不得每次页面/点击都联网 `getUser()`**，优先复用当前有效会话和经可信验证的 JWT。普通用户**不强制 TOTP MFA**；JWT 仅证明身份，不将缓存 Pro/管理员角色作为当前授权。实际 Auth/数据库/Edge 免费配额和令牌新鲜度需在真实环境取证，详见[Auth/Pro/Admin 优化方案](../Plans/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)。
-- **BaaS/计量 MVP 原则（2026-10-22）**：复用 Supabase 原生 Auth、PostgREST/RLS/可信 PostgreSQL RPC 和少量必要 Edge，**首版不新增 Redis、独立公共服务器、公共积分余额/通用消费 RPC 或 AisenCore AI 网关**。未来产品真有可扣减额度时，必须由产品可信服务**决定费用、验证请求主体及属主**，在受保护数据库事务内做正数/边界校验、并发扣减/预留、幂等与必要审计；绝不授权前端直写余额/权益。Supabase Free 的 Unlimited Data API Requests **并不等于数据库算力、流量和 Edge 用量无限**，真实性能和成本需按计划单独验收。详见[外部技术建议适用性评审与安全检查清单](../Plans/aisencore-mvp-baas-quota-security-lessons.md)。
+- **首版低请求量身份认证**：Supabase Auth SDK 统一维护登录/会话/必要的自动刷新；**不得每次页面/点击都联网 `getUser()`**，优先复用当前有效会话和经可信验证的 JWT。普通用户**不强制 TOTP MFA**；JWT 仅证明身份，不将缓存 Pro/管理员角色作为当前授权。实际 Auth/数据库/Edge 免费配额和令牌新鲜度需在真实环境取证，详见[Auth/Pro/Admin 优化方案](../Plans/aisencore-mvp/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)。
+- **BaaS/计量 MVP 原则（2026-10-22）**：复用 Supabase 原生 Auth、PostgREST/RLS/可信 PostgreSQL RPC 和少量必要 Edge，**首版不新增 Redis、独立公共服务器、公共积分余额/通用消费 RPC 或 AisenCore AI 网关**。未来产品真有可扣减额度时，必须由产品可信服务**决定费用、验证请求主体及属主**，在受保护数据库事务内做正数/边界校验、并发扣减/预留、幂等与必要审计；绝不授权前端直写余额/权益。Supabase Free 的 Unlimited Data API Requests **并不等于数据库算力、流量和 Edge 用量无限**，真实性能和成本需按计划单独验收。详见[外部技术建议适用性评审与安全检查清单](../Plans/aisencore-mvp/aisencore-mvp-baas-quota-security-lessons.md)。
 
 ### 统一产品成员规则
 
@@ -93,13 +93,13 @@
 - **已选框架**：[React-admin](https://github.com/marmelab/react-admin)（Marmelab 开源核心）。只为**本人或少数可信管理员**提供平台公共管理能力；不预先设计各 SaaS 分别运营的复杂后台和权限体系。
 - **首要明确的管理操作**：管理员**创建 AisenCore 自有兑换码**，由平台所有者人工分发；具体批量生成、状态查看、撤销权限与操作记录根据实施需要明确，不提前设计复杂运营权限。
 - **运营方式已确认**：项目只有一名实际运营者，日常 Admin 和人工发码均由其本人承担；首批以小批次、单次兑换、固定时长码为主，**100 个/批仅为待实测及批准的候选上限**。希望保留主管理员和备用恢复能力，但备用身份/负责主体未定。
-- **MVP 已明确纳入管理员 TOTP MFA（2026-10-22 最新决定）**：必须实现首次因素注册、必要的登录 challenge/verify、取得 `aal2` JWT、真实管理员资格检查，以及设备遗失/会话失效时的受控恢复和拒绝路径。**不要求每次管理页面切换或业务查询重新输入 TOTP 或额外访问 Auth MFA 服务器**：管理 Data API/RPC 在原请求中从经验证的 JWT 检查 `aal2` 和当前管理员名册、blocked；UI 短期资格缓存仅供导航，不构成授权。会话降级、过期或新登录时再执行必要 MFA 流程。单人运营的备用恢复真实人选仍待定；必须实测 [Admin/普通用户性能与 MFA 方案](../Plans/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md) 的 AUTH-P01～P12，不能以此降低高权限服务端鉴权。
+- **MVP 已明确纳入管理员 TOTP MFA（2026-10-22 最新决定）**：必须实现首次因素注册、必要的登录 challenge/verify、取得 `aal2` JWT、真实管理员资格检查，以及设备遗失/会话失效时的受控恢复和拒绝路径。**不要求每次管理页面切换或业务查询重新输入 TOTP 或额外访问 Auth MFA 服务器**：管理 Data API/RPC 在原请求中从经验证的 JWT 检查 `aal2` 和当前管理员名册、blocked；UI 短期资格缓存仅供导航，不构成授权。会话降级、过期或新登录时再执行必要 MFA 流程。单人运营的备用恢复真实人选仍待定；必须实测 [Admin/普通用户性能与 MFA 方案](../Plans/aisencore-mvp/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md) 的 AUTH-P01～P12，不能以此降低高权限服务端鉴权。
 - **完全遵循 React-admin 默认技术栈**：React、TypeScript/TSX、`ra-core` / `ra-ui-materialui`、Material UI、Emotion/MUI Theme、React Router、TanStack Query、React Hook Form、React-admin i18n；优先采用官方推荐的 Vite 构建方式。避免再叠加平行完整 UI、路由、表单、缓存或状态管理框架。
 - **已选网站部署**：Cloudflare Pages；源代码采用 GitHub / Git 管理。版本、主题裁剪、域名、Pages 仓库接入和构建发布设置以后实施时决定。
 - Admin 是前端管理界面，**不是** Supabase、轻量计费服务或各产品业务后端的替代品；React-admin 的选择也**不强制**其它 SaaS 产品使用 React。
 - Admin 列表读取采用 PostgreSQL RLS 保护的 PostgREST Data API，写操作经受保护管理 RPC；可评估 `ra-supabase` 的兼容性但不提前锁定包版本，详见[Admin 专项](../architecture/applications/admin-console.md)。
 - Supabase Auth 用户管理、人工改动别人的会员权益、退款等**高权限操作必须经过可信服务端授权接口**；不能因为登录成功就允许管理所有用户，也不能在浏览器使用 Supabase `service_role` / secret key。
-- **新增 D3-UI 页面详细设计阶段（2026-10-22）**：MVP Admin 必须不仅有 Resource/Provider，还应按 [D3-UI 页面/布局/交互规格](../Plans/aisencore-mvp-d3-ui-admin-uiux-design.md) 完成核心页面、导航、响应式/可访问性、低打扰 TOTP MFA、兑换码首次明文、套餐冻结、危险操作和故障状态。**D3-UI 文本线框/候选路由已形成，但不是实际 React 页面或已完成 UI 视觉稿**；最终品牌颜色/Logo、细分权限与真正需求外的高级报表不自动纳入，正式开发还需对接 D3/F05 API 权威并运行 D3-UI-X01～X18。
+- **新增 D3-UI 页面详细设计阶段（2026-10-22）**：MVP Admin 必须不仅有 Resource/Provider，还应按 [D3-UI 页面/布局/交互规格](../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md) 完成核心页面、导航、响应式/可访问性、低打扰 TOTP MFA、兑换码首次明文、套餐冻结、危险操作和故障状态。**D3-UI 文本线框/候选路由已形成，但不是实际 React 页面或已完成 UI 视觉稿**；最终品牌颜色/Logo、细分权限与真正需求外的高级报表不自动纳入，正式开发还需对接 D3/F05 API 权威并运行 D3-UI-X01～X18。
 - **UI-G0 全局视觉硬门槛（2026-10-22 新决定）**：Admin 正式前端**任何主题/布局/共享组件/业务页面编码之前**，必须先以 [Admin 全局 UI 设计系统唯一规范](../architecture/applications/admin-ui-design-system.md) 统一**字体字号/语义颜色/8px 间距/页面 Shell/断点/按钮/表格/表单/对话框/状态及模板**，完成 **登录/MFA、兑换码、套餐、用户/成员**四类高保真参考页面及宽窄屏视觉评审，并取得用户**明确签收和可追溯版本**；未通过即 `UI-G0 NOT APPROVED / BLOCKED`，**不得开始正式 Admin 前端编码**，不能以现有 D3-UI 文字线框或 MUI 默认主题替代。UI-G0 通过后也要按 D3-UI 和 UI-G3 进行真实浏览器截图、组件一致性、无障碍与安全测试，不能把规范文本完成当页面交付。
 
 ## 7. 公共后端、数据库与云端部署技术

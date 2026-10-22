@@ -16,7 +16,7 @@
 | [UI-G0/UI-G3 验证矩阵](./admin-design-verification.md) | 四类高保真基准页审批与开发后浏览器/键盘/权限实测 |
 | [来源与迁移取舍](./admin-design-migration-record.md) | 原始参考材料、排除项、规则核对结果及从旧 `admindesign` 目录收敛的记录 |
 
-**阅读顺序**：先读本页的开发硬约束和 [UI-G0](../../architecture/applications/admin-ui-design-system.md) 当前状态，再结合 [D3-UI 页面设计](../../Plans/aisencore-mvp-d3-ui-admin-uiux-design.md) 按任务查对应基础/组件/UX 规则，最后依据验证矩阵提交真实证据。不要为了单页任务加载整个长规则库。
+**阅读顺序**：先读本页的开发硬约束和 [UI-G0](../../architecture/applications/admin-ui-design-system.md) 当前状态，再结合 [D3-UI 页面设计](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md) 按任务查对应基础/组件/UX 规则，最后依据验证矩阵提交真实证据。不要为了单页任务加载整个长规则库。
 
 ## 已确定的要求
 
