@@ -1,6 +1,6 @@
 # D3｜React-admin 与 Supabase/Cloudflare 基础设施实施设计
 
-> **D3 已批准方案覆盖（DEC-01～06 A）**：成员邮箱安全批量查询优先真实隔离测试证明的受限 SQL RPC，失败可直接改用已批准 Edge 单请求批量聚合；Admin React-admin 产品/套餐标准 create/update 继续走安全单次 RPC，Free 版本切换/两模式直授/发码为显式安全命令；Aisenlens 小 JSON 备份由受保护 Edge 校验并条件创建 R2 final，**不再按旧阶段 staging/Worker/通用直传 JSON 施工**。Admin **G0A 高保真四类基准+用户实际签收仍 BLOCKED**，通过后才可按单独开发许可进入 G0B 最小 React-admin 原型，再实现页面、运行 G3。D3 旧声明均以[现行 Admin 架构](../../architecture/applications/admin-console.md)、[主架构](../../architecture/current-main-architecture.md)和[UI-G0](../../architecture/applications/admin-ui-design-system.md)覆盖；部署、代码、测试 NOT RUN。
+> **D3 已批准方案覆盖（DEC-01～06 A）**：受限 SQL RPC 批量邮箱查询、安全 Edge 聚合后备、受保护管理 RPC、Free 版本指针、双模式直授、Edge→R2 小 JSON 备份等设计合同保留。旧 `development` G0B 原型已删除；后续已选择[交互优先的轻量 HTML 验证工作流](../../development/frontend/interaction-benchmark-workflow.md)，不再以真实 G0B 为前置原型。**当前 G0A NOT APPROVED、Theme 未冻结，正式开发及测试 NOT RUN**。业务权威仍为 [Admin 架构](../../architecture/applications/admin-console.md)、[主架构](../../architecture/current-main-architecture.md)与 [UI-G0](../../architecture/applications/admin-ui-design-system.md)。
 
 > **状态：设计候选，未开发、未安装、未配置、未部署。** 本文为 D3 保留的实施设计，完成的执行清单已删除；业务唯一权威为[现行需求](../../spec/requirements.md)，逻辑规则看 [Admin 架构](../../architecture/applications/admin-console.md)、[D1 数据与安全设计](./aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/R2 设计](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)。U01 Aisenlens 本地优先、U02 首批 R2 备份、U03 公众注册、U05 单人运营与 Admin TOTP MFA 已确认，其余具体参数依[当前用户决议](./aisencore-u03-u11-user-decisions-2026-10-22.md)待确认。
 >
@@ -24,12 +24,14 @@
 
 不引入另一个通用后台服务器、UI/表单状态框架、通用文件中心、BaaS 管理直写端点或通用机器身份。**ra-supabase 是否复用需在安装前检验当前 API 和版本**；若不能遵守列级 GRANT/特定 RPC，只实现 React-admin 标准 Data Provider 的最薄适配层，不自造管理框架。
 
+**前端导航归并与权限作用域（实施候选，权威见 [Admin 应用层架构](../../architecture/applications/admin-console.md)）**：侧栏按工作台 / 当前产品运营（套餐、兑换码、授权、成员）/ 全平台管理（用户、产品、管理员与审计）组织；下方 Resource 表仍是 **DataProvider 数据资源列表而非一级菜单清单**。`redemptions`/`codes` 是兑换码任务的安全子视图、`membership_events` 是成员详情、`platform_account_restrictions` 是用户全局限制动作。初期只有 Aisenlens 时用最小 `product_id` 过滤/表单传参，不提前写全局切换状态框架；后台权限依每次真实业务请求判定。
+
 ## 2. React-admin 资源、字段与操作矩阵
 
 | 最小导航/Resource 候选 | 列表/详情读字段与筛选 | 管理动作、目标与高风险处理 |
 | --- | --- | --- |
 | `products` | `id,product_key,name,description,status,created_at,updated_at`；按状态/键过滤，时间排序、分页 | 创建 `admin_create_product`，修改 `admin_update_product`，发布/暂停 `admin_set_product_status`；状态确认说明暂停不清除历史授权 |
-| `users`（虚拟只读） | `id,email` + 必要身份状态，UUID 或严格有界邮箱查；`admin-user-lookup` Edge 分页 | 用户不经 PostgREST 直接编辑；全局限制应由独立高危管理动作 RPC，并要求当前管理员资格与 reason |
+| `users`（虚拟只读） | `id,email` 最小白名单；DEC-06 受限 SQL RPC 优先（有限 UUID[]、有界精确邮箱与分页），隔离测试失败后单 Edge 批量回退 | 用户不经 PostgREST 直接编辑 `auth.users`；全局账号限制经受保护管理 RPC，当前管理员资格/`aal2` 和 reason 必须复核 |
 | `product_memberships` | `id,user_id,product_id,status,pre_suspend_status,joined_at`；产品/状态过滤 | `admin_suspend_membership`/`admin_restore_membership`；显示来自 left 的恢复仍为 left，不能用 UI 修改 `pre_suspend_status` |
 | `membership_events` | `id,membership_id,action,actor_type,actor_user_id,created_at`；以成员 ID 过滤 | 只读，不提供编辑/删除 |
 | `plans` | `id,product_id,plan_key,name,features,limits,default_duration_days,is_active`；按产品筛选 | `admin_upsert_plan` 候选；grant 或任何已发行码引用后冻结权益字段，修改权益创建新版本；停用不得撤销旧码 |
@@ -43,6 +45,8 @@
 **列表机制**：React-admin 的 `getList` 将 page/perPage、sort、filter 映射到 PostgREST `range`、`order`、白名单过滤；必须以服务器响应的 `Content-Range` / `count: exact` 得到 `total`（大表改 `planned` 需清楚说明近似，不可伪报精确）。`getOne` 基于 RLS 安全列 + id，读不到返回明确未授权/不可见，而非推断对象不存在。`getMany` 用 `in` 有界批次和白名单列；`getManyReference` 只允许已批准外键及范围过滤。UUID 始终是 React-admin record `id`。对空态、加载态、分页越界、被撤销权限和跨页数据变更都要有清晰状态。
 
 **表单**：使用 React-admin/MUI 与 React Hook Form 原生组件，创建产品需标识/名称，套餐功能键/额度遵守 D1 JSON 规则。**F05 对 `admin_upsert_plan` 固定全字段提交**：更新只更名/停用也携带原 features/limits/plan_key，不允许把遗漏字段静默变为 NULL/空 JSON；客户端显示既有引用的冻结事实，服务端仍独立锁内校验。发码 `config.max_redemptions` 缺省=1 但显式 null 必须作为错误；其他字段按 F05 v1，不能以前端字符串对象序列化替代服务端有效指纹。危险动作二次确认明确目标、reason、范围，不用 UI 代替授权；不将 JWT、码明文、R2 URL 写入持久存储/监控。
+
+**用户邮箱批量补全（DEC-06）**：虚拟 `users` Resource 的标准 `getMany` 应对本页去重、有限 UUID[] 调用受限 `admin_lookup_users`，供成员/授权/兑换页面的 ReferenceField 批量显示邮箱并享受 React-admin 的已有缓存；与现有 UUID、精确邮箱查询同一安全投影。**先在真实隔离 Supabase 环境证明 SQL 读 auth.users 的权限与限流安全可行**；否则按 DEC-06 已批准回退单次受保护 Edge 批量查询，不制造逐行 Edge N+1 或额外用户画像表。请求失败则显示 UUID，不误报不存在。
 
 ## 3. Provider / RPC / MFA 具体映射
 
@@ -61,6 +65,8 @@
 
 **MFA 与免费额度验收**：普通已登录 Admin 从列表、详情、分页到受保护写入**原则上每个操作只有一项主要业务 HTTP 请求**，该请求内部权限 SQL 不等于额外的 Auth/MFA 网络往返；JWT 到期刷新与只读 Auth Admin Edge 需要的服务端复核属于例外。实测收集 Auth `getUser`、MFA challenge/verify、`admin_check_access`、Data API/Edge 次数，以及 P50/P95、RLS SQL 成本。注册因素、后续 challenge、会话刷新后的 `aal2`、新设备/失设备恢复与撤权均为首版真实验收条件，不能只是一个 UI gate 原型。
 
+**直授与套餐表单的最小实现**：同一个 `admin_grant_entitlement` 后端双模式合同映射为“天数顺延 / 指定起止 / 明确永久”三选项（永久额外确认，不以遗漏结束日期触发）；冻结套餐的“创建新版本”仅复用已有创建表单预填旧权益字段，修改新 `plan_key` 并走原 RPC，无克隆服务或自动停用旧版本。
+
 ### 3.1 首次发码明文页面（M3）
 
 管理用户选择产品、套餐、有效配置、批次数量并确认后生成**一次** `request_id`；如果只是**网络重试同一逻辑操作**，必须**保留该 UUID**，只有明确撤销旧批且新建新的发行操作才生成新 UUID。调用 `admin_create_codes` 成功且 `created=true` 时，仅在当前 React component 内存展示 `plaintext`，提供用户主动触发的一次性复制/下载，告知离开此页无法再次获取；页面卸载/导航/登出后清空，不入缓存、路由、localStorage、IndexedDB、日志、错误监控、截屏分析或下载历史服务端。首次响应丢失，**同 request_id 重放只能确认非秘密批次信息，绝不能取回明文**；管理员可撤销旧批并用**新** request_id 重发。D3 UI 不得提供历史明文查询/重新导出。
@@ -71,6 +77,8 @@
 - **M2** 已发行码或 grant 引用后的套餐权益冻结：展示不可编辑字段或提示新建版本，不能靠前端禁用替代服务端校验；停用套餐不作废旧有效码。
 - **M4** 用户兑换“本人已兑”优先于码过期/撤销/用尽，由后端负责；Admin 不推断兑换结果、次数与最后状态。
 - **M5** `check_access` 的可信业务拒绝是 HTTP 200 `allowed=false`；401/503 不是同一个拒绝原因。云端备份签发必须对无法验证一律拒绝**新签名**，不伪造 blocked 事实。
+
+**发码异常恢复**：仅保存当前标签页 `sessionStorage` 中的非秘密 request_id/请求摘要用于用户主动查询原批次；确定终态或登出清除。码明文仍只能在首次成功的易失内存视图，不进暂存或缓存；明文丢失后单独确认撤销原批及创建新批，不把两个写操作包装成一键自动事务。
 
 ## 4. 环境隔离、组件拓扑与密钥
 
@@ -134,7 +142,7 @@ PR / feature branch
   → 上线记录 / 监控 / 失败回退或前向修复
 ```
 
-不要在真正生成代码/锁文件前虚构 CLI 命令。Pages SPA 的历史路由刷新需配置 fallback 或 redirects，并验证它**只影响静态导航**，不替代真实 API。前端发布回退可切换 Pages 已验证版本；数据库不可把不可逆/破坏性 migration 依赖“git revert”恢复；先采取兼容演进，再依据备份与前向修复脚本回滚。涉及实际数据迁移、账号删除或宽权限变更须人工审批。
+不要在真正生成代码/锁文件前虚构 CLI 命令。Pages SPA 的历史路由刷新需配置 fallback 或 redirects，并验证它**只影响静态导航**，不替代真实 API。前端发布回退可切换 Pages 已验证版本；数据库不可把不可逆/破坏性 migration 依赖“git revert”恢复；**项目所有者明确宣布上线前不引入历史兼容层/旧数据迁移分支**；实际若已存在开发环境测试数据，应先明确备份/可重建性，再使用干净版本化迁移与前向修复，不冒充生产兼容升级。涉及实际数据迁移、账号删除或宽权限变更须人工审批。
 
 ### 5.3 运维与恢复
 

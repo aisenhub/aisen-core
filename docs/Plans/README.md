@@ -4,6 +4,7 @@
 
 ## 当前待办与唯一实施导航
 
+- [Admin MVP 六项设计收敛与轻量交互方法](./20261022-admin-mvp-six-step-master-plan.md)：第 01～05 项设计合同保留；旧 development/G0B 原型已删除，已选定交互优先的单文件 HTML 方法，但**UI-G0A 尚未签收，正式 MVP 施工未授权**。
 - [MVP 实施设计总计划（ACTIVE）](aisencore-mvp/aisencore-mvp-implementation-design-master-plan.md)：阶段依赖、实际开发准入、U03～U11/安全/视觉阻塞；**计划仍未结束**。
 - [2026-10-22 审查整改专项总计划（ACTIVE / RUNTIME NOT RUN）](./20261022-review-remediation/master-plan.md)：14 项审查问题和 4 项横切任务的真实实施/验收；DEC-01～06 全 A 已批准但运行整改尚未验收。
 - [MVP 当前待办（TODO）](./TODO.md)：真实运行/用户确认/上线前检查；不把已完成的文档型任务长期作为新计划。
@@ -13,6 +14,7 @@
 - [D3-UI 页面线框与交互设计](aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md)：导航、列表/表单、发码/MFA/响应式、D3-UI-X01～X18 全部 NOT RUN。
 - [Admin UI-G0 全局视觉规范](../architecture/applications/admin-ui-design-system.md)：**强制编码前关口仍 NOT APPROVED / BLOCKED**；高保真画面与用户签收待完成。
 - [Admin 前端设计与规则入口](../development/frontend/README.md)：唯一开发目录内维护视觉基础、共享组件、62 条 UX 原则与后续 UI-G3 审查。
+- [交互基准产物目录](../interaction-benchmarks/README.md)：按需存放模拟网页；规范在 development，业务/视觉权威在 architecture；**签收和未解决问题在本 Plans**，不在 HTML 里自动批准。
 - [D4 测试与就绪评审](aisencore-mvp/aisencore-mvp-d4-test-and-readiness-review.md)：原 55 项 I/R/A 用例和增量风险，均未真实运行。
 - [F01～F04 安全收敛设计](aisencore-mvp/aisencore-f01-f04-security-convergence-design.md)：Design Resolved / Runtime Not Verified。
 - [F05～F08 契约与兼容测试准备](aisencore-mvp/aisencore-f05-f08-contract-compatibility-readiness-design.md)：DEC-05 双模式直授/强类型幂等合同，F06/F07 仅剩具体产品/运营参数，F08 V00～V07 未运行。
@@ -28,6 +30,12 @@
 跨模块修改、重大契约变化或需要多阶段推进的工作使用单文件计划；只有实际需要独立设计正文时才建立任务目录。使用[模板](TEMPLATE.md)，不预建空文件或重复的交接、阶段 prompt 和进度副本。
 
 当前模块归属与维护入口见项目架构，工程与浏览器证据见[测试规范](../development/testing/README.md)。已完成的职责拆分不再作为新任务入口；录制、真实素材和生产等独立待验收范围继续进入 TODO。
+
+### 交互原型的增量决策记录（只在任务涉及原型时使用）
+
+在该任务现有的「决定」和「验证记录」下用简短文字留下：**① 场景/业务合同引用；② 实际原型路径及被审阅的 Git commit/内容版本；③ 认可的跨模块路径、状态/恢复方式；④ 仍未解决的交互或视觉问题；⑤ 交互认可、视觉/Token 认可、正式施工许可三种独立状态；⑥ 关键 P0/P1/P2/P3 验证范围与真实证据**。用户没有明确认可时标 `PENDING/NOT APPROVED`，未运行测试写 `NOT RUN`。示例及测试边界见[复用与验证规范](../development/frontend/prototype-to-production-rules.md)。
+
+**不另外创建签收计划或审批表**，不把同一业务字段、RPC、Theme Token 复制进 Plans，也不以网页「审核完成」按钮产生审批记录。完成后按本文件清理阶段过程计划；仍用于 UI-G0 签收/追溯的原型版本应保持可恢复。
 
 ## 内容与执行
 

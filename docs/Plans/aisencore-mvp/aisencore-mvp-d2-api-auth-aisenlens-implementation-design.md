@@ -191,8 +191,10 @@
 
 1. 首版单公共 Auth Project，邮箱+密码；**Confirm Email 开启**、未确认账号没有可用于受保护业务的正式会话；注册、验证、登录、密码重置直接复用 Supabase Auth SDK，不新增 `/login` 或独立 `/refresh` 业务端点。注册或验证成功**不创建** Aisenlens 成员。
 2. 邮件确认、密码重置的 `redirectTo` 只允许配置在 Auth allowlist 中的已审核 URL；生产 `Site URL`、发件品牌、SMTP、合法回调清单待 U06；禁止开放重定向和把 Auth code/refresh token 贴到任意第三方页面。
-3. 桌面 Aisenlens 的登录恢复路线为**实施候选**：优先采用官方 SDK 支持的浏览器/系统浏览器 + 安全回跳（例如受控 HTTPS 回调或经平台验证的 app deep link/PKCE），桌面端严格校验 state、redirect 来源与一次性 code；具体使用的客户端框架、回调协议与 SDK 版本在产品实现前核验。不凭猜测认定一个 Windows deep link handler 已部署。
+3. **MVP 最小跨设备恢复（B01）**：首版邮箱+密码的 Aisenlens 桌面客户端优先直接通过官方 Auth SDK `signInWithPassword` / `signUp`，**不为密码登录引入 OAuth/deep link/PKCE 回跳框架**。确认邮箱与重置密码邮件指向 Auth allowlist 内受控 **HTTPS 页面**（例如静态 `/auth/confirm`、`/auth/reset-password`）：在手机或其他电脑打开也能完成官方 SDK 支持的确认/密码更新，之后回桌面端重新登录；不以本机 `aisenlens://` 或 `127.0.0.1` 为唯一邮件入口。实际回调域名、模板配置、邮件 token/hash 交换方式随当前 Supabase Auth SDK 实测，不自行手写会话协议。
 4. 登录/找回密码只恢复 Auth 身份，不改变 `left` 成员、`suspended` 或全局 `blocked`。错误邮箱提示不得便于枚举账号是否存在；生产发件额度/送达和找回演练在 D3/D4 实测。
+
+**跨产品邮件模板边界（B03 简化）**：共用 Auth Project 意味着共用 Site URL、模板及回调允许名单。首发只配置实际 Aisenlens 使用的合法 HTTPS 回调和中性模板；若模板使用 `RedirectTo`，必须真实检查 Supabase 模板变量/链接组合的 SDK 行为，不能只拼接不可信 `product` 查询参数形成开放跳转。第二个产品到来前不建设动态邮件品牌/路由中心。
 
 ### 4.2 JWT 验证、会话和设备安全
 
@@ -203,6 +205,8 @@
 - 本产品登出默认仅清本产品会话，不主动终止其他 SaaS 会话；按 SDK 确认可用的 `signOut({scope:'local'})` 或等效本地作用域，明确全局登出是另一种用户操作。撤销 refresh token 不等于已发 JWT 立刻失效，因此新受保护操作仍查当前 blocked/成员/权益；会话过期先尝试受控刷新，失败要求重登，**不默认放行**。
 - 同一账号在另一个 Supabase Project 的业务 RLS 不会天然接受 AisenCore JWT；若 Aisenlens 元数据位于其它 DB/Project，可信产品函数验证公共 JWT 后用本产品自己的后端权限执行属主检查（详见 §6），不能把公共 service_role 交给独立 SaaS 后端。
 - **SDK 调用量约束**：本地 `getSession()` 可取得 SDK session 但必要时会刷新，**不是可信服务端验签**；非对称 JWT 的 `getClaims()` 可使用缓存 JWKS，`getUser()` 才会逐调用访问 Auth 服务。不得每次 Pro/按钮/render 独立调用 `getUser()`，不得把刷新 Auth JWT 当作 Pro 权益刷新。客户端将 JWT 随 `check_access` 请求发送，可信数据库一次请求内查询当前权限，不需要前置第二次 Auth API 调用。实际 SDK 版本/AAL 行为仍按 F08 验证。
+
+**Admin 会话降级与紧急撤权（B02 最小修复）**：已有可信 `aal2` 时的其他标签页/路由不能无条件再次 `signInWithPassword` 覆盖会话为 `aal1`；发现 `aal` 降级则暂停受保护操作并走正常 TOTP 验证。JWT 签出后即使 Auth refresh/session 被撤销，旧 Access JWT 仍可能有效直到 `exp`；如需在管理员设备失窃后立即拒绝旧 JWT（尤其最后一名管理员不可自撤权的情况），必须在服务端管理资格检查中提供可执行且经过时间边界测试的失效机制或采取等效受控安全处置，**不能依赖前端登出或单纯删除会话**。不先建自定义会话平台，不未经实测就把 JWT 固定为 15 分钟；实现与 U05 真实运维演练时确定最小有效方案。
 
 ### 4.3 管理员 TOTP MFA
 

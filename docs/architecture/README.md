@@ -20,6 +20,7 @@
 - **applications/**：用户和管理员应用交互、本地优先和跨 SaaS 会话；调用 backend 接口。内部平台管理门面参见 [Admin 管理前端架构](./applications/admin-console.md)。
 - **infrastructure/**：确认的技术平台和部署承载方式，不把技术选型当作业务规则。
 - **development/**（[开发资料](../development/README.md)）：教程、接入指南、测试实践和模板，不承载新的架构决定。
+- **交互基准产物**（[interaction-benchmarks](../interaction-benchmarks/README.md)）：按需展示跨模块任务与错误恢复的模拟网页，**不是第六类架构权威，也不作为新增业务状态/RPC/权限来源**；具体模拟范围和展示要求见[前端原型产物规范](../development/frontend/interaction-benchmark-spec.md)。
 
 示例：用户退出产品的业务规则权威在 [成员生命周期](./domains/membership-lifecycle.md)；公共退出 API 在 [公共接口](./backend/public-api-and-saas-integration.md)；状态/审计约束在 [数据库模型](./database/database-constraints-and-audit.md)。其他文档不复制完整规则。
 
@@ -29,3 +30,4 @@
 2. 同一决定以一处完整权威定义为准，其他地方保留简要结论和引用。确有独立设计价值才新建文章，暂不创建空文档或第三层目录。
 3. 明确区分“已决定的逻辑架构”和“实施前仍需确认”的 HTTP/SQL/RLS、邮件服务、部署配置、数据保留时间等细节。
 4. 文档整理**不授权**执行代码开发、数据库变更、第三方服务配置或部署；实际实施需单独授权。
+5. 模拟原型如发现字段、权限、RPC、业务不变量不一致，必须回到对应 domains/backend/database/applications 的现有权威文件处理决定，再同步原型；**不能由原型脚本反向修改架构**。视觉 Token 只以 [Admin UI-G0](./applications/admin-ui-design-system.md) 为权威。

@@ -7,17 +7,22 @@
 - [ ] 按[审查整改总计划](./20261022-review-remediation/master-plan.md)与[最新审查处置状态](../review/architecture-remediation-status.md)逐项关闭 G-01～04、B-01～03、M-01～03、A-01～04 和 X-01～04。**设计决定已批准、文档收敛不等于执行通过**；SQL/云服务/Auth/MFA/R2/Admin UI 的运行验收仍 NOT RUN。
 - [x] 2026-10-22 项目所有者已批准[DEC-01～06 推荐 A 的统一决策](./20261022-review-remediation/owner-batch-decisions.md)，已写入当前 spec/architecture：兑换显式 product_key、限定小 JSON Edge→R2、G0A/B/G3、Free 当前版本指针、双模式直授与强类型幂等、Auth 限权 SQL RPC 优先/不安全则回退 Edge。**审批不是代码/迁移/上线许可；U04～U11 的真实字段、责任和运营参数仍在本 TODO 后续任务中。**
 
-## UI-G0（阻断 Admin 正式前端编码）
+## 本次预开发审计建议提炼（2026-10-22；文档已收敛，代码/验收仍待执行）
 
-- [ ] 按 [全局 Admin UI 设计系统](../architecture/applications/admin-ui-design-system.md) 冻结字体、语义色、布局、组件及 Token 版号；当前只存在候选文本规范。
-- [ ] 产出**登录/MFA、兑换码、套餐、用户/成员**四类真实高保真视觉基准与多宽度参考，完成视觉/组件状态审阅。
-- [ ] 由项目所有者真实看过视觉基准后**明确签收**，记录版号/日期/批准证据，UI-G0-G01～G12 完成审查，才将 **UI-G0A 从 NOT APPROVED / BLOCKED 转为 APPROVED**；未批准前不启动正式 Admin Theme/Layout/业务页面编码。
-- [ ] UI 代码开发获得独立授权后按 [D3-UI 页面规格](aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md) 实施；真实运行 D3-UI-X01～X18 和后续浏览器 UI-G3 视觉、响应式、键盘/无障碍、权限/错误 E2E。开发规则统一从 [frontend](../development/frontend/README.md) 进入。
+- [x] Admin 应用层架构及 D3/D3-UI 候选设计采用按任务分组的产品/全平台作用域、简洁用户详情与 DEC-06 `getMany` 邮箱映射；**不**实施完整产品上下文状态机、准入模拟器或 1 表 1 顶层菜单。具体设计以 [Admin 应用层](../architecture/applications/admin-console.md) 为准。
+- [x] Admin 发码最小非秘密 UNKNOWN 恢复、套餐复制创建新版本、直授三项互斥可视选项已进入 D3-UI；实际交互与安全 E2E **NOT RUN**。
+- [ ] D1/D2/D4 隔离验证：Free 双向 FK 建表顺序、Admin 同键幂等与不连续未来授权、跨设备邮箱确认/重置、`aal2` 标签页降级和旧 JWT 紧急撤权边界；不把审计报告作为新批准的产品合同。
 
-- [ ] **G0B/G3 已批准顺序但尚未执行**：仅 G0A 真实签收后，在独立开发授权下做小型 React-admin/MUI 可运行原型，再完成全部页面及 G3 浏览器真实测试；不得把六项架构 A 的批准冒充 G0A 视觉通过。
+## UI-G0（交互优先方法已定、正式签收与 MVP 施工仍暂停）
+
+- [x] **项目所有者已要求完整删除 `E:\Projects\Aisencore\development`**：此前的 React-admin/MUI G0B 原型、Theme、依赖及截图均已删除；旧 Build PASS 不代表现存可验收成果。
+- [x] 已确定「业务交互优先、视觉辅助、按风险制作单文件 HTML 并同步提供体验引导」的方法，见[开发流程](../development/frontend/interaction-benchmark-workflow.md)；旧真实 React-admin/MUI 原型不恢复。**方法确认不是交互/视觉签收或施工授权**。
+- [x] 原型治理规范已拆分为[交互/视觉产物要求](../development/frontend/interaction-benchmark-spec.md)与[正式代码复用、分级测试边界](../development/frontend/prototype-to-production-rules.md)；交互网页的实际存放位置定为[interaction-benchmarks](../interaction-benchmarks/README.md)（目前只有目录规范，未制作新的原型）。
+- [ ] 按获授权的具体任务准备必要的代表性场景/状态并由项目所有者实际体验、明确签收与冻结 Token；`灵感/` 候选 HTML 不等于正式证据，`UI-G0A NOT APPROVED`。
+- [ ] 正式 MVP 业务代码、SQL/RPC/Auth/Edge/R2 仍等待项目所有者下一步授权；D3-UI-X01～X18、UI-G3 和后端安全 E2E 仍 NOT RUN。
 - [ ] **DEC-02 A Edge 实施门禁**：去除 Aisenlens 小 JSON Worker/staging 强依赖，落地 JWT/字节体白名单/条件 final/DB pending→ready/对账和私有直取下载；`256 KiB` 和版本上限仍只候选，待真实产品字段冻结。
 - [ ] **DEC-06 A 先验证 SQL 只读批量 Auth 用户查询**：真环境检查 auth.users 最小读权、aal2/名册/blocked、分页 UUID[] 上限及 P50/P95；失败直接使用批准的单 Edge 批量聚合回退，禁止放开 auth.users Data API。
-- [ ] **DEC-04/05 迁移与兼容**：Free 指针+不可变历史、双模式直授/强类型幂等、旧客户端/函数签名/GRANT/RLS/计时/并发负向测试后才实施。
+- [ ] **DEC-04/05 新项目唯一合同实现**：Free 指针及不可变版本、双模式直授/强类型幂等、实际 RPC 函数签名/GRANT/RLS/计时/并发负向测试；**上线前不保留旧签名、兼容适配层或双轨代码**，只验证当前调用方。
 
 ## F01～F08 / 数据权限与兼容性（全部缺真实运行证据）
 
