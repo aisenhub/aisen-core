@@ -1,5 +1,7 @@
 # D2｜公共 API、Supabase Auth 与 Aisenlens/R2 接入实施设计
 
+> **D2 接口/备份已批准覆盖项（DEC-01～06 A）**：公开 `redeem_code(product_key, code)` 先核验声明产品的 left/suspended 成员状态，旧单参 RPC 不可继续作为公开可探测旁路；Admin 直授采用 duration 与 explicit_window 互斥模式，Free 默认版本指针属服务器事实。**Aisenlens 受限非敏感小型 JSON 备份已批准经 Supabase Edge 校验、使用可信凭据条件创建 R2 final；不再要求该 JSON 客户端 staging PUT/Worker 提升**，但其他普通文件直传 R2 维持。以下 D2 旧 `staging→PUT→complete`、CopyObject、旧码签名和旧指纹例子只保留为**历史施工草图，不是可直接实施的当前合同**。实施需重拟 Edge JSON 上传、DB pending/ready/补偿，验收见[API 长期权威](../../architecture/backend/api-contract-and-mvp-acceptance.md)及[文件架构](../../architecture/database/product-data-and-files.md)；所有云端 SDK/真实测试 NOT RUN。
+
 > **成熟度：D2 文档型实施设计（实施候选）**。以下 SQL 签名、路由、JSON 示例、对象路径和服务器内部状态用于指导下一步实现，**不是已经创建或真实测通的接口**。本文件不得重定义已有业务不变量；冲突时以 [现行唯一 API 逻辑权威](../../architecture/backend/api-contract-and-mvp-acceptance.md)、[业务领域规则](../../architecture/domains/README.md) 与 [D1 物理/事务设计](./aisencore-mvp-d1-database-implementation-design.md) 为准。
 >
 > **2026-10-22 安全设计收敛（F01～F04）**：对外 SQL 签名/JSON/HTTP 业务契约不变，但其实现层采用 [私有最小扩权 RPC、L0～L8 锁序、R2 staging→final 校验和管理员 MFA/Auth Admin 链路](./aisencore-f01-f04-security-convergence-design.md)，优先于本文旧的单对象确认/锁定示例。真实环境尚未验证。
@@ -10,7 +12,7 @@
 >
 > **BaaS/原子计量设计评审（2026-10-22）**：[技术建议适用性与拒绝反例](./aisencore-mvp-baas-quota-security-lessons.md) 确认 **无需为 MVP 增加 Redis、独立公共 API 服务器、VIP JWT Hook 作为动态授权、通用消费 RPC/余额表或 AI 代理 Edge**。客户端缓存只节流 Pro UI、R2 权威签发/确认/下载继续实时核查；产品 `ready+reserved` 必须在产品元数据事务中可信预留、最终对象核验后结算，重试幂等和 R2/DB 补偿不变。示例 SQL 和“节省 85%”不可当实际验收。
 >
-> 先行计划：[D2 实施设计](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)；已确认 U01 = **Aisenlens，本地优先**，U02 = **首批必须支持 R2 私有文件/配置备份**；U03～U08 不代用户确认。本轮不执行代码、SQL、API 调用、云配置、部署或 Git 提交。
+> 先行计划：[D2 实施设计](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)；已确认 U01 = **Aisenlens，本地优先**，U02 = **首批必须支持 R2 私有文件/配置备份**；U03 公开注册、U05 Admin TOTP MFA 与单人运营已确认，其余具体参数按[用户决议](./aisencore-u03-u11-user-decisions-2026-10-22.md)待定。本轮不执行代码、SQL、API 调用、云配置、部署或 Git 提交。
 
 ## 1. 系统边界、请求通道和权威
 
@@ -354,7 +356,7 @@ R2 **预签名 URL 必须由服务器生成**并限制 method（单对象 PUT/GE
 | --- | --- | --- | --- |
 | U01 | **首个产品 Aisenlens，本地优先** | **已确认** | 不再询问 |
 | U02 | **Aisenlens 首批 R2 文件/配置备份必须支持** | **已确认** | 不再询问 |
-| U03 | 内部/邀请测试还是公众开放 | **待用户** | D3 发布方案前 |
+| U03 | 公众开放注册目标 | **已确认方向；未获生产部署批准** | 公众发布前完成邮件/隐私/反滥用实测 |
 | U04 | Aisenlens 功能键、Free/Pro 能力、备份配额单位/大小、试用策略 | **待用户**；本文件所有 capability/额度均为候选 | 实际产品套餐配置与备份权限测试前 |
 | U05 | 初始管理员人选/第二管理员与受控 MFA 恢复责任 | **待用户** | D3 初始化前 |
 | U06 | 生产域名、邮件品牌、SMTP 与回调清单 | **待用户** | D3 域名/邮件配置前 |

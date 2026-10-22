@@ -8,7 +8,7 @@
 - **AisenCore 公共可信逻辑**（受保护 PostgreSQL 函数，必要时 Edge Functions）负责产品状态、成员状态转换、权益与兑换、平台管理资格。
 - **各 SaaS 可信业务后端**负责具体项目/文件/任务的属主及业务权限；公共 `allowed=true` 不替代产品业务授权。
 - **PostgreSQL Grants 与 RLS** 是数据库安全边界，不是成员生命周期引擎；不能用 UI 隐藏或 JWT 中的成员状态替代可信执行时的检查。
-- **配额/余额原子操作审查**：客户端不得 SELECT 后自己计算并 UPDATE 余额、`entitlement_grants` 或产品存储计数；若产品确有扣减型操作，在可信事务中按真实 JWT/当前产品成员和对象属主、服务端**计算的消费额**、正数/上限/类型约束、F02 一致锁序、条件更新/预留与请求幂等完成，拒绝客户端输入负数导致“负负得正”的示例缺陷。不得仅因减少 SQL 查询就把当前动态 Pro/blocked/管理员状态写入 JWT 当实时权限。完整负向审查见[原子配额与 JWT/RLS 反例](../../Plans/aisencore-mvp/aisencore-mvp-baas-quota-security-lessons.md)。
+- **配额/余额原子操作审查**：客户端不得 SELECT 后自己计算并 UPDATE 余额、`entitlement_grants` 或产品存储计数；若产品确有扣减型操作，在可信事务中按真实 JWT/当前产品成员和对象属主、服务端**计算的消费额**、正数/上限/类型约束、F02 一致锁序、条件更新/预留与请求幂等完成，拒绝客户端输入负数导致“负负得正”的示例缺陷。不得仅因减少 SQL 查询就把当前动态 Pro/blocked/管理员状态写入 JWT 当实时权限。安全边界以[业务领域权益](../domains/billing-and-entitlements.md)及[长期可信 RPC 约束](./rpc-security-and-locking-contract.md)为准，实施反例保留在阶段计划。
 - 所有产品共用一套逻辑状态含义，**不**要求所有产品采用同一个数据库或 Supabase Project；远程 SaaS 通过公共用户 JWT 调用公共接口接入。
 
 ## 2. 执行机制决定
@@ -33,13 +33,13 @@ Edge Function 中的 `supabase-js` 每次调用都是独立请求，**无法跨�
 
 `check_access` 属于**无副作用的准入查询**：认证成功且数据库能够可信判定时，包含全局 `blocked` 在内的业务拒绝均按 API 契约正常返回 `allowed=false/reason`（HTTP 200），而不是在函数内抛出 HTTP 403；无效身份和真正的技术故障分别以 401、503/5xx 表示。其他有副作用的函数仍按各自的拒绝契约执行。
 
-**F01 安全收敛后的实施路径**：可由 PostgREST 调用的 RPC 只在暴露 Schema `public` 使用 **`SECURITY INVOKER` 薄包装层**；真正需要状态/审计扩权的原子业务函数与权限助手置于**非暴露 `private`**，使用受控、最小权限 `SECURITY DEFINER`、固定空 `search_path` 和全限定对象名。对调用者 `authenticated` 除 public wrapper EXECUTE 外，必须按精确签名授 private Schema USAGE 与实际被 wrapper 调用的 private 内核 EXECUTE；**内核本身必须校验 auth.uid/JWT、操作资格与对象归属**，因为持有直接 SQL 连接权的同角色理论上仍能调用它，不能仅凭“private 不在 exposed schemas”断言不可能被调用。PUBLIC 默认 EXECUTE、函数 owner、RLS/GRANT 与默认权限须在同一版本化迁移中验证并收紧，不开放普通客户端 SQL 连接凭据。所有管理写入遵循 [F02 总锁序 L0～L8](../../Plans/aisencore-mvp/aisencore-f01-f04-security-convergence-design.md#3-f02唯一事务锁总序与逐操作锁矩阵)；不允许动态 SQL/调用者冒充 actor。业务错误见 [API 契约](../backend/api-contract-and-mvp-acceptance.md)，`redeem_code` 正常返回预期失败以持久化限流计数，技术异常全事务回滚；底层业务表不授 authenticated 直接 DML。
+**F01 长期安全合同**（见[受保护 RPC 与事务锁序](./rpc-security-and-locking-contract.md)）：可由 PostgREST 调用的 RPC 只在暴露 Schema `public` 使用 **`SECURITY INVOKER` 薄包装层**；真正需要状态/审计扩权的原子业务函数与权限助手置于**非暴露 `private`**，使用受控、最小权限 `SECURITY DEFINER`、固定空 `search_path` 和全限定对象名。对调用者 `authenticated` 除 public wrapper EXECUTE 外，必须按精确签名授 private Schema USAGE 与实际被 wrapper 调用的 private 内核 EXECUTE；**内核本身必须校验 auth.uid/JWT、操作资格与对象归属**，因为持有直接 SQL 连接权的同角色理论上仍能调用它，不能仅凭“private 不在 exposed schemas”断言不可能被调用。PUBLIC 默认 EXECUTE、函数 owner、RLS/GRANT 与默认权限须在同一版本化迁移中验证并收紧，不开放普通客户端 SQL 连接凭据。所有管理写入遵循 [F02 永久锁序 L0～L8](./rpc-security-and-locking-contract.md)；不允许动态 SQL/调用者冒充 actor。业务错误见 [API 契约](../backend/api-contract-and-mvp-acceptance.md)，`redeem_code` 正常返回预期失败以持久化限流计数，技术异常全事务回滚；底层业务表不授 authenticated 直接 DML。
 
-### 2.3 Edge Functions：只承载必须持有密钥的场景
+### 2.3 Edge Functions：只承载必须持有密钥或已批准的小 JSON 可信验证场景
 
 - Supabase Auth Admin API 调用（用户查询、必要的账号封禁/会话管理）；
 - 外部支付 Webhook 接收与订单回查（阶段 2）；
-- R2 临时访问授权签发（首发 Aisenlens 已确认首批需要私有配置/文件备份，候选授权与上传确认时序见[D2 实施设计](../../Plans/aisencore-mvp/aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)；仍非已实现服务）。
+- R2 临时访问授权及 **DEC-02 A：Aisenlens 非敏感小型配置 JSON 经 Edge 严格 body/schema/摘要校验，再以服务端最小凭据写不可覆盖的 R2 final**；DB 预留/ready 仍由受保护 RPC 与同事务审计处理，跨系统故障由有界对账补偿；真实服务和 SDK 仍 NOT RUN（见[产品文件架构](./product-data-and-files.md)）。
 
 Edge Function 使用高权限客户端时，**也必须先验证最终用户/管理员资格、目标与参数**，并尽量通过调用上述 PostgreSQL 函数完成数据库写入，保持事务与审计规则只有一处实现。
 
@@ -58,7 +58,7 @@ Edge Function 使用高权限客户端时，**也必须先验证最终用户/管
 ## 4. PostgreSQL 与 Supabase 安全约束
 
 1. 可通过 Data API 访问的 Schema 中，逐表开启 RLS，配置最低限度的 `GRANT` 和逐操作 Policy；`GRANT` 与 RLS 是两个不同的校验层，缺一不可。
-   **2026-10-22 F08 实施检查补订**：Supabase 已公布自 **2026-10-30** 起现有项目新建 `public` 表默认不再自动取得 Data API 暴露授权（既有表 grants 不被直接撤销）。迁移必须显式定义表/列的 `SELECT`、函数的 `EXECUTE` 与 schema 的 `USAGE`，并验证实际 Supabase 项目配置、PostgREST schema cache 及权限拒绝，不得依赖默认 `public` 可达。此为[兼容/测试准备](../../Plans/aisencore-mvp/aisencore-f05-f08-contract-compatibility-readiness-design.md#51-已核查的官方变化2026-10-22)，不是已部署事实。
+   **版本独立的迁移准则**：不得依赖平台对新建 public 表自动授予 Data API 权限的默认值。必须在版本化迁移显式定义实际表/列 `SELECT`、精确函数 `EXECUTE` 与 schema `USAGE`，验证当前 Supabase/PostgREST 版本、schema cache 与越权拒绝；历史默认授权差异以环境实测为准。
 2. `authenticated` 只说明身份类型，不能自动授权读取全部行；本人读取约束为 `auth.uid() = user_id`，必要索引覆盖 `user_id`、`product_id`。
 3. 普通用户不能直接改写 `user_id`、`product_id`、`status`、`pre_suspend_status`、管理员状态、授权或审计；避免“改属主”绕过授权。
 4. JWT 中用户可修改的 `user_metadata` 不可作为管理权限依据；过期的声明也不能代表当前成员资格。
@@ -67,7 +67,7 @@ Edge Function 使用高权限客户端时，**也必须先验证最终用户/管
 
 ## 5. 单事务执行路径
 
-调用方以 JWT 调用一个 `public SECURITY INVOKER` RPC → 委托 `private` 受保护内核，内核再次取得 `auth.uid()` 校验资格 → 按 [统一 L0～L8 锁矩阵](../../Plans/aisencore-mvp/aisencore-f01-f04-security-convergence-design.md#32-rpc-获取锁矩阵空格不需使用-) 对目标账号/产品/套餐/成员/码与续期作按序互斥 → 写变更，同事务插入 `membership_events` 或 `admin_audit_log` → 一并提交或回滚。管理员写入必须先取得共同 L0 并复核当前资格，普通受保护写按需取得目标用户 L1。
+调用方以 JWT 调用一个 `public SECURITY INVOKER` RPC → 委托 `private` 受保护内核，内核再次取得 `auth.uid()` 校验资格 → 按 [统一 L0～L8 长期锁序](./rpc-security-and-locking-contract.md) 对目标账号/产品/套餐/成员/码与续期作按序互斥 → 写变更，同事务插入 `membership_events` 或 `admin_audit_log` → 一并提交或回滚。管理员写入必须先取得共同 L0 并复核当前资格，普通受保护写按需取得目标用户 L1。
 
 成员合法状态转换的业务真相以[成员生命周期](../domains/membership-lifecycle.md)为准，事务不变量以[数据库逻辑约束与最小审计](./database-constraints-and-audit.md)和[权益与兑换码数据约束](./entitlements-and-redemption-constraints.md)为准。多个独立 HTTP / Data API 请求不是一个事务；独立 SaaS 自身数据库初始化失败不回滚公共成员，由产品业务端幂等重试，不引入跨库分布式事务。
 

@@ -1,5 +1,7 @@
 # F01～F04｜安全设计收敛定稿（实施候选，待真实验证）
 
+> **批准方案施工覆盖（DEC-01/02 A）**：F02 兑换改为显式声明 `product_key`，按 L1/L2/L3 声明产品→L5 成员先拒绝 left/suspended→L6 真实码并核对归属→L7 续期→L8 同事务提交；历史发行码的套餐不可变，核销不需在 L5 之后逆序获取 L4。**F03 旧“客户端 staging PUT/可信 Worker final 提升”仅是未采用的实施候选**：首发 Aisenlens 小型非敏感白名单 JSON 已批准受保护 Supabase Edge 接收/校验，使用受限凭据 R2 final 条件写，并经 PostgreSQL 幂等配额/ready 与异步对账；通用普通文件 R2 直传不变。F01/F04 `aal2` 和最小权限不变。真正 SQL/R2 实测均 NOT RUN，以[可信事务长期合同](../../architecture/database/rpc-security-and-locking-contract.md)和[产品文件架构](../../architecture/database/product-data-and-files.md)为准。
+
 > **状态：DESIGN RESOLVED / RUNTIME NOT VERIFIED**。本文件保留有效的安全设计；完成的阶段执行清单按 Plans 规则删除。本文件给 D1、D2、D3 的后续实际代码/迁移提供**优先遵循的安全实施约束**；不替换 [现行需求](../../spec/requirements.md)与[逻辑 API/43 项验收](../../architecture/backend/api-contract-and-mvp-acceptance.md)，不表示任何数据库函数、Edge、R2 或 MFA 已运行。
 >
 > **2026-10-22 追加用户决定**：Admin **TOTP MFA 明确纳入 MVP**。原 F04 `aal1→TOTP→aal2→管理员资格` 安全链不改变；性能/体验补充以[低请求量 Auth/Pro/Admin 专项](./aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)为准：有效 `aal2` 会话的普通 Data API/管理 RPC **不会另起 MFA challenge/verify 网络请求**，后台从当前经验证 JWT + 资格表在原业务请求内鉴权，Auth Admin Edge 保留服务器资格检查。
@@ -8,7 +10,7 @@
 >
 > 四项关联：[D4 F01～F04 风险](./aisencore-mvp-d4-test-and-readiness-review.md#61-静态交叉评审发现的问题与风险台账)；D1 [物理/RLS/事务候选](./aisencore-mvp-d1-database-implementation-design.md)、D2 [接口/Auth/R2](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、D3 [管理端与基础设施](./aisencore-mvp-d3-admin-infrastructure-design.md)。
 >
-> **范围固定**：U01 Aisenlens 本地优先、U02 首批 R2 私有文件/配置备份必需；U03～U11 仍待用户决定。保留 M1～M5 业务语义，尤其重复兑换优先级、管理保底、套餐冻结、兑换失败限流与 CheckAccess 200/401/503。
+> **范围固定**：U01 Aisenlens 本地优先、U02 首批 R2 私有文件/配置备份必需；U03 公众注册、U05 单人运营与 Admin TOTP MFA 已确认，U04/U06～U11 需按[当前用户决议](./aisencore-u03-u11-user-decisions-2026-10-22.md)区分方向已定与具体参数待定。保留 M1～M5 业务语义，尤其重复兑换优先级、管理保底、套餐冻结、兑换失败限流与 CheckAccess 200/401/503。
 
 ## 1. 最终设计决议概览
 
@@ -213,7 +215,7 @@ Aisenlens 用户主动选择允许字段 → JWT/本人与产品权益
 | D3 | React-admin 原 Resource/一次性明文/Provider 流程不改；MFA gate、Edge 执行先后、R2 窄产品验证组件/CI secret 分级对齐 | SDK 版本、AAL 刷新、密钥与构建扫描、Worker/Edge 兼容和对象权限 |
 | D4 | 只将 F01～F04 标为**DESIGN RESOLVED / RUNTIME NOT VERIFIED**，补上 LCK/R2/ADM 用例，原 43+12 项仍 NOT RUN；F05～F08 不变 | 用户明确的开发/测试授权后实际补证，P0 运行关口未解除 |
 
-**不得将设计收敛误写为“全量正式开发就绪 READY”**：本轮未连接实际 DB/R2，不知道最终 PostgREST/SDK/CLI 版本和 Supabase 角色能否按此运行；F05～F08 的字段/业务/环境风险以及 U03～U11 仍待处理。工程骨架的潜在有条件准备不代表已获编码授权。
+**不得将设计收敛误写为“全量正式开发就绪 READY”**：本轮未连接实际 DB/R2，不知道最终 PostgREST/SDK/CLI 版本和 Supabase 角色能否按此运行；F05～F08 的字段/业务/环境风险以及 U03～U11 剩余参数/生产验收仍待处理（已确认方向不再标未决）。工程骨架的潜在有条件准备不代表已获编码授权。
 
 ## 7. 官方参考与实际限制（2026-10-22 资料复核）
 

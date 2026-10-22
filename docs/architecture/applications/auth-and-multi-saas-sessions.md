@@ -20,7 +20,7 @@
 
 MVP 尽量用 Supabase 官方 Auth SDK 的登录、令牌刷新、登出与密码重置机制。浏览器部署需正确配置允许的回调/重定向地址、防开放重定向及 HTTPS；若采用服务端渲染/PKCE，要按框架使用受支持方案，不自行手写交换令牌与存储协议。桌面端回调与凭据存储按具体客户端能力实现，不能把 refresh token 记入本地备份或日志。
 
-**低请求量会话原则（MVP）**：由 SDK 集中管理 `getSession` / `onAuthStateChange` 及必要刷新；`getSession` 读取本地存储且必要时可能联网，不等于可信服务器验签。采用非对称签名 JWT 时，`getClaims` 可以通过可缓存 JWKS 验签，而 `getUser` 会访问 Auth 服务器，因此禁止对每次 render、页面导航、Pro 按钮或 Admin 列表访问重复调用 `getUser`。信任边界和完整方案见[低请求量 Auth / Pro / MFA 专项](../../Plans/aisencore-mvp/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)；普通用户 MVP **不强制 MFA**。
+**低请求量会话原则（MVP）**：由 SDK 集中管理 `getSession` / `onAuthStateChange` 及必要刷新；`getSession` 读取本地存储且必要时可能联网，不等于可信服务器验签。采用非对称签名 JWT 时，`getClaims` 可以通过可缓存 JWKS 验签，而 `getUser` 会访问 Auth 服务器，因此禁止对每次 render、页面导航、Pro 按钮或 Admin 列表访问重复调用 `getUser`。长期信任边界见[管理员领域](../domains/platform-admin-and-account-lifecycle.md)与[数据库访问](../database/database-access-and-transactions.md)，施工测试见阶段 Plan；普通用户 MVP **不强制 MFA**。
 
 ## 3. 邮箱确认、找回密码与账户恢复
 
@@ -28,8 +28,8 @@ MVP 尽量用 Supabase 官方 Auth SDK 的登录、令牌刷新、登出与密�
 - 使用 Supabase Auth 的确认邮件和密码重置流程；重置时要求使用可信、单次/时效适当的链接与允许的回调地址。提示语避免向未授权人员泄露邮箱是否已注册。
 - 生产环境邮件发送能力要验证到达率、退信与限额；默认邮件服务限制可能不满足实际用户规模，发信供应商和域名以后选择。
 - 用户可用的恢复过程应清晰区分：密码找回、会话重新登录、产品成员 `left` 的明确重新加入、管理员解除 `suspended`、全局账号恢复。前两项不改变成员封禁。
-- 内部管理员**必须**启用并完成 Supabase Auth 的 **TOTP MFA**：`aal1` 只能进入官方 TOTP enroll/challenge/verify，取得新的可信 `aal2` JWT 后才能查询 `admin_check_access` 及任何管理数据；管理 RLS 与 RPC 还要读取当前管理员名册和 blocked。只读 Auth Admin Edge **先验 JWT/`aal2`、用该原 JWT 复核当前资格，之后才执行服务端 Auth Admin 查询**，详细的最小权限与在途撤权窗口见 [F04 安全收敛](../../Plans/aisencore-mvp/aisencore-f01-f04-security-convergence-design.md#5-f04管理员-totp当前资格与-auth-admin-密钥链)；按[管理员专项](../domains/platform-admin-and-account-lifecycle.md)执行，不自建 2FA。
-- **2026-10-22 用户进一步确认 Admin TOTP MFA 为 MVP 必做**：一次可信 challenge/verify 建立 `aal2` 会话后，**普通列表读/管理 RPC 用现有 JWT 在同一业务请求/事务内检查 MFA 等级和实时管理资格，不额外串行调用 MFA/Auth API、也不每操作弹验证码**；刷新后真实 `aal` 若降级或会话失效，须重新完成必要挑战。UI `checkAuth/canAccess` 可短期缓存导航资格，但不得让后端信任缓存。因素丢失恢复属 MVP 验收，真实备用账号身份尚待确定。
+- 内部管理员**必须**启用并完成 Supabase Auth 的 **TOTP MFA**：`aal1` 只能进入官方 TOTP enroll/challenge/verify，取得新的可信 `aal2` JWT 后才能查询 `admin_check_access` 及任何管理数据；管理 RLS 与 RPC 还要读取当前管理员名册和 blocked。只读 Auth Admin Edge **先验 JWT/`aal2`、用该原 JWT 复核当前资格，之后才执行服务端 Auth Admin 查询**，最小权限及在途撤权窗口见[可信事务长期合同](../database/rpc-security-and-locking-contract.md)；按[管理员专项](../domains/platform-admin-and-account-lifecycle.md)执行，不自建 2FA。
+- **Admin TOTP MFA 为 MVP 已确认必做**：一次可信 challenge/verify 建立 `aal2` 会话后，**普通列表读/管理 RPC 用现有 JWT 在同一业务请求/事务内检查 MFA 等级和实时管理资格，不额外串行调用 MFA/Auth API、也不每操作弹验证码**；刷新后真实 `aal` 若降级或会话失效，须重新完成必要挑战。UI `checkAuth/canAccess` 可短期缓存导航资格，但不得让后端信任缓存。因素丢失恢复属 MVP 验收，真实备用账号身份尚待确定。
 
 ## 4. 会话、登出与失效语义
 

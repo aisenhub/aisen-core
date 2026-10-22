@@ -2,12 +2,22 @@
 
 > **状态：ACTIVE / 未实现与未验证。** 本文件只收拢已完成设计阶段**留下的真实未完任务**，不是新的业务需求、第二套产品政策或已经获准执行的代码计划。各项业务定义以 [spec](../spec/requirements.md) 和 [architecture](../architecture/README.md) 为唯一权威；执行顺序、授权和门槛见 [MVP 总计划](aisencore-mvp/aisencore-mvp-implementation-design-master-plan.md)。**标记 [ ] 表示没有实测或没有获批**。日期 2026-10-22。
 
+## 本轮审查整改（DEC-01～06 已批准，运行整改未完成）
+
+- [ ] 按[整改总计划](./20261022-review-remediation/master-plan.md)、[S0 事实](./20261022-review-remediation/s0-evidence-and-design-decisions.md)、[设计闭环证据](./20261022-review-remediation/document-design-closeout-evidence.md)逐项关闭 G-01～04、B-01～03、M-01～03、A-01～04 与 X-01～04。**本轮不依赖新用户决策的文档设计已收敛；代码、SQL、云端、Auth/MFA、R2、Admin UI 运行验收全部 NOT RUN**，不得将静态交付写成系统 READY。
+- [x] 2026-10-22 项目所有者已批准[DEC-01～06 推荐 A 的统一决策](./20261022-review-remediation/owner-batch-decisions.md)，已写入当前 spec/architecture：兑换显式 product_key、限定小 JSON Edge→R2、G0A/B/G3、Free 当前版本指针、双模式直授与强类型幂等、Auth 限权 SQL RPC 优先/不安全则回退 Edge。**审批不是代码/迁移/上线许可；U04～U11 的真实字段、责任和运营参数仍在本 TODO 后续任务中。**
+
 ## UI-G0（阻断 Admin 正式前端编码）
 
 - [ ] 按 [全局 Admin UI 设计系统](../architecture/applications/admin-ui-design-system.md) 冻结字体、语义色、布局、组件及 Token 版号；当前只存在候选文本规范。
 - [ ] 产出**登录/MFA、兑换码、套餐、用户/成员**四类真实高保真视觉基准与多宽度参考，完成视觉/组件状态审阅。
-- [ ] 由项目所有者真实看过视觉基准后**明确签收**，记录版号/日期/批准证据，UI-G0-G01～G12 完成审查，才将 **UI-G0 从 NOT APPROVED / BLOCKED 转为 APPROVED**；未批准前不启动正式 Admin Theme/Layout/业务页面编码。
+- [ ] 由项目所有者真实看过视觉基准后**明确签收**，记录版号/日期/批准证据，UI-G0-G01～G12 完成审查，才将 **UI-G0A 从 NOT APPROVED / BLOCKED 转为 APPROVED**；未批准前不启动正式 Admin Theme/Layout/业务页面编码。
 - [ ] UI 代码开发获得独立授权后按 [D3-UI 页面规格](aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md) 实施；真实运行 D3-UI-X01～X18 和后续浏览器 UI-G3 视觉、响应式、键盘/无障碍、权限/错误 E2E。开发规则统一从 [frontend](../development/frontend/README.md) 进入。
+
+- [ ] **G0B/G3 已批准顺序但尚未执行**：仅 G0A 真实签收后，在独立开发授权下做小型 React-admin/MUI 可运行原型，再完成全部页面及 G3 浏览器真实测试；不得把六项架构 A 的批准冒充 G0A 视觉通过。
+- [ ] **DEC-02 A Edge 实施门禁**：去除 Aisenlens 小 JSON Worker/staging 强依赖，落地 JWT/字节体白名单/条件 final/DB pending→ready/对账和私有直取下载；`256 KiB` 和版本上限仍只候选，待真实产品字段冻结。
+- [ ] **DEC-06 A 先验证 SQL 只读批量 Auth 用户查询**：真环境检查 auth.users 最小读权、aal2/名册/blocked、分页 UUID[] 上限及 P50/P95；失败直接使用批准的单 Edge 批量聚合回退，禁止放开 auth.users Data API。
+- [ ] **DEC-04/05 迁移与兼容**：Free 指针+不可变历史、双模式直授/强类型幂等、旧客户端/函数签名/GRANT/RLS/计时/并发负向测试后才实施。
 
 ## F01～F08 / 数据权限与兼容性（全部缺真实运行证据）
 

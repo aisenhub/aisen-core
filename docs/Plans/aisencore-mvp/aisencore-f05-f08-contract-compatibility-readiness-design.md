@@ -1,8 +1,10 @@
 # F05～F08｜RPC 幂等契约、产品/环境准入与真实兼容验证准备
 
+> **F05～F08 设计合同随 DEC-04/05/06 A 版本化更新**：Admin 发码批次幂等优先用可完整恢复首次输入语义的强类型列和 NULL-safe 比较，只有不完整时才留受限 fingerprint；管理员直授保留 actor-scoped request_id，`duration`/`explicit_window` 两模式互斥，首次可信计算授权时段必须持久化、同键异参 `STATE_CONFLICT`。`current_free_plan_id` 指向同产品不可变 Free 家族版本；受限 Admin 邮箱 SQL RPC 优先验证，不安全即 Edge 单次聚合回退。原正文 `canonical v1 fingerprint` 必选、旧直授单模式、旧 Free 原地修改示例均被**现行[权益 DB 长期合同](../../architecture/database/entitlements-and-redemption-constraints.md)及[Admin 架构](../../architecture/applications/admin-console.md)覆盖**，只可用于兼容测试差异，不能直接实施。F05-C01～12、V00～07 SQL/HTTP/SDK 仍 NOT RUN。
+
 > **实施设计状态（2026-10-22）**：F05 **DESIGN RESOLVED / RUNTIME NOT VERIFIED**；F06/F07 **GATES DEFINED / USER DECISIONS PENDING**；F08 **VALIDATION PLAN READY / VERSIONS & RUNS NOT VERIFIED**。已完成的执行清单按 Plans 规则删除，真实待验收合同以本文为准。**不是**已经编写的 SQL、SDK、API、测试或创建的云资源。
 >
-> 业务权威：[spec](../../spec/requirements.md)、[D1 数据和安全](./aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/Aisenlens](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3 管理/运维](./aisencore-mvp-d3-admin-infrastructure-design.md)、[D4 43+12 验收](./aisencore-mvp-d4-test-and-readiness-review.md)；与 [F01～F04 私有内核/锁序/R2/MFA 收敛](./aisencore-f01-f04-security-convergence-design.md) 一起使用。U01 Aisenlens 本地优先、U02 首批 R2 私有备份已确认；U03～U11 仍待用户决定，本文**不替用户设定**额度、试用、备份字段、域名、发码上限或管理员。
+> 业务权威：[spec](../../spec/requirements.md)、[D1 数据和安全](./aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/Aisenlens](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3 管理/运维](./aisencore-mvp-d3-admin-infrastructure-design.md)、[D4 43+12 验收](./aisencore-mvp-d4-test-and-readiness-review.md)；与 [F01～F04 私有内核/锁序/R2/MFA 收敛](./aisencore-f01-f04-security-convergence-design.md) 一起使用。U01 Aisenlens 本地优先、U02 首批 R2 私有备份已确认；U03 公开注册目标、U05 单人运营与 Admin TOTP MFA 已确认，U04/U06～U11 按[当前用户决议](./aisencore-u03-u11-user-decisions-2026-10-22.md)区分方向与待定参数；本文**不替用户设定**额度、备份字段、域名、发码上限或恢复责任人。
 >
 > **2026-10-22 补充费用与资源安全审查**：未来如新增真实消费型业务，则费用需可信确定、严格 `>0` 且上限、同 actor/请求指纹幂等与事务回滚；拒绝直接复制 `public SECURITY DEFINER` 的示例扣减 SQL，详见[专项评审及 BAAS-Q01～Q10](./aisencore-mvp-baas-quota-security-lessons.md)。现有 F05 发码/管理员 grant 的真实请求幂等契约不变，**本轮不新增未来消费 API 或公共表**；F08 真实 SDK/DB/R2 执行仍 NOT RUN。
 
@@ -166,7 +168,7 @@ D1 既有 `entitlement_grants.UNIQUE(source_type,source_ref)` 是所有产品/�
 
 - **F05** 文档契约可判设计收敛：精确外部参数、默认/NULL/指纹、admin grant 命名空间与持久防变参数机制；**运行未验**，D1 真实 DDL、函数签名和 SQLSTATE 仍是验收前依赖。
 - **F06** 产品技术边界与可测安全下限已定，但真实用户政策 **U04/U09/U10/U11** 未定；**不能宣布产品需求本身关闭**。
-- **F07** 环境门槛和证据要求已定，**U03/U05/U06/U07/U08** 未决且云资源尚未建立；**不能宣布生产就绪**。
+- **F07** 环境门槛和证据要求已定，**U03/U05 的已确认方向尚未通过生产验证，U06/U07/U08 仍有具体参数待确认**且云资源尚未建立；**不能宣布生产就绪**。
 - **F08** 官方资料风险与测试 runbook 已准备，真实版本未知，全部 V00～V07、F05-C01～C12 及 D4 43+12 用例实际 **NOT RUN**。
 - **总体**：完整 MVP 开发/上线仍是 D4 的 **BLOCKED**；非生产工程骨架理论上有条件可准备，但要用户未来单独授权。F01～F04 也只达设计层收敛，真实授权/并发/R2/JWT 需同一测试计划补证。
 

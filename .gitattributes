@@ -1,0 +1,48 @@
+# AisenCore — deterministic text line endings across Windows/Linux/macOS.
+# Record line-ending policy independently from business documentation edits.
+# Do NOT run git add --renormalize during architecture/requirements edits.
+* text=auto
+
+*.md       text eol=lf
+*.mdx      text eol=lf
+*.txt      text eol=lf
+*.json     text eol=lf
+*.jsonc    text eol=lf
+*.ts       text eol=lf
+*.tsx      text eol=lf
+*.js       text eol=lf
+*.jsx      text eol=lf
+*.mjs      text eol=lf
+*.cjs      text eol=lf
+*.sql      text eol=lf
+*.yml      text eol=lf
+*.yaml     text eol=lf
+*.toml     text eol=lf
+*.xml      text eol=lf
+*.css      text eol=lf
+*.html     text eol=lf
+*.sh       text eol=lf
+*.ps1      text eol=lf
+*.env.example text eol=lf
+
+*.bat      text eol=crlf
+*.cmd      text eol=crlf
+
+*.png      binary
+*.jpg      binary
+*.jpeg     binary
+*.gif      binary
+*.webp     binary
+*.ico      binary
+*.pdf      binary
+*.zip      binary
+*.7z       binary
+*.gz       binary
+*.mp4      binary
+*.mov      binary
+*.mp3      binary
+*.wav      binary
+*.woff     binary
+*.woff2    binary
+*.ttf      binary
+*.otf      binary

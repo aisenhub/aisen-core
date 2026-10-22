@@ -1,8 +1,10 @@
 # D3-UI｜AisenCore Admin 前端页面、布局与交互详细设计
 
+> **本阶段已批准的前置和业务覆盖（DEC-03/04/05/06 A）**：UI-G0A 必须有四类可见高保真基准与项目所有者实际视觉签收；获得 G0A 后可在另行授权下做 G0B 小型 React-admin/MUI 原型，全部页面经 UI-G3 运行验证，当前**G0A NOT APPROVED**。用户/成员页面邮箱优先经受保护的受限 SQL 批量 RPC（不可安全实现则单 Edge 聚合）；套餐增加当前 Free 版本选择/切换的明确确认；人工直授表单需区分 `duration` 顺延与 `explicit_window` 显式时段及明确永久。下文旧 UI-G0 全量阶段划分、逐 UUID Edge N+1、单一 grant 时间输入仅视历史候选；权威见[Admin 长期架构](../../architecture/applications/admin-console.md)、[UI 设计系统](../../architecture/applications/admin-ui-design-system.md)。真实画板、代码和测试均不存在。
+
 > **状态：DESIGN SPECIFICATION / NOT IMPLEMENTED / NOT TESTED** · 日期 2026-10-22。原阶段执行计划曾先于本文创建，完成后已按 Plans 清理规则删除；适用 MVP 正式前端实施，不宣称已有 React 页面、可点击原型、Figma 视觉稿或真实 Supabase 环境。
 >
-> **唯一业务权威**：[需求 spec](../../spec/requirements.md)；资源/字段/RPC/安全路径：[D3 实施设计](./aisencore-mvp-d3-admin-infrastructure-design.md)、[Admin 架构](../../architecture/applications/admin-console.md)、[D2 业务 API](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[F05 精确签名/幂等](./aisencore-f05-f08-contract-compatibility-readiness-design.md)、[M1～M5/F01～F04](./aisencore-f01-f04-security-convergence-design.md)；登录与性能：[Auth/Pro/Admin MFA](./aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)；尚待业务审批：[U03～U11](./aisencore-u03-u11-user-decisions-2026-10-22.md)。出现字段/业务差异时**不按本线框发明新的受保护 API**，必须先对齐上述权威。
+> **唯一业务权威**：[现行 spec](../../spec/requirements.md)；Resource/DataProvider：[Admin 长期架构](../../architecture/applications/admin-console.md)；RPC/错误：[公共接口](../../architecture/backend/api-contract-and-mvp-acceptance.md)；可信 SQL/锁/幂等：[数据库长期合同](../../architecture/database/rpc-security-and-locking-contract.md)和[权益约束](../../architecture/database/entitlements-and-redemption-constraints.md)。D3/D2/F01～F08 仅保留施工与测试步骤，不反向规定业务架构；剩余业务政策见[当前 U 决议](./aisencore-u03-u11-user-decisions-2026-10-22.md)。
 >
 > **用途**：把 D3 的“有哪些 Resource/能做哪些操作”延伸为“在哪里、如何填写、如何知道完成/失败”，供未来 `apps/admin` React-admin / MUI 开发和逐页验收直接使用。尺寸/配色/中文文案/路径均标明为 **UI 实施默认候选**，用户尚未正式确认品牌视觉。本文不更改 API 或增加公共权限实体。
 >

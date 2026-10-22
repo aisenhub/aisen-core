@@ -1,7 +1,10 @@
 # AisenCore MVP 实施设计总计划
 
+> **2026-10-22 用户新批准**：已明确按[owner-batch-decisions.md](../20261022-review-remediation/owner-batch-decisions.md)推荐路线统一确认 **DEC-01～06 全部 A**；现行 spec/architecture 已同步新双参兑换、Edge 小 JSON、G0A/G0B/G3、Free 当前版本指针、直授双模式与优先安全 SQL 身份批量查询。D1/D2/D3/F01～F08 旧示例如不同，以长期架构为准；**G0A 真实高保真视觉签收、U 项实际产品/运维参数与全部开发/测试/部署仍 NOT RUN/BLOCKED**。
+
 - **状态：ACTIVE（D0～D4 设计已完成、F01～F05 仅设计收敛、MVP Admin TOTP MFA 已确认必须交付；全量开发/上线仍 BLOCKED）**。D4 原 43 个逻辑场景 + 12 个 R2 场景全部 NOT RUN，后续新增 12 个 Auth/权益/性能/MFA 待执行场景。**2026-10-22 用户明确选择 U03 公众开放、U04～U11 的部分产品/运营方向，并进一步将 Admin MFA 纳入 MVP**；U05 的 MFA 是否取消不再是待决冲突，但真实备用管理员/设备恢复责任及体验仍待落实。真实 SDK/SQL/云资源/测试未运行。
 - **目的**：作为后续逐项实施设计、交叉评审和开发前验收的统一导航，不替代需求或架构权威。
+- **当前整改衔接**：本文件是既有 MVP 导航，18 项整改的事实核验、变更设计和审批门禁以[20261022-review-remediation](../20261022-review-remediation/master-plan.md)为准。历史 D0/D4 状态仅代表原记录时点，不作为最新业务政策。
 - **需求基线**：[统一需求](../../spec/requirements.md)
 - **架构基线**：[当前主架构](../../architecture/current-main-architecture.md)、[架构索引](../../architecture/README.md)及五类专项。
 - **API/验收基线**：[公共 API 契约与 MVP 验收](../../architecture/backend/api-contract-and-mvp-acceptance.md)：现有 I-01～I-28 与 R-01～R-15，共 43 项逻辑场景。
@@ -202,7 +205,7 @@
 
 ## 8. 设计完成门槛（正式编码前）
 
-- [x] D0：MVP 公共核心功能、职责、非目标和进入 D1 的依赖已核对；U01 Aisenlens 与 U02 R2 已确认，U03～U08 仍按 [D0 用户决策台账](./aisencore-mvp-d0-scope-and-baseline.md#34-用户必须确定的事项建议已批准) 的截止阶段分别决定。
+- [x] D0：MVP 公共核心功能、职责、非目标和进入 D1 的依赖已核对；U01 Aisenlens 与 U02 R2 已确认，U03 公众注册与 U05 单人运营/Admin TOTP MFA 已确认；其余依[现行 U 决议](./aisencore-u03-u11-user-decisions-2026-10-22.md)分清行为已定与参数待定。
 - [x] D1：已形成**可转化为** DDL/迁移、RLS/GRANT、受保护 RPC 锁序与并发用例的具体实施设计；**并非已生成/执行完整 SQL、通过数据库编译或 pgTAP**（证据见 [D1 设计文档](./aisencore-mvp-d1-database-implementation-design.md)）。
 - [x] D2：核心 API 已形成签名/响应/错误/重试/幂等的**实施候选**和测试契约；版本及实际 SQL/Edge/SDK 签名仍须实现前验证，证据见 [D2 设计](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)。
 - [x] D2：首发 Aisenlens 本地优先身份/权益/R2 备份完整接入流程与资源权限边界已形成候选设计；真实备份字段、额度、恢复/离线体验待用户在对应实现前确定。
@@ -226,8 +229,8 @@
 | 2026-10-21 | MVP 实施设计总计划建立 | DRAFT | 仅是计划文档；尚无专题完成、实际测试或部署证据 |
 | 2026-10-21 | D0 与 D1 文档设计 | D1 设计已完成（未经运行验证） | D1 详细计划先于设计正文；12 张候选表结构、RLS/GRANT/事务锁与 Aisenlens R2 边界形成。U03～U08 尚待决定，真实 SQL/接口/测试/部署未执行 |
 | 2026-10-21 | D2 API/Auth/Aisenlens 接入实施设计 | D2 文档设计已完成（未经运行验证） | 先 D2 详细计划再设计正文；M1～M5 API 回归、TOTP/JWT、R2 intent→PUT→complete→GET；U03～U08 待定，新增 U09～U11 产品待定，未部署或测试实际接口 |
-| 2026-10-21 | D3 管理端与基础设施设计 | D3 文档设计已完成（未经运行验证） | 独立阶段计划先行；React-admin/Provider、Supabase/Pages/R2 拓扑、密钥、迁移/恢复、D4 测试输入已形成；没有开发代码或创建云资源，U03～U11 仍待定 |
-| 2026-10-22 | D4 分层测试/跨阶段评审/就绪检查 | **文档设计已完成；正式开发全量关口 BLOCKED** | I-01～I-28、R-01～R-15 共 43 项逐条设计，R2 另有 A-01～A-12；实际测试 0/43。识别 F01～F08，U03～U11 未获确认；未开发/建库/部署 |
+| 2026-10-21 | D3 管理端与基础设施设计 | D3 文档设计已完成（未经运行验证） | 独立阶段计划先行；React-admin/Provider、Supabase/Pages/R2 拓扑、密钥、迁移/恢复、D4 测试输入已形成；没有开发代码或创建云资源；此项仅为当时历史快照，现行 U 决议已确认部分方向 |
+| 2026-10-22 | D4 分层测试/跨阶段评审/就绪检查 | **文档设计已完成；正式开发全量关口 BLOCKED** | I-01～I-28、R-01～R-15 共 43 项逐条设计，R2 另有 A-01～A-12；实际测试 0/43。识别 F01～F08，记录当时尚未覆盖的 U 项；最新方向以后续用户决议为准，未开发/建库/部署 |
 | 2026-10-22 | F01～F04 安全方案设计收敛 | **设计层已收敛；实际安全验收 NOT RUN** | public invoker/private definer、L0～L8、R2 双键提升与 ADM 资格链；更新 D1/D2/D3/数据库与 D4 风险台账。F05～F08/用户决定仍阻断对应真实实现，未运行测试 |
 | 2026-10-22 | F05～F08 接口/幂等/兼容收敛 | **F05 设计合同完成；F06/F07 用户 gate 待决；F08 runbook 就绪但 NOT RUN** | D1 新增 grant 技术指纹候选列（无新增业务表），D2/D3 与权益模型一致，D4 风险状态更新；兼容矩阵、测试证据门槛齐备，真实版本与 API/SQL/R2 仍未验证 |
 | 2026-10-22 | U03～U11 部分用户决定确认 | **历史当时状态：MFA 打扰担忧待评测；后续用户已明确 MFA 入 MVP** | 公开注册、Free/Pro AI/无水印/云备份及 30/365/永久、不自动试用、单人发码、白名单/手动恢复和 Pro 关键复核已记录；100/批、15 分钟与具体额度、邮件和清理期限不冒充确认；实际系统仍 NOT RUN |
