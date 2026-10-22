@@ -1,8 +1,8 @@
 # AisenCore Admin｜全局 UI 设计系统与视觉基线控制规范（UI-G0）
 
-> **权威地位**：AisenCore **Admin Web 专属的全局视觉/布局/组件唯一规范**，支撑 [D3-UI 页面与交互设计](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md)。**业务/权限/路由/字段仍遵循 spec、D3、D3-UI、F01～F08**，本文只规范如何视觉一致地呈现，不审批新接口或运营策略。
+> **权威地位**：AisenCore **Admin Web 专属的全局视觉/布局/组件唯一规范**，支撑 [D3-UI 页面与交互设计](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md)。**业务/权限/Resource 与长期稳定字段遵循 spec、[Admin 长期架构](./admin-console.md)、[公共 API](../backend/api-contract-and-mvp-acceptance.md)，D3-UI/F01～F08 仅用于实施导航与验收**，本文只规范如何视觉一致地呈现，不审批新接口或运营策略。
 >
-> **双状态（2026-10-22）**：**规范正文 = DRAFT FOR VISUAL APPROVAL（已形成文本设计候选）**；**UI-G0 关口 = NOT APPROVED / BLOCKED**。当前尚无真实高保真基准页面、截图/设计画板及运营者明确签收证据，因此**不得开始正式 Admin 前端页面/主题/布局编码**。**本轮文档静态通过不等于 UI-G0 PASS**。详情及检查见 [UI-G0 设计正文](./admin-ui-design-system.md)。
+> **DEC-03 A 已批准的三阶段治理**：G0A=Token 与四类可见高保真代表页+用户真实视觉签收，G0B=G0A 后经另行授权的最小 React-admin/MUI 真实原型，G3=全部最终业务页的浏览器截图/键盘/响应式/安全验收。**当前 G0A 仍 NOT APPROVED / BLOCKED**：没有实际高保真画板和用户视觉签收，**本次批准的是阶段结构而不是视觉样式**，因此不得开始正式 Admin Theme/Layout/页面编码。详情及检查见 [UI-G0 设计正文](./admin-ui-design-system.md)。
 >
 > **技术适用范围**：React-admin + Material UI 的 AisenCore **Admin Web**，默认简体中文、桌面优先、单人运营。Aisenlens 是本地优先独立客户端，可将来复用品牌层，不强制复用此 Web 组件库。正式包版本及 CSS/JS API 以未来锁定的 React-admin/MUI 文档核对。
 >
@@ -16,8 +16,8 @@
 | --- | --- | --- |
 | **L0 品牌和设计 Token** | **本文件**（未来代码只映射一个全局 theme） | 色彩语义、Typography、spacing、shape、层级、断点、动效 |
 | **L1 全局外壳与共享组件** | 本文件组件合同；实施后一个 Admin Layout/Theme/组件层 | AppBar/Sidebar/内容容器、按钮、输入框、表格、确认框、提示 |
-| **L2 页面模板** | 本文件模板合同；[D3-UI](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md) 给每页字段/任务 | 列表/详情/创建编辑/登录 MFA/一次性发行结果/错误与空态 |
-| **L3 具体业务页面** | [D3-UI 页面规格](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md)及可信 API 契约 | 组合共享模板、不得另起一套字体/按钮/间距 |
+| **L2 页面模板** | 本文件模板合同；[Admin 长期架构](./admin-console.md)给 Resource/权限，D3-UI 给候选任务 | 列表/详情/创建编辑/登录 MFA/一次性发行结果/错误与空态 |
+| **L3 具体业务页面** | [Admin 长期架构](./admin-console.md)及[可信 API 契约](../backend/api-contract-and-mvp-acceptance.md) | 组合共享模板、不得另起一套字体/按钮/间距 |
 
 **禁止视觉漂移**：严禁每页自行声明 `font-family`、主题色十六进制、任意新字号、不同表单边框高度或全局媒体查询；也不允许散落大量未审批的 `sx={{...}}` 魔法数。局部 `sx` 仅限布局组合所需且引用 theme token，特殊例外需在此文件中登记“理由、范围、测试、批准者”，优先抽为共享组件/variant。严禁以复制整个 Material UI 组件源码或自建第二套样式框架绕过此规范。
 
@@ -164,18 +164,18 @@ MUI 官方默认 `spacing` 是 8px 比例；实际主题可覆盖，但**UI-G0 �
 D3 技术/Provider 设计         → 已有文档（不代表前端代码）
 D3-UI 页面 IA/线框设计         → 已有文本规格（不代表品牌视觉批准）
           ↓
-UI-G0a：统一 Token/布局/组件规范草案       ← 本文件已建立候选
-UI-G0b：四类代表性高保真参考页面实物 + 多宽度变体（未制作）
-UI-G0c：操作者明确审阅/选择并批准视觉基线（未签收）
-          ↓ 只有三项真实全部 PASS 才可签 UI-G0 = APPROVED
-**Admin 正式前端编码：Theme/Layout/共享模板/业务页面**
+UI-G0A：Token/布局/共享组件候选 + 四类代表高保真宽窄屏 + 真实用户签收
+          ↓ 只有可见证据与批准记录全部 PASS 才能 UI-G0A APPROVED
+UI-G0B：获 G0A 通过后，另行授权少量 React-admin/MUI 真实原型
+          ↓ 原型验证 Token/组件/关键危险状态，不替代其余页面开发
+**Admin 全部首版正式页面实施：共用 Theme/Layout/组件与 Resource**
           ↓
-UI-G3：逐页面真实浏览器视觉/交互/无障碍、权限 E2E 验收
+UI-G3：全部真实页面逐页浏览器视觉/交互/无障碍、权限 E2E 验收
           ↓
 Admin MVP 正式交付
 ```
 
-**禁止绕过的规则**：**在 UI-G0 尚未 APPROVED 时，不得启动 `apps/admin` 的正式主题、布局、共享组件或业务页面开发，也不得因“已有 D3-UI 文档”“MUI 有默认样式”或“某人已经开始写代码”而把 gate 判为 PASS。** 本门槛**只约束 Admin 前端正式编码**，不自动阻断按独立授权可并行的数据库/非前端后端设计/测试。紧急安全修复的例外必须单独记录批准及回归，不能默默绕过。
+**禁止绕过的规则**：**在 UI-G0A 尚未 APPROVED 时，不得启动 `apps/admin` 的正式主题、布局、共享组件或业务页面开发，也不得因“已有 D3-UI 文档”“MUI 有默认样式”或“某人已经开始写代码”而把 gate 判为 PASS。** 本门槛**只约束 Admin 前端正式编码**，不自动阻断按独立授权可并行的数据库/非前端后端设计/测试。紧急安全修复的例外必须单独记录批准及回归，不能默默绕过。
 
 ### 7.2 视觉批准所需的真实证据
 
@@ -197,14 +197,14 @@ Global Theme / Token Version: [未冻结]
 High-fidelity Reference IDs + version: [尚不存在]
 Viewports + states reviewed: [未执行]
 Accessibility / overflow findings: [未验证]
-Open blockers: [品牌视觉、真实参考、高保真/多宽度、用户确认]
+Open blockers: [G0A 品牌视觉、真实参考、高保真/多宽度与真实用户视觉签收]
 Review owner: [项目所有者，未签收]
 Decision: NOT APPROVED
 Approved at / confirmation reference: [无]
 Release to start apps/admin formal frontend code: NO
 ```
 
-**最终状态规则**：规范文件完成 = `SPEC PREPARED`；只有用户见到真实视觉稿、作出明确认可且在批准记录中附上可追溯证据 = `UI-G0 APPROVED`。其余情况包括 `NEEDS REVISION`、`BLOCKED`，**都不能启动 Admin 前端正式编码**。
+**最终状态规则**：规范文件完成 = `SPEC PREPARED`；用户看到真实四类视觉稿、明确认可且批准记录附可追溯证据 = `UI-G0A APPROVED`，此时**只可在另行编码授权后进入 G0B 原型**；G0B 不是 G3 测试，也不能替代正式页面交付。其余情况包括 `NEEDS REVISION`、`BLOCKED`，**都不能启动 Admin 前端正式编码**。
 
 ## 8. UI-G0 真实验收矩阵（全部 NOT RUN）
 
@@ -230,7 +230,7 @@ Release to start apps/admin formal frontend code: NO
 - [D3-UI](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md) 中已有文字线框/路由/页面任务与部分 **候选**像素值继续有效，但凡字体/布局/组件类规则**以本文 UI-G0 全局规范为优先权威**；出现冲突必须在 UI-G0 审核时统一，不允许两种实现并存。
 - D3-UI 中旧的“视觉实施默认候选”不能因本文件被创建就自动提升为已批准 Token。确认用户最终视觉方向之后应回写冻结值、引用标识、对应版号。
 - **安全/功能业务规则不是此规范的可变参数**：TOTP `aal2`、发码一次性明文、M1 最后管理员、M2 套餐冻结、F05 幂等、Pro 30/365/永久、Cloudflare/Supabase/R2 信任边界仍以既有需求/业务文档为准。
-- **真实上线路径**：规范草案 → 四类可见高保真基准参考 → 用户签收 UI-G0 → 正式 Admin Theme/Layout/页面开发 → D3-UI-X01～X18 与 UI-G3 真实浏览器截图/安全测试 → 最终 MVP 交付。
+- **真实上线路径（DEC-03 A）**：全局规范草案 → G0A 四类真实高保真基准/宽窄屏+用户签收 → G0B 少量真实 React-admin/MUI 原型核对 → 正式首版完整页面开发 → D3-UI-X01～X18 与 UI-G3 每页真实浏览器截图/安全测试 → 最终 MVP 交付。
 
 ## 10. 官方参考与非事实边界
 

@@ -1,11 +1,11 @@
 # AisenCore｜2026-10-22 审查问题整改总计划
 
-> 状态：**DRAFT / NOT STARTED**（计划编制完成，整改未开始）  
+> 状态：**DEC-01～06 ALL A APPROVED / SPEC & ARCHITECTURE SYNCED / RUNTIME NOT RUN**（2026-10-22 用户已选全部推荐 A，本文同步权威设计；业务实现、真实测试、U 具体运行参数和 UI-G0A 视觉签收仍阻断生产就绪）
 > 编制日期：2026-10-22  
 > 计划路径：docs/Plans/20261022-review-remediation/master-plan.md  
 > 依据：[审查报告](../../review/20261022.md) · [现行需求](../../spec/requirements.md) · [架构索引](../../architecture/README.md) · [MVP 现有总计划](../aisencore-mvp/aisencore-mvp-implementation-design-master-plan.md) · [TODO](../TODO.md) · [U03～U11 决议](../aisencore-mvp/aisencore-u03-u11-user-decisions-2026-10-22.md)
 
-**执行边界**：本次用户仅要求整理并保存总计划，不构成编写代码、安装依赖、创建数据库/云资源、调用生产接口、提交/推送或部署的授权。未来每一阶段启动实施时均需单独确认权限及必要的业务/架构决策。本计划不代替 spec 和 architecture 的权威规定。
+**执行边界（按当前指令更新）**：项目所有者已授权**开始按本计划进行架构设计与计划文档优化**，包括核对证据、修正文档矛盾、整理已确定的长期合同与候选方案。此授权**不等于**编写业务代码、安装依赖、执行 SQL、创建云资源、调用生产接口、解除 UI-G0、提交/推送或部署；这些阶段仍须另行授权。**DEC-01～06 已经本次会话明确批准全 A**，批准选择与尚需的真实 U 参数见[统一决策记录](./owner-batch-decisions.md)；spec 和 architecture 仍是唯一现行权威。
 
 ## 1. 目标、范围、基线和原则
 
@@ -43,13 +43,15 @@
 
 ## 2. 阶段顺序与依赖关系
 
+> **本轮设计阶段交付**：[S0 问题事实台账](./s0-evidence-and-design-decisions.md) · [候选架构与故障/验收矩阵](./candidate-architecture-and-acceptance-matrices.md) · [文档设计闭环与静态证据](./document-design-closeout-evidence.md) · [项目所有者统一决策包](./owner-batch-decisions.md)。已经确认的长期规则已内联回 spec/architecture，**DEC-01～06 的 A 方案现已按用户明确确认写入现行 spec/architecture**；业务代码与 SQL/R2/Auth/UI 未执行。
+
 | 阶段 | 执行顺序与范围 | 关键交付 | 阻塞/先决 |
 | --- | --- | --- | --- |
 | **S0 基线** | BASE-01：仓库、文档及证据核对 | 问题/文件/现状核对表 | 先行 |
 | **S1 安全优先** | G-02、B-01、B-02、A-04、X-01 | MFA 一致、兑换准入/锁/限流、恢复预案、统一错误矩阵 | 不能放宽现有 aal2/RLS |
-| **S2 数据与权威** | G-01、M-01、B-03、M-02、X-04 | 唯一权威、状态同步、Free/续期/幂等合同 | B-03/M-02 的新 API 或业务模型需批准 |
-| **S3 备份与查询** | G-03、M-03、A-02、X-02 | R2 可信组件归属与补偿、批量身份查询 | 备份是否经 Edge 需先决定 |
-| **S4 Admin/工程** | A-01、A-03、G-04 | 有证据的 UI 门禁、Provider 合同、Git 行尾规范 | UI-G0 变更未经批准不得执行 |
+| **S2 数据与权威** | G-01、M-01、B-03、M-02、X-04 | 唯一权威、状态同步、Free/续期/幂等合同 | DEC-04/05 已批准；待迁移及真实测试 |
+| **S3 备份与查询** | G-03、M-03、A-02、X-02 | R2 可信组件归属与补偿、批量身份查询 | DEC-02 Edge 路线与 DEC-06 SQL 优先已批准；需真实测试 |
+| **S4 Admin/工程** | A-01、A-03、G-04 | 有证据的 UI 门禁、Provider 合同、Git 行尾规范 | DEC-03 分阶段已批准，但 G0A 真正视觉签收仍 BLOCKED |
 | **S5 验证/收尾** | X-03、CLOSE-01 | 实测报告、问题闭环、剩余 TODO | 依实际授权和环境分批完成 |
 | **S6 延期** | MCP-01 | 独立未来候选，不阻塞 MVP | 有具体使用场景后另立计划 |
 
@@ -57,14 +59,16 @@
 
 ## 3. S0 基线校验
 
+> **2026-10-22 已启动事实核验**：基线 main/f2d1f90、初始工作树干净、缺少 .gitattributes、G-02 需求矛盾均已实际观察；18 项分类、证据和 DEC 阻塞见 [S0 事实与设计优化台账](./s0-evidence-and-design-decisions.md)。已进行的仅为文档设计整改，S1～S5 所需运行测试仍全部 NOT RUN。
+
 ### BASE-01｜建立事实、风险类型与证据索引
 
 目标：docs/review/20261022.md、docs/Plans/TODO.md、本计划及涉事文件。
 
-- [ ] 记录当前 branch、HEAD、git status、文件 hash、已有改动；不得覆盖用户未提交工作。
-- [ ] 根据报告每项编号找到现行文件的实际内容，不盲信报告的固定行号或原分支状态。
-- [ ] 标记每项：**已证实的文档冲突 / 静态设计隐患 / 运行缺陷 / 无法复现**；记下变更前行为和证据。
-- [ ] 引用现有测试编号：D4 I/R/A、LCK-01～07、F05-C01～12、V00～07、AUTH-P01～12、D3-UI-X01～18；新增场景采用 REV-* 前缀，不能把已编写测试说明当作测试已通过。
+- [x] 记录当前 branch、HEAD、git status、文件 hash 与起始工作区，并保留未提交工作；证据见 S0/闭环台账。
+- [x] 按 14 项加 4 项横切编号核对现行文档内容与原分支差异，证据见 S0。
+- [x] 标记 DOC/RISK/GATE/PREVENTIVE，明确**未运行**的静态风险不能误作运行缺陷。
+- [x] 维护 D4 I/R/A、LCK-01～07、F05-C01～12、V00～07、AUTH-P01～12、D3-UI-X01～18 和 REV-* 测试入口；**真实运行全部 NOT RUN**。
 - [ ] 每阶段实施前再次核对文件是否已被其他工作修复；允许记录“无须再修改+证据”。
 
 **验收**：14 项及 4 项横切任务各有事实依据、优先级、对应文件和验证入口。
@@ -76,10 +80,10 @@
 **相关文件**：docs/spec/requirements.md；docs/architecture/applications/admin-console.md；docs/architecture/domains/platform-admin-and-account-lifecycle.md；docs/Plans/aisencore-mvp/aisencore-u03-u11-user-decisions-2026-10-22.md；D3/F04/Auth 性能设计。
 
 **方案及步骤**：
-- [ ] 将 requirements §11“暂缓 MFA 诉求冲突”替换为当前事实：Admin TOTP MFA **MVP 必做**；备用恢复身份/责任与演练待落实。
+- [x] requirements §11 的 MFA 政策矛盾已消除：Admin TOTP MFA **MVP 必做**；真实备用恢复与演练仍未实施。
 - [ ] 确认 §6、管理员领域、D3/F04、低请求量 Auth 专项均是“登录 → 官方 TOTP enroll/challenge/verify → aal2 → 当前管理员资格”，并区分普通用户不强制 MFA。
 - [ ] 已验证 aal2 会话中日常读写不额外发 MFA challenge/getUser；JWT 降级、失效或新登录仍执行官方挑战。
-- [ ] 清理现行需求中“2026-10-22 最新决定”式补丁，历史由 Git/决议记录追溯。
+- [x] 清理需求中该轮“最新决定”式补丁；需求保留当前有效真相，历史由 Git/决议记录保管。
 
 **验收 REV-G02**：全文没有“Admin 是否启用 MFA 尚存冲突”；管理员 aal1 无法读写敏感管理 API；不因前端导航重复挑战 TOTP。
 
@@ -87,7 +91,7 @@
 
 **相关文件**：docs/architecture/database/entitlements-and-redemption-constraints.md；domains/billing-and-entitlements.md；backend/api-contract-and-mvp-acceptance.md；database/database-access-and-transactions.md；D1、D2、F01～F04、F05～F08 实施设计。
 
-**建议契约（需 DEC-01 批准）**：将 redeem_code(code) 调整为 redeem_code(product_key, code)，客户端显式声明目标产品；产品标识不可信，必须与真实 code 归属再核对。执行顺序：JWT/blocked → 用户限流状态 → 产品存在/active 与成员 none/active/left/suspended → 码存在与跨产品/撤销/用尽/到期/历史已兑 → 按共同锁序重验并成功核销。未入会 none 可在有效兑换成功后创建 active，失败绝不自动入会。
+**已批准的接口合同（DEC-01 A，尚未部署）**：将 redeem_code(code) 调整为 redeem_code(product_key, code)，客户端显式声明目标产品；产品标识不可信，必须与真实 code 归属再核对。执行顺序：JWT/blocked → 用户限流状态 → 产品存在/active 与成员 none/active/left/suspended → 码存在与跨产品/撤销/用尽/到期/历史已兑 → 按共同锁序重验并成功核销。未入会 none 可在有效兑换成功后创建 active，失败绝不自动入会。
 
 - [ ] 制定成员状态 × 码有效性 × 是否已兑矩阵；对 left/suspended 在**不查码**的情况下独立拒绝，不能让错误消息取决于真实 code 是否存在。
 - [ ] 对新兑换者：未知、跨产品、撤销、过期、用尽统一不可用错误并按既定窗口统计失败；历史已兑的 REDEEM_ALREADY_USED 应保留已确认优先级，但不绕过 blocked/限流及已定成员限制。
@@ -162,7 +166,7 @@
 
 **相关文件**：docs/architecture/domains/billing-and-entitlements.md；architecture/database/entitlements-and-redemption-constraints.md；architecture/backend/api-contract-and-mvp-acceptance.md；D1、D2、Auth/权益性能设计。
 
-**候选（需 DEC-04）**：优先推荐区分“逻辑 Free”与“不可变的具体 Free 版本”，以产品 current/default_free_plan_id（或同等受控映射）切换 v1→v2；历史被引用的 grant/code 所绑定版本不变。成本更小的替代方案是禁止任何 free grant/code 使其可原地修改；仅作为备选，不能同时写为现行决定。
+**已批准 A（DEC-04；待物理实现）**：优先推荐区分“逻辑 Free”与“不可变的具体 Free 版本”，以产品 current/default_free_plan_id（或同等受控映射）切换 v1→v2；历史被引用的 grant/code 所绑定版本不变。成本更小的替代方案是禁止任何 free grant/code 使其可原地修改；仅作为备选，不能同时写为现行决定。
 
 - [ ] 决定“已入会/未入会用户何时采用新版 Free”和“无 Free 配置”的明确语义；不静默修改任何已引用权益。
 - [ ] 在 D1 设计版本引用、复合外键、冻结判定、修改默认指针时的锁及历史追踪。
@@ -187,10 +191,10 @@
 
 ### X-04｜重大设计选择先批准，再作为正式架构写入
 
-- [ ] 本文第 9 节 DEC-01～06 统一记录原约束、建议、替代方案、收益、风险、批准者与受影响文件。
-- [ ] 未批准时按已有需求约束保持不变，先执行不依赖决定的分析与测试设计。
-- [ ] 获批后才同时更新 spec/architecture、D/F 计划与客户端合同；不把“审查者偏好”直接写为用户决策。
-- [ ] 拒绝方案也要写明保持旧方案的验收条件，避免以后审查反复提出同一未批准变更。
+- [x] 本文第 9 节及 [owner 决议](./owner-batch-decisions.md)记录 DEC-01～06 原约束、选定 A、备选、风险、用户批准与受影响文件；实现/实测另列任务。
+- [x] 既有未批准阶段已仅做分析/测试设计；**现已明确批准六项 A，不再把选型作为待决阻塞**。
+- [x] 已依据用户明确批准更新 spec/architecture、D/F 优先覆盖合同及实施/测试 TODO；**实际客户端代码未更改**，旧签名迁移仍待另外开发授权。
+- [x] 已在候选矩阵中保留未选 B/C 的代价与必要验证，仅供回顾与安全回退；不再当作现行分支。
 
 **验收 REV-X04**：每个重大边界调整都有明确的用户确认/记录，而非“默认同意”。
 
@@ -200,10 +204,10 @@
 
 **相关文件**：docs/architecture/current-main-architecture.md；architecture/infrastructure/tech-stack.md；architecture/database/product-data-and-files.md；architecture/applications/local-first.md；F03/D2。
 
-- [ ] 依 DEC-02 选择：**A** 少量非敏感 JSON 经受保护 Edge 接收、Schema 白名单校验后直写 R2；**B** 继续客户端直传 R2，正式加入可信 Cloudflare Worker/窄产品验证层，写清 Edge→Worker 鉴权与 R2 最小权限。
-- [ ] 若 A：明确修改“所有对象字节不经过 Supabase”的例外边界，限定为非敏感、小体积配置；仍禁止视频、用户 AI Key、整个拉片项目经公共 AisenCore 中转。
-- [ ] 若 B：补主架构图、技术栈、密钥/网络调用、权限与配额成本，不保留计划里有组件而主架构里没组件的状态。
-- [ ] 两方案均必须服务端限制大小/白名单/摘要、生成唯一 final key、禁止客户端 final PUT、短期签发并于下载时重新鉴权。
+- [x] **DEC-02 选 A**：仅非敏感小型白名单 JSON 经受保护 Edge 接收、Schema 校验后条件创建 R2 final；**B Worker/staging 为未采用路线，仅历史评审保留**。
+- [x] 已在 spec/主架构/本地优先及技术栈明确批准路线 A 的唯一字节流例外：小型非敏感配置 JSON 可经受保护 Edge；视频、AI Key、整个项目仍禁止中转。
+- [x] **B 不适用（未采用）**：正式拓扑不引入 Cloudflare Worker，所有原 D2/F03 Worker/staging 描述标明为历史施工候选。
+- [ ] **已选路线 A 的真实实现**须强制服务端大小/白名单/摘要、唯一 final 条件写、禁止客户端 final PUT，下载实时鉴权；U09/U10 限制值、真实 R2 SDK 和 DB/R2 对账未实测。
 
 **验收 REV-G03**：主架构、基础设施和 F03/D2 采用同一实际路径，没有“幽灵 Worker”或互相矛盾的字节流规则。
 
@@ -211,7 +215,7 @@
 
 **相关文件**：D2、F03、docs/architecture/database/product-data-and-files.md；backend/api-contract-and-mvp-acceptance.md；D4。
 
-**推荐方案（待 DEC-02）**：对 JSON 字段白名单和大小上限（256 KiB 仅为建议，**未批准**）清晰固定后，受保护 Edge 接收 JSON → 校验 JWT/产品/成员/权益/属主 → 原子检查配额和 request_id → 对 R2 条件创建唯一 final 对象 → DB 标 ready、存字节数与 SHA-256。若选择直传，则保留必要的 staging/final 和条件复制验证组件，不能将不同方案混写。
+**已批准 A 路线（DEC-02；尚未实现）**：对 JSON 字段白名单和大小上限（256 KiB 仅为建议，**未批准**）清晰固定后，受保护 Edge 接收 JSON → 校验 JWT/产品/成员/权益/属主 → 原子检查配额和 request_id → 对 R2 条件创建唯一 final 对象 → DB 标 ready、存字节数与 SHA-256。若选择直传，则保留必要的 staging/final 和条件复制验证组件，不能将不同方案混写。
 
 - [ ] 冻结一个可实现时序与必须的状态（pending、ready、failed、deleting/deleted；verifying 仅有真实需要时才留），去掉无价值的中间环节。
 - [ ] ready 用量 + 未过期 pending/verifying 预留才参与当前可用额度；expired reservation 在查询逻辑中即时失效，避免断网导致永久配额占用。
@@ -249,12 +253,12 @@
 
 **相关文件**：docs/spec/requirements.md；architecture/applications/admin-ui-design-system.md、admin-console.md；D3-UI；docs/development/frontend/admin-design-rules.json 与指南；TODO.md。
 
-**提案（需 DEC-03）**：把 UI-G0 区分为 G0A **视觉 Token、代表性高保真和用户签收** → G0B **获准后的 React-admin + MUI Theme/Mock 真实代码原型** → UI-G3 **全部核心页面浏览器交互/安全/响应式/无障碍验收**。这不是将“无需视觉审批”作为新规则。
+**已批准的分阶段门禁（DEC-03 A，真实 G0A 未签收）**：把 UI-G0 区分为 G0A **视觉 Token、代表性高保真和用户签收** → G0B **获准后的 React-admin + MUI Theme/Mock 真实代码原型** → UI-G3 **全部核心页面浏览器交互/安全/响应式/无障碍验收**。这不是将“无需视觉审批”作为新规则。
 
 - [ ] 将 62 条规则分为安全/可访问性硬要求、共用视觉 Token 与建议性参考，减少重复画板与机械逐屏签收。
 - [ ] 保留四类典型交互：登录/MFA、发码及一次性明文、套餐冻结、用户/成员；利用共用 Shell/表格/表单/对话框抽取可复用样式，而非每个资源独立建系统。
 - [ ] 桌面为主要工作场景，窄屏仍需支持登录/MFA、必要应急操作、可阅读错误态，不能忽略基本键盘/对比度/溢出检查；具体覆盖宽度按批准的 DEC-03 执行。
-- [ ] **用户批准更改之前**，现有 UI-G0 = BLOCKED，禁止 apps/admin 正式 Theme/Layout/业务页面代码；可继续独立且已授权的后端规划。
+- [ ] **分阶段设计已经批准，但 G0A 真实视觉签收之前**，UI-G0A = BLOCKED，禁止 apps/admin 正式 Theme/Layout/业务页面代码；可继续独立且已授权的后端规划。
 - [ ] 获准后在真实浏览器用 MUI/React-admin 官方组件制作少量原型、记录可见截图/版号/明确签收；UI-G3 不能因原型签收而自动 PASS。
 
 **验收 REV-A01**：减少不必要设计劳动但保留单一 Theme、真实视觉质量、危险操作确认、明文安全与无障碍，不依赖“没反对即批准”。
@@ -276,8 +280,8 @@
 
 **相关文件**：仓库根目录 .gitattributes，必要的工程指南。
 
-- [ ] 先根据 git status/diff/attributes 核验真实现状；当前 main 不存在报告所述已产生的 47 文件翻转。
-- [ ] 为 md/json/ts/tsx/sql/yaml 等文本设置稳定 LF；确需 CRLF 的 Windows .bat/.cmd 单独指定；二进制不做文本换行归一。
+- [x] 起始 main 的 git status/diff/attributes 已核验，未观察到报告所述 47 文件翻转。
+- [x] **已创建根目录 .gitattributes**：md/json/ts/tsx/sql/yaml 设 LF，bat/cmd 设 CRLF，常见二进制 binary；仅完成**属性配置**，未执行仓库历史文件的独立 renormalize。
 - [ ] 规范化单独变更，执行有界 git add --renormalize/diff --check 和语义对照；不可与业务规则编辑混为一组。
 - [ ] 未获 Git 提交授权时仅提交建议/本地可检查的更改，不自动 commit、push。
 
@@ -307,16 +311,20 @@
 4. [ ] 完成的长期规则归入 spec/architecture/development；过期重复计划依 Plans/README 的完成与删除规则清理，避免第二套永久真相。
 5. [ ] 代码/数据库/发布状态不因文档计划完成而改变。
 
-## 9. 必须单独批准的六项决策
+> **六项方案批准证明**：2026-10-22 用户确认[owner-batch-decisions.md](./owner-batch-decisions.md)中**全部推荐 A**，不再将本节候选当作仍需项目所有者选择；留存旧分叉仅供兼容/回滚讨论。生产真实 gate 和产品剩余 U 参数仍未解除。
 
-| ID | 决策 | 推荐 | 未批准前必须保持 |
+## 9. 六项独立架构决策（全部推荐 A 已批准；保留原备选评审）
+
+> 六项候选的**接口输入/状态矩阵、幂等与时间语义、R2/DB 故障补偿、Admin 查询/DataProvider 资源映射和验收标准**详见 [候选架构与验收矩阵](./candidate-architecture-and-acceptance-matrices.md)。该附件 A 路线**已获批准但仅为实施与测试细化**，权威以已同步的 spec/architecture 为准。
+
+| ID | 已批准设计决议（均为 A） | 设计内容 | 开发与运行前约束 |
 | --- | --- | --- | --- |
-| **DEC-01** | redeem_code 增加 product_key 及旧接口过渡 | 显式产品，码归属二次检查 | 现行签名/业务按旧合同，先做安全测试与设计 |
-| **DEC-02** | 备份非敏感小 JSON 是否允许经 Edge 中转、限制大小 | 经批准时首选简化 Edge；256 KiB 只是候选 | 当前客户端 R2 直传和可信 final 约束，不能偷删 Worker |
-| **DEC-03** | UI-G0 G0A/G0B 分级、宽度与画板数量优化 | 保留真实视觉签收，最小原型辅助 | 现行 UI-G0 = BLOCKED，禁止正式 Admin 编码 |
-| **DEC-04** | Free 基础套餐版本演化 | 推荐当前 Free 版本指针 + 不可变历史 | 现行冻结语义；不修改已发行权益 |
-| **DEC-05** | 直授“按时长顺延/绝对时段”与幂等指纹替代 | 两种明确操作 + 已存强类型列比较优先 | 不无条件删除技术列/破坏重试 |
-| **DEC-06** | Admin 用户邮箱批量查询采用 SQL RPC/Edge/受限投影 | 有条件优先受限 SQL RPC，真实权限验证 | 不向普通 Data API 暴露 auth.users |
+| **DEC-01** | 兑换双参数已批准 | `redeem_code(product_key, code)` 按声明产品成员先验、真实码归属后验 | 撤销旧单参可探测接口 EXECUTE、更新客户端、REV-B01 与 LCK 实测 |
+| **DEC-02** | 限定小 JSON 经 Edge 已批准 | 受保护 Supabase Edge 校验非敏感备份 JSON 并条件写 R2 final；其他通用文件仍直传 | 白名单/大小值尚待 U09，DB/R2 补偿/物理清理必须实测；不用 Worker |
+| **DEC-03** | G0A/G0B/G3 递进已批准 | 四类代表性高保真和 Token 真签收→获准最小 React-admin 原型→全部页面 G3 | **G0A 当前 NOT APPROVED**，没有真实画板与签收不得启动 Admin 编码 |
+| **DEC-04** | Free 当前不可变版本指针已批准 | `current_free_plan_id` 切换，同产品 Free 家族及审计，不改历史 grant/code | 物理 DDL/迁移、无默认/现有与新用户时点和回滚真实测试 |
+| **DEC-05** | 直授双模式与强类型幂等已批准 | duration 可信顺延/explicit_window 显式时间，保存首次参数和结果，异参冲突 | 保留必要技术证据、安全投影、旧签名兼容与 F05-C 实测 |
+| **DEC-06** | 安全只读 SQL RPC 优先已批准 | 限页 UUID[]/受控精确邮箱、JWT/aal2/管理员当前资格与最小字段 | 真环境权限/性能不安全时自动回退单次 Edge 聚合，不开放 auth.users |
 
 **已经确认无需重新提问**：Admin TOTP MFA 包含在 MVP；单人运营；Aisenlens Free 离线基础能力；云备份只含经允许的非敏感配置/模板；首批 AI Key 由用户本地自持；公众开放是**未来运营目标**，不代表已准许发布。
 

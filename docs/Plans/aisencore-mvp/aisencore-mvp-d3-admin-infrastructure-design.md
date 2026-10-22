@@ -1,6 +1,8 @@
 # D3｜React-admin 与 Supabase/Cloudflare 基础设施实施设计
 
-> **状态：设计候选，未开发、未安装、未配置、未部署。** 本文为 D3 保留的实施设计，完成的执行清单已删除；业务唯一权威为[现行需求](../../spec/requirements.md)，逻辑规则看 [Admin 架构](../../architecture/applications/admin-console.md)、[D1 数据与安全设计](./aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/R2 设计](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)。U01 Aisenlens 本地优先、U02 首批 R2 备份已确认；U03～U11 仍未确认。
+> **D3 已批准方案覆盖（DEC-01～06 A）**：成员邮箱安全批量查询优先真实隔离测试证明的受限 SQL RPC，失败可直接改用已批准 Edge 单请求批量聚合；Admin React-admin 产品/套餐标准 create/update 继续走安全单次 RPC，Free 版本切换/两模式直授/发码为显式安全命令；Aisenlens 小 JSON 备份由受保护 Edge 校验并条件创建 R2 final，**不再按旧阶段 staging/Worker/通用直传 JSON 施工**。Admin **G0A 高保真四类基准+用户实际签收仍 BLOCKED**，通过后才可按单独开发许可进入 G0B 最小 React-admin 原型，再实现页面、运行 G3。D3 旧声明均以[现行 Admin 架构](../../architecture/applications/admin-console.md)、[主架构](../../architecture/current-main-architecture.md)和[UI-G0](../../architecture/applications/admin-ui-design-system.md)覆盖；部署、代码、测试 NOT RUN。
+
+> **状态：设计候选，未开发、未安装、未配置、未部署。** 本文为 D3 保留的实施设计，完成的执行清单已删除；业务唯一权威为[现行需求](../../spec/requirements.md)，逻辑规则看 [Admin 架构](../../architecture/applications/admin-console.md)、[D1 数据与安全设计](./aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/R2 设计](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)。U01 Aisenlens 本地优先、U02 首批 R2 备份、U03 公众注册、U05 单人运营与 Admin TOTP MFA 已确认，其余具体参数依[当前用户决议](./aisencore-u03-u11-user-decisions-2026-10-22.md)待确认。
 >
 > **F01～F04 安全收敛修订（2026-10-22）**：实施时按 [F01～F04 安全收敛方案](./aisencore-f01-f04-security-convergence-design.md) 使用 public `SECURITY INVOKER` / private `SECURITY DEFINER` 最小内核、统一 L0～L8 锁序、暂存/最终 R2 双键，以及 Auth Admin 先原 JWT+`aal2`+当前资格再高权限读取。本 D3 页面、资源及部署说明不代表真实实现已经通过验证。
 >
@@ -183,4 +185,4 @@ PR / feature branch
 
 ## 8. D3 阶段退出及尚待真实验证
 
-**文档设计交付**：管理资源/Provider/高风险交互、三环境/密钥/R2 服务/迁移发布/恢复及 D4 测试门槛均具体化。**未交付任何代码、SQL migrations、真实 Supabase/Cloudflare 配置或已运行测试**。D1/D2 都尚未实现，U03～U11 仍未决。下一步 D4 仍必须先制定自己的阶段计划；任何实际开发/资源变更须按用户单独授权执行。
+**文档设计交付**：管理资源/Provider/高风险交互、三环境/密钥/R2 服务/迁移发布/恢复及 D4 测试门槛均具体化。**未交付任何代码、SQL migrations、真实 Supabase/Cloudflare 配置或已运行测试**。D1/D2 都尚未实现，U03～U11 仍有未落实的产品参数与运行验收（但已确认方向不再标未决）。下一步 D4 仍必须先制定自己的阶段计划；任何实际开发/资源变更须按用户单独授权执行。

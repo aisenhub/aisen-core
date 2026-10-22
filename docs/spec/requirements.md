@@ -41,8 +41,8 @@
 - 账号已认证不等于获得任何产品 Pro 权益，也不等于具备 Admin 管理权限。授权必须按用户、产品和具体操作核验。
 - **产品成员 API 最小原则**：首次合法使用需登录的产品服务时按需幂等创建成员；可信 SaaS 后端用现有用户 JWT 代用户调用公共接口，纯本地客户端可直接以本人 JWT 调用。状态查询无副作用，云端受保护的关键操作由可信服务端复核，客户端状态缓存不作为最终授权证明；不预建独立授权 Token、通用 API 网关或复杂缓存。详见[公共 API MVP 与 SaaS 接入](../architecture/backend/public-api-and-saas-integration.md)。
 - **统一用户 MVP 安全与会话**：必须避免普通用户读取/修改他人资料；成员变更和最小审计不可出现部分成功；管理员权限需可信、可及时撤销；产品级封禁与全局限制相互独立；邮箱确认和密码找回需可靠，跨 SaaS 不强求共享登录态。具体隔离与事务方案见[数据库权限](../architecture/database/database-access-and-transactions.md)，平台限制见[账号生命周期](../architecture/domains/platform-admin-and-account-lifecycle.md)，接口错误/验收见[API 契约](../architecture/backend/api-contract-and-mvp-acceptance.md)。
-- **首版低请求量身份认证**：Supabase Auth SDK 统一维护登录/会话/必要的自动刷新；**不得每次页面/点击都联网 `getUser()`**，优先复用当前有效会话和经可信验证的 JWT。普通用户**不强制 TOTP MFA**；JWT 仅证明身份，不将缓存 Pro/管理员角色作为当前授权。实际 Auth/数据库/Edge 免费配额和令牌新鲜度需在真实环境取证，详见[Auth/Pro/Admin 优化方案](../Plans/aisencore-mvp/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)。
-- **BaaS/计量 MVP 原则（2026-10-22）**：复用 Supabase 原生 Auth、PostgREST/RLS/可信 PostgreSQL RPC 和少量必要 Edge，**首版不新增 Redis、独立公共服务器、公共积分余额/通用消费 RPC 或 AisenCore AI 网关**。未来产品真有可扣减额度时，必须由产品可信服务**决定费用、验证请求主体及属主**，在受保护数据库事务内做正数/边界校验、并发扣减/预留、幂等与必要审计；绝不授权前端直写余额/权益。Supabase Free 的 Unlimited Data API Requests **并不等于数据库算力、流量和 Edge 用量无限**，真实性能和成本需按计划单独验收。详见[外部技术建议适用性评审与安全检查清单](../Plans/aisencore-mvp/aisencore-mvp-baas-quota-security-lessons.md)。
+- **首版低请求量身份认证**：Supabase Auth SDK 统一维护登录/会话/必要的自动刷新；**不得每次页面/点击都联网 `getUser()`**，优先复用当前有效会话和经可信验证的 JWT。普通用户**不强制 TOTP MFA**；JWT 仅证明身份，不将缓存 Pro/管理员角色作为当前授权。实际 Auth/数据库/Edge 免费配额和令牌新鲜度需在真实环境取证，长期信任边界见[多 SaaS 会话架构](../architecture/applications/auth-and-multi-saas-sessions.md)及[管理员领域](../architecture/domains/platform-admin-and-account-lifecycle.md)；测试排程留在 Plans。
+- **BaaS/计量 MVP 原则**：复用 Supabase 原生 Auth、PostgREST/RLS/可信 PostgreSQL RPC 和少量必要 Edge，**首版不新增 Redis、独立公共服务器、公共积分余额/通用消费 RPC 或 AisenCore AI 网关**。未来产品真有可扣减额度时，必须由产品可信服务**决定费用、验证请求主体及属主**，在受保护数据库事务内做正数/边界校验、并发扣减/预留、幂等与必要审计；绝不授权前端直写余额/权益。Supabase Free 的 Unlimited Data API Requests **并不等于数据库算力、流量和 Edge 用量无限**，真实性能和成本需按计划单独验收。长期约束见[权益领域](../architecture/domains/billing-and-entitlements.md)、[可信事务](../architecture/database/database-access-and-transactions.md)。
 
 ### 统一产品成员规则
 
@@ -51,6 +51,12 @@
 - 用户主动退出后不能因为登录自动恢复，只能主动确认重新加入；封禁后仅可信管理员能够解除，重复登录、兑换与支付不得绕过限制。产品停用不批量改变成员或会员记录。
 - **退出与删除分离**：退出不自动删除业务数据或本地文件、不撤销历史权益、不取消自动续费、不退款；原授权有效期和试用期自然流逝，重新加入后根据原授权、现存数据和当前权限判断。
 - 公共平台负责产品成员资格，各 SaaS 负责自身项目、任务、协作权限与业务数据。当前成员状态由公共成员关系记录保存，成功的关键状态变更以独立事件记录做最小审计，**不通过事件重放计算当前成员状态**。关键变更与审计需共同成功或共同失败；具体机制见[数据库约束](../architecture/database/database-constraints-and-audit.md)，状态规则见[成员生命周期](../architecture/domains/membership-lifecycle.md)。
+
+### 已批准的兑换与管理员最小变更合同
+
+- **兑换接口与错误隔离（DEC-01 已批准 A）**：正式公开接口为 `redeem_code(product_key, code)`；目标产品是用户声明而非权限依据。服务端先验证身份、全局限制、限流、声明产品和其成员 `left/suspended` 状态，再检查码；声明产品与真实码归属必须一致，无效/跨产品/撤销/过期/用尽统一返回 `REDEEM_CODE_INVALID`，不得向不可兑换成员泄露码有效性。历史单参数 `redeem_code(code)` **仅为迁移时需清点和关闭的旧入口**，不得继续对公众提供可探测旁路。真实锁序、错误响应见[API 契约](../architecture/backend/api-contract-and-mvp-acceptance.md)。
+- **管理直授与幂等（DEC-05 已批准 A）**：管理员人工授权可选**互斥的固定 `duration_days` 同套餐顺延**或**显式 `starts_at/ends_at`（含明确永久）**，不以省略结束字段偷偷发永久权益。可信端锁内计算并持久化首次请求的规范语义和时段；同管理员 `request_id`、相同参数只返回原授权，异参稳定返回冲突。技术元数据与兑换码哈希不得暴露到普通读取。
+- **批量身份查询（DEC-06 已批准 A）**：Admin 用户/成员的有限 UUID 本页邮箱补全及受控精确邮箱搜索优先使用经隔离测试证明安全的受限只读 PostgreSQL RPC；若 Auth 权限/性能不满足则按**已批准的技术回退**改为单次受保护 Edge 批量聚合，不使用高权限密钥下发客户端，不保证未经测量的延迟值。
 
 ## 4. 产品权益与 Pro 在线校验
 
@@ -75,6 +81,8 @@
 
 **Aisenlens MVP 性能与体验决议**：采用**事件驱动的 Pro 按需复核、相同身份/产品的并发请求去重**，不安排全在线用户固定每 15 分钟轮询，也不每次 UI 点击重查。**最近成功校验 15 分钟以内**仍是**待真实验证的本地新鲜度候选值**，不是离线 Pro 许可证、不是 JWT 生存期，也不能替代新的云备份签发/确认/下载等可信服务端实时授权。启动时本地 Free 不必等待在线 Pro 判断才能进入；未来是否增加只读聚合权益快照为独立 API 设计候选，不自动改变现有 `check_access` 逻辑合同。
 
+**Free 版本化（DEC-04 已批准 A）**：产品维护受控的当前 Free 套餐版本引用（逻辑字段 `current_free_plan_id`），只用于计算**评估时**的默认 Free 能力；Free 版本的实际权益字段冻结，切换默认指针不重写历史授权/兑换码的 `plan_id`，不创建默认 Free grant。不存在可用指针时 Free 附加能力/额度默认为空/0。Aisenlens 不登录即可使用的本地基础 Free 工作流不受公共服务器可用性影响。具体复合外键、受控切换和审计按[权益架构](../architecture/domains/billing-and-entitlements.md)。
+
 ## 5. 兑换码优先、分阶段支付与轻量统一计费
 
 - 多产品**共享必要的订单、支付、订阅生命周期与权益同步逻辑**；各产品分别定义套餐、价格和会员范围，绝不自动跨产品共享 Pro。
@@ -93,14 +101,14 @@
 - **已选框架**：[React-admin](https://github.com/marmelab/react-admin)（Marmelab 开源核心）。只为**本人或少数可信管理员**提供平台公共管理能力；不预先设计各 SaaS 分别运营的复杂后台和权限体系。
 - **首要明确的管理操作**：管理员**创建 AisenCore 自有兑换码**，由平台所有者人工分发；具体批量生成、状态查看、撤销权限与操作记录根据实施需要明确，不提前设计复杂运营权限。
 - **运营方式已确认**：项目只有一名实际运营者，日常 Admin 和人工发码均由其本人承担；首批以小批次、单次兑换、固定时长码为主，**100 个/批仅为待实测及批准的候选上限**。希望保留主管理员和备用恢复能力，但备用身份/负责主体未定。
-- **MVP 已明确纳入管理员 TOTP MFA（2026-10-22 最新决定）**：必须实现首次因素注册、必要的登录 challenge/verify、取得 `aal2` JWT、真实管理员资格检查，以及设备遗失/会话失效时的受控恢复和拒绝路径。**不要求每次管理页面切换或业务查询重新输入 TOTP 或额外访问 Auth MFA 服务器**：管理 Data API/RPC 在原请求中从经验证的 JWT 检查 `aal2` 和当前管理员名册、blocked；UI 短期资格缓存仅供导航，不构成授权。会话降级、过期或新登录时再执行必要 MFA 流程。单人运营的备用恢复真实人选仍待定；必须实测 [Admin/普通用户性能与 MFA 方案](../Plans/aisencore-mvp/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md) 的 AUTH-P01～P12，不能以此降低高权限服务端鉴权。
+- **MVP 已明确纳入管理员 TOTP MFA**：必须实现首次因素注册、必要的登录 challenge/verify、取得 `aal2` JWT、真实管理员资格检查，以及设备遗失/会话失效时的受控恢复和拒绝路径。**不要求每次管理页面切换或业务查询重新输入 TOTP 或额外访问 Auth MFA 服务器**：管理 Data API/RPC 在原请求中从经验证的 JWT 检查 `aal2` 和当前管理员名册、blocked；UI 短期资格缓存仅供导航，不构成授权。会话降级、过期或新登录时再执行必要 MFA 流程。单人运营的备用恢复真实人选仍待定；必须在隔离环境按 AUTH-P01～P12 真实验证，不能以此降低高权限服务端鉴权。
 - **完全遵循 React-admin 默认技术栈**：React、TypeScript/TSX、`ra-core` / `ra-ui-materialui`、Material UI、Emotion/MUI Theme、React Router、TanStack Query、React Hook Form、React-admin i18n；优先采用官方推荐的 Vite 构建方式。避免再叠加平行完整 UI、路由、表单、缓存或状态管理框架。
 - **已选网站部署**：Cloudflare Pages；源代码采用 GitHub / Git 管理。版本、主题裁剪、域名、Pages 仓库接入和构建发布设置以后实施时决定。
 - Admin 是前端管理界面，**不是** Supabase、轻量计费服务或各产品业务后端的替代品；React-admin 的选择也**不强制**其它 SaaS 产品使用 React。
 - Admin 列表读取采用 PostgreSQL RLS 保护的 PostgREST Data API，写操作经受保护管理 RPC；可评估 `ra-supabase` 的兼容性但不提前锁定包版本，详见[Admin 专项](../architecture/applications/admin-console.md)。
 - Supabase Auth 用户管理、人工改动别人的会员权益、退款等**高权限操作必须经过可信服务端授权接口**；不能因为登录成功就允许管理所有用户，也不能在浏览器使用 Supabase `service_role` / secret key。
-- **新增 D3-UI 页面详细设计阶段（2026-10-22）**：MVP Admin 必须不仅有 Resource/Provider，还应按 [D3-UI 页面/布局/交互规格](../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md) 完成核心页面、导航、响应式/可访问性、低打扰 TOTP MFA、兑换码首次明文、套餐冻结、危险操作和故障状态。**D3-UI 文本线框/候选路由已形成，但不是实际 React 页面或已完成 UI 视觉稿**；最终品牌颜色/Logo、细分权限与真正需求外的高级报表不自动纳入，正式开发还需对接 D3/F05 API 权威并运行 D3-UI-X01～X18。
-- **UI-G0 全局视觉硬门槛（2026-10-22 新决定）**：Admin 正式前端**任何主题/布局/共享组件/业务页面编码之前**，必须先以 [Admin 全局 UI 设计系统唯一规范](../architecture/applications/admin-ui-design-system.md) 统一**字体字号/语义颜色/8px 间距/页面 Shell/断点/按钮/表格/表单/对话框/状态及模板**，完成 **登录/MFA、兑换码、套餐、用户/成员**四类高保真参考页面及宽窄屏视觉评审，并取得用户**明确签收和可追溯版本**；未通过即 `UI-G0 NOT APPROVED / BLOCKED`，**不得开始正式 Admin 前端编码**，不能以现有 D3-UI 文字线框或 MUI 默认主题替代。UI-G0 通过后也要按 D3-UI 和 UI-G3 进行真实浏览器截图、组件一致性、无障碍与安全测试，不能把规范文本完成当页面交付。
+- **Admin 页面与交互要求**：MVP Admin 不得只有 Resource/Provider；应按[Admin 长期架构](../architecture/applications/admin-console.md)和[全局 UI 设计系统](../architecture/applications/admin-ui-design-system.md)完成核心页面、导航、响应式/无障碍、低打扰 TOTP、一次性兑换码明文、套餐冻结、危险操作与错误状态。现有线框/候选路由不等于真实前端或高保真签收；具体实现依据现行 API 运行 D3-UI-X01～X18，不自动扩入新业务或未批准视觉值。
+- **UI-G0 全局视觉硬门槛**：Admin 正式前端**任何主题/布局/共享组件/业务页面编码之前**，必须先以 [Admin 全局 UI 设计系统唯一规范](../architecture/applications/admin-ui-design-system.md) 统一**字体字号/语义颜色/8px 间距/页面 Shell/断点/按钮/表格/表单/对话框/状态及模板**，完成 **登录/MFA、兑换码、套餐、用户/成员**四类高保真参考页面及宽窄屏视觉评审，并取得用户**明确签收和可追溯版本**；未通过即 `UI-G0 NOT APPROVED / BLOCKED`，**不得开始正式 Admin 前端编码**，不能以现有 D3-UI 文字线框或 MUI 默认主题替代。UI-G0 通过后也要按 D3-UI 和 UI-G3 进行真实浏览器截图、组件一致性、无障碍与安全测试，不能把规范文本完成当页面交付。
 
 ## 7. 公共后端、数据库与云端部署技术
 
@@ -133,7 +141,7 @@
 2. 使用第三方大模型时，**客户端使用用户自行配置的密钥直接请求其选择的 AI 提供方**；分析所需输入发送到**第三方模型服务**、模型输出直接返回客户端，不通过平台 AI 代理。不得误称任何分析输入都不曾发送给外部服务。
 3. 本地设置及拉片模板的**部分文本内容**可按用户明确操作备份到 R2，并供用户在其他设备恢复。**视频、项目数据、AI 结果、API Key、Token 等秘密不进入备份**；实际可备份字段以后按客户端明确划定。
 4. 配置备份**不要求客户端端到端加密**，运营方可按授权访问明文配置；但数据必须**私有、受访问控制并经加密传输**，不是公开文件。
-5. 备份和恢复时，客户端在取得必要的受限授权后**直接与 R2 传输文件字节，不由 Supabase 或公共后端中转**。服务端可负责必要授权和最小备份索引/对象元数据。
+5. **私有文件通常由客户端与 R2 直接传输字节**；**仅 Aisenlens 用户主动选择的、小体积、服务端白名单验证的非敏感配置/模板 JSON 备份（DEC-02 已批准 A）**例外：客户端经 JWT 授权将受限 JSON 发送给 Supabase Edge Function，Edge 校验 schema、字节数/摘要、属主和当前权益，经可信 R2 凭据条件创建不可覆盖的 final 对象，数据库原子预留/ready 与跨 R2 失败补偿分别处理。原始视频、项目数据、AI 结果、API Key/Token 等严禁通过此例外上传；其他大文件/普通私有文件仍按直接 R2 传输规则。此例外不意味着 Supabase 与 R2 可以提供跨系统 ACID。
 6. **私人备份与任何未来分享能力完全分离**。分享链接、配置广场、模板广场尚未确认开发；若未来实现，只能由用户主动发布另一个可分享的副本，不能公开完整私人备份。
 7. 本地拉片的 Pro 使用采用**启动在线校验 + 关键操作时合理复核**；已启动的纯本地操作遇到短暂断网可完成，但无法可信校验时不得开启新的需验证 Pro 操作；**最近一次校验的 15 分钟缓存为待运行测试的候选值**，不适用于新 R2 签名等云操作。备份恢复已决定手动选版本、预览差异、确认后替换选中配置类别；配额、版本数量和文件目录仍待确定。
 
@@ -143,6 +151,8 @@
 - **Pro**：增加使用第三方模型进行的 **AI 分析功能**、**视频导出无水印**及**私有云备份**。功能键 `features` 与数值/存储上限 `limits` **分开设计**；确切字段名、数值、定价仍由实际 Aisenlens 功能接入时确定。AI 分析继续遵守**客户端使用用户自带 API Key 直连第三方 AI 服务**，AisenCore 不代理视频/AI 输出/密钥；若改成平台承担 AI 成本须另行审批。
 - **私有备份**：仅用户主动指定、由 Aisenlens 实际定义的**非敏感平台配置参数与允许的模板文本字段白名单**；其余内容不备份，尤其视频、项目/时间轴、AI 输出与 API Key/Token。**手动选择备份版本、预览差异、确认后替换选中配置类别**；版本数、留存期限和实际字段 schema 待定。
 - **账号注销**：人工核验、受控清理并允许必要的合法留存例外；申请入口、保留项目、删除期限与通知责任仍须公开上线前明确。
+
+**Admin 视觉审批流程（DEC-03 已批准 A）**：UI-G0A 必须先准备统一 Token、登录/MFA、兑换码一次明文、套餐及用户/成员四类**可见的高保真**基准和宽窄屏参考，并由项目所有者**在看到实际画面后签收**；只有 G0A 真实通过，才能按另行开发授权用少量 React-admin/MUI 真实代码进入 G0B 参考原型，再经 UI-G3 对全部真实页面做响应式、键盘/无障碍、视觉和安全验收。**本次批准分阶段策略不等于 UI-G0A 视觉签收，未签收不得编码。** 详见[Admin UI 设计系统](../architecture/applications/admin-ui-design-system.md)。
 
 ## 10. 数据迁移与长期演进
 
@@ -158,8 +168,8 @@
 3. **权益计量**：Aisenlens Free/Pro 类别已定，**实际能力字段**、数量与云备份配额/统计周期/超限处理、存储对象数、到期处理仍待定。
 4. **登录体验及成员接口**：公众可注册及统一品牌/自定义 SMTP 已定；生产域名、供应商、回调、反滥用措施、真实注销申请通道及具体数据保留/删除期限待定。
 5. **本地 Pro**：关键操作复核和已启动本地操作断网可完成已定；15 分钟只是需要真实测试的候选窗口，撤权重验、设备体验仍待确认。
-6. **Admin 接入**：单人运营已定，备用恢复身份/实际责任未定；**MFA 暂缓诉求与既有强制 `aal2` 规则存在未关闭的安全评审冲突**，不能直接关闭服务端校验；另外仍待实际 Provider/Pages 部署细节。
-7. **数据与文件拓扑**：单个或多个 Supabase Project、各产品业务数据逻辑/物理隔离、R2 Bucket/对象组织、文件访问与删除/恢复规则。
+6. **Admin 接入**：一名实际运营者已确认，**Admin TOTP MFA 为 MVP 必做，管理读取和写入必须要求当前 `aal2` 与管理员资格**；有效会话不因导航或日常操作重复挑战 TOTP。备用恢复责任主体、独立备用因素及生产丢设备演练尚待落实；Provider/Pages 部署细节亦待确认。普通用户不强制 TOTP。
+7. **数据与文件拓扑**：Aisenlens 小型非敏感 JSON 经受保护 Supabase Edge 校验并写 R2 的路径**已批准**；单个或多个 Supabase Project、产品库隔离、R2 Bucket/对象组织、允许配置字段与上限、对象删除/恢复策略仍待实施验证或具体产品确认。
 8. **拉片配置**：手动选版本、预览差异、替换所选类别已确定；**具体配置字段白名单**、版本上限/保留时间、R2 元数据与配额仍待产品实现前确定，分享链接/模板广场仍未批准。
 9. **可靠迁移**：自托管目标、迁移范围、数据一致性验证、备份恢复与验收指标。
 

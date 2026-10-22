@@ -1,5 +1,7 @@
 # D1｜AisenCore MVP PostgreSQL 物理模型、RLS 与事务实施设计
 
+> **D1 数据库实施规格同步（DEC-01/04/05/06 均选 A，已批准但未建库）**：公开用户兑换接口改为 `redeem_code(product_key, code)`，先按用户声明产品/成员检查后按真实码校验，并据已发行码绑定套餐不可变的约束在 L5 后取得 L6，禁止倒序补取 L4；产品增加当前 Free 家族不可变版本指针 `current_free_plan_id`；管理员直授采用 duration/explicit_window 两模式，首次语义与计算结果受保护持久化、同键不同参数拒绝；Admin 邮箱批量查询先验证极限权 SQL RPC（安全不可行则已批准 Edge 批量回退）。下文旧单参、`admin_request_fingerprint` 必选列、原地可改 Free 等物理草图均只是**被后续决议覆盖的历史候选**，实施前依[数据库长期约束](../../architecture/database/entitlements-and-redemption-constraints.md)和[受保护锁方案](../../architecture/database/rpc-security-and-locking-contract.md)重拟迁移，SQL/pgTAP NOT RUN。
+
 > **状态：D1 实施设计候选，待后续迁移代码/真实环境与 pgTAP 验证。本文不是已执行的 SQL、已部署权限或新增业务规则。**
 >
 > **F01/F02 安全收敛补订（2026-10-22）**：关于公开 RPC 与扩权权限、统一锁序及核销分支，以下候选以 [F01～F04 安全设计收敛 §2～3](./aisencore-f01-f04-security-convergence-design.md) 的明确方案为准：**public 只允许 SECURITY INVOKER 薄外壳，private 最小 SECURITY DEFINER 内核；所有管理写函数先 L0，敏感本人操作使用 L1，产品/计划/成员/码/续期严格按 L0～L8 顺序**。不改变 M1～M5 业务含义，真实 SQL/RLS/pgTAP 未测试。
@@ -18,7 +20,7 @@
 - **本 D1 提出供实现采用的具体化**：列类型、PK/FK、CHECK/索引、`redemption_code_batches` 最小幂等辅助表、私有函数及带实际顺序的锁策略。属于**实施设计候选**；发现其影响已定业务语义或 Supabase 权限约束时先回到对应权威确认，不自行发明产品功能。
 - **D2 留待锁定**：可调用 RPC 的确切 SQL 签名、SQLSTATE/HTTP 映射、`CheckAccess` 输出、`CreateCodes` 明文首次响应的网络重试协议、Auth JWT/邮件流程和 R2 凭证签发入口。
 - **Aisenlens 已确认**：U01 首发是本地优先 Aisenlens，U02 首批必须有 R2 文件/配置备份；**不等于**允许上传视频、AI 结果、项目数据库、API Key 或任何默认公开分享，亦不等于已选备份字段、容量或文件保留时间。
-- **上线前仍须由用户决定**：U03～U08（发布范围、真实套餐/额度、初始管理员、域名/发信、注销政策、发码规模）。D1 不预设具体实际值。
+- **上线前仍须确认具体参数与落实运维**：U03 公开注册目标、U05 单人运营与 Admin TOTP MFA 已确认；U04/U06～U08 的真实套餐额度、管理员恢复、域名/发信、注销政策、发码规模仍有未定细项，见 [U03～U11 当前决议](./aisencore-u03-u11-user-decisions-2026-10-22.md)。D1 不预设具体数值。
 
 ## 1. Schema、执行角色及 ID/时间通则
 
@@ -298,7 +300,7 @@ CREATE POLICY admin_codes_read ON public.redemption_codes FOR SELECT
 | --- | --- | --- |
 | U01 | Aisenlens 首发，本地优先 | **已确认**；首条对接以本地客户端本人 JWT 和私有备份为准 |
 | U02 | R2 文件/配置备份首批必须交付 | **已确认**；D2/D3 必须有可信签发、备份元数据及撤权配额方案 |
-| U03 | 内测/公众注册 | **待用户，D3 前**；不阻塞 D1 |
+| U03 | 对公众开放注册 | **方向已确认**；真实防滥用、邮件与生产准入未验收，不阻塞 D1 |
 | U04 | Aisenlens Free/Pro 真实功能键、额度、试用/周期 | **待用户，产品接入/实施前**；公共 schema 不写死套餐值 |
 | U05 | 初始管理员人选、MFA 恢复责任 | **待用户，D3 初始化前**；迁移不硬编码账户 |
 | U06 | 域名、发件服务与回调 | **待用户，D3/上线前**；不阻塞 D1 |

@@ -16,11 +16,15 @@
 | 公共关系数据库 | **PostgreSQL（由 Supabase 托管）** | 公共结构化数据，例如用户关联、产品、权益和必要的计费状态 | 无需再为公共核心额外采购/选择另一款数据库 |
 | 统一身份认证 | **Supabase Auth** | 全平台统一用户身份与会话；各产品权益隔离 | 首版邮箱 + 密码；邮箱确认、找回密码的发信服务正式上线前落实 |
 | 可信数据库接口 | **PostgreSQL 受保护 RPC + PostgREST/RLS** | 状态变更与同事务审计、按权限读取列表 | 事务/权限边界见数据库专项 |
-| 需秘密的辅助函数 | **Supabase Edge Functions** | Auth Admin 查询、后续支付 Webhook/R2 签名 | TypeScript/Deno；不拆分数据库状态事务 |
+| 需秘密的辅助函数 | **Supabase Edge Functions** | 必要 Auth Admin 查询、后续支付 Webhook、R2 签名及 Aisenlens 小型白名单 JSON 可信校验/写入 | TypeScript/Deno；数据库状态/审计仍由受保护 RPC 单事务提交，Edge/R2 跨系统补偿 |
 | 对象存储 | **Cloudflare R2** | 云端用户文件、按需的配置备份等文件本体 | 用户与产品访问控制、对象组织方式后续确定 |
 
 
 **角色区别**：GitHub 存代码；Cloudflare Pages 部署/交付 **Admin 前端**；Supabase 托管 **PostgreSQL 数据库、Auth 与 Edge Functions**；R2 存文件对象。自有兑换码与外部支付订单只提供授权来源，**最终产品级会员权益由公共核心维护**。React-admin 并不等于后端 API 服务器，Pages 不负责替代 PostgreSQL 和可信业务接口。
+
+### 已批准 Aisenlens 小 JSON 备份路线（DEC-02 A；待实施）
+
+项目所有者已批准 **Supabase Edge → Cloudflare R2**：仅由本人主动提交的**小体积、非敏感白名单 JSON 配置备份**进入 Edge，完成 JWT/当前权益/内容 schema/字节数/SHA-256/属主校验、DB 预留和唯一 final 条件创建；ready 确认与 R2 成功不具单事务保障，必须有清理/对账。**通用文件客户端直传边界仍在**，不部署单独 Worker 来处理该类 JSON。实际 R2 SDK 条件写与费用、单对象上限、异常处理须在隔离环境验证；当前尚未实现或创建资源，详见[产品文件架构](../database/product-data-and-files.md)。
 
 ## 2. React-admin 前端：完全遵循默认技术栈
 
@@ -52,10 +56,10 @@
 | 数据库引擎 | Supabase 托管 PostgreSQL | 产品注册、用户与产品关联、会员套餐及权益、必要公共业务记录 |
 | 数据安全 | PostgreSQL 授权与 RLS（按实际访问设计） | 控制普通用户和不同产品的数据可见、可操作范围 |
 | 可信业务变更 | 受保护 PostgreSQL 函数 | 成员、产品、套餐、兑换、管理操作和审计均在单个事务内 |
-| 必须保管密钥 | Supabase Edge Functions（TypeScript / Deno） | Auth Admin 用户检索、未来支付通知和 R2 临时签名 |
+| 必须保管密钥 | Supabase Edge Functions（TypeScript / Deno） | 必要 Auth Admin 查询/回退、未来支付通知、R2 临时签名与 Aisenlens 小 JSON 可信上传 |
 | 对外数据访问 | PostgREST + RLS 读取 / 受保护 RPC 写入 | 已确定读写路径；最终函数签名与兼容版本待实施 |
 
-**数据库 RPC 是公共状态变更与审计的唯一事务载体**。Edge Functions 只承担需要机密凭据的 Auth Admin 查询、未来支付核验/回调、R2 短期授权等辅助入口；不得通过多个独立 Data API 请求拆分状态与审计。Edge Functions 的运行时是 Supabase Edge Runtime（Deno 兼容，TypeScript 优先），不是把 React-admin 部署在 Edge Functions 上。
+**数据库 RPC 是公共状态变更与审计的唯一事务载体**。Edge Functions 承担必须保密的 Auth Admin 查询、未来支付核验/回调、R2 短期授权，及已批准的 Aisenlens 小型非敏感 JSON 内容验证/R2 写入；不得通过多个独立 Data API 请求拆分状态与审计。Edge Functions 的运行时是 Supabase Edge Runtime（Deno 兼容，TypeScript 优先），不是把 React-admin 部署在 Edge Functions 上。
 
 **安全底线**：Supabase 的 `service_role` / secret key、R2 长期访问密钥以及支付服务商的机密密钥只留在可信服务端，**不能嵌入 React-admin、网页或本地客户端**。管理员是否有权限必须经可信端判定；RLS 及接口权限不能简单照搬开放式示例。
 
@@ -78,7 +82,8 @@
    +-- 受保护 PostgreSQL RPC：状态变更和同事务审计
    +-- Edge Functions：Auth Admin 查询、后续支付与 R2 签名
 
- 客户端 ──► 授权签发流程 ──► Cloudflare R2（并列的对象存储）
+ 普通私有文件客户端 ──► 授权签发 ──► Cloudflare R2（客户端直传）
+  Aisenlens 限定配置 JSON ──► 受保护 Supabase Edge ──► R2 final（条件创建）
 
  独立 SaaS A / B / C
    +-- 可接入同一公共身份、权益和计费能力
@@ -87,7 +92,7 @@
 
 **Cloudflare Pages 是 Admin 网站的托管位置，不意味着各产品网站也必须部署在 Pages。** 连接 GitHub 自动构建和部署是后续配置方向，现阶段没有建立仓库连接、生产站点或发布流水线。
 
-**R2 保存文件本体，PostgreSQL 或相应产品业务库保存文件的属主、产品、对象标识和关联记录。** 私有文件需要按用户和产品授权，不能因为放在 R2 就直接开放访问。拉片产品的用户配置备份由客户端在获得受限授权后直接与 R2 传输文件字节，不经 Supabase 中转；视频、AI 结果和用户自己的 AI 密钥仍留在本地。
+**R2 保存文件本体，PostgreSQL 或相应产品业务库保存文件的属主、产品、对象标识和关联记录。** 私有文件需要按用户和产品授权，不能因为放在 R2 就直接开放访问。Aisenlens **小型非敏感配置 JSON** 经受保护 Edge 校验并由服务器写 R2 final，下载恢复可经短期授权由客户端直取 R2；其他普通私有文件仍按直传设计，视频、AI 结果和用户 AI 密钥仍留在本地。
 
 ## 5. 业务范围以领域架构为准
 

@@ -1,5 +1,7 @@
 # D4｜43 项分层测试规格、跨 D0～D3 评审及正式开发就绪结论
 
+> **用户批准 DEC-01～06 A 后增补的运行验收（全部 NOT RUN）**：REV-DEC01-01～08 测左/suspended 先于码探测、跨产品码、旧单参禁用、失败计数/码次数不越界；REV-DEC02-01～08 测 Edge 限体/白名单 JSON、安全 R2 final 条件写、DB pending/ready/孤儿/删除补偿、无客户端写 final；REV-DEC03 测 G0A 四类真实高保真/用户签收、G0B 原型、G3 浏览器多宽度/E2E；REV-DEC04 测 Free v1→v2 指针、现有/新用户下次计算、旧 grant/code 不变、无指针安全默认、回滚审计；REV-DEC05 测双模式互斥/NULL/永久/UTC/同键同参与异参竞争；REV-DEC06 测只读 SQL Auth 最小权限/aal2/分页/UUID 数/性能、失败 Edge 批量回退及缺邮箱降级。**方案批准不是以上任何一项 PASS**，继续遵循[API 验收权威](../../architecture/backend/api-contract-and-mvp-acceptance.md)和[决策记录](../20261022-review-remediation/owner-batch-decisions.md)。
+
 > **阶段性质：设计与静态审查，不是已经执行的测试。** 本文件承接已完成设计阶段的测试规格、风险台账与未验证门槛，执行清单按 Plans 规则清理。本报告中所有案例统一为 **NOT RUN**；本阶段只执行了文档一致性与工作区静态检查。业务预期仅源自 [API 逻辑验收唯一权威](../../architecture/backend/api-contract-and-mvp-acceptance.md)、[现行需求](../../spec/requirements.md) 与已批准[领域/技术架构](../../architecture/README.md)，绝不把候选实现写成已通过。
 >
 > 设计输入：[D0 范围/用户决策](./aisencore-mvp-d0-scope-and-baseline.md)、[D1 物理数据库/可信事务](./aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/Aisenlens](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3 Admin/环境与 R2](./aisencore-mvp-d3-admin-infrastructure-design.md)。
@@ -135,7 +137,7 @@
 | **F04** | **P0 / D1+D2 鉴权/API 负责人** | 仅有 MFA 的 UI gate 不保证 Admin Edge 调用 Auth Admin 前用 caller 身份重验真实名单与 blocked | **DESIGN RESOLVED / RUNTIME NOT VERIFIED**：[F04 信任链](./aisencore-f01-f04-security-convergence-design.md#5-f04管理员-totp当前资格与-auth-admin-密钥链) 固定 JWT/`aal2` → 原 JWT 资格 RPC → 最小权限 Auth Admin 查询，ADM-01～06 未运行 |
 | **F05** | **P1 / D1+D2 字段契约负责人** | 原 D1/D2 发码有效默认、`request_id` 作用域、直接 grant 参数变更和套餐 NULL/PATCH 未固定 | **DESIGN RESOLVED / RUNTIME NOT VERIFIED**：按 [F05 参数/幂等收敛](./aisencore-f05-f08-contract-compatibility-readiness-design.md#2-f05公共-rpc-精确参数和错误幂等语义) 确定 canonical v1、`(created_by,request_id)`、actor-scoped admin grant `source_ref`+辅助指纹、计划全字段提交；真实 SQL/HTTP/PostgREST 未运行 |
 | **F06** | **P1 / D2+D3 产品/运营负责人** | Aisenlens 额度/备份字段/恢复/离线体验需要 U04/U09/U10/U11 的产品政策 | **GATES DEFINED / USER DECISIONS PENDING**：[F06 门槛](./aisencore-f05-f08-contract-compatibility-readiness-design.md#3-f06aisenlens-产品级决策与测试拆分) 已区分固定安全底线和政策后验收；未替用户决定功能键、配额或恢复策略，R2 真实运行仍未验证 |
-| **F07** | **P1 / D3 环境与上线负责人** | U03/U05/U06/U07/U08 未定，且没有真实 Supabase/Pages/R2 环境、管理员 bootstrap、邮件、回滚与灾备演练 | **GATES DEFINED / USER DECISIONS PENDING**：[F07 环境/运营关口](./aisencore-f05-f08-contract-compatibility-readiness-design.md#4-f07生产环境账号恢复发码运营分段准入) 明确谁决定、何时确认和未来证据；不能视为已可部署 |
+| **F07** | **P1 / D3 环境与上线负责人** | U03 公众注册、U05 Admin MFA 方向已确认，U06/U07/U08 仍有待定参数，且没有真实 Supabase/Pages/R2 环境、管理员 bootstrap、邮件、回滚与灾备演练 | **GATES DEFINED / USER DECISIONS PENDING**：[F07 环境/运营关口](./aisencore-f05-f08-contract-compatibility-readiness-design.md#4-f07生产环境账号恢复发码运营分段准入) 明确谁决定、何时确认和未来证据；不能视为已可部署 |
 | **F08** | **P1 / D1/D2 与 D4 测试负责人** | SQL/ACL、JWT/MFA、PostgREST HTTP、SDK/CLI、R2 的真正服务器和库版本未锁且未测 | **VALIDATION PLAN READY / RUNTIME NOT VERIFIED**：[F08 版本矩阵与 V00～V07](./aisencore-f05-f08-contract-compatibility-readiness-design.md#5-f08实际版本发现兼容矩阵与预执行报告) 已准备；真实版本/依赖锁文件/测试日志未取得，且需验证 Supabase 2026-10-30 显式 GRANT 变更 |
 
 ### 6.2 官方参考与未验证边界
@@ -149,7 +151,7 @@
 
 **F05～F08 进一步收敛（2026-10-22）**：已形成 [F05～F08 契约与验证准备](./aisencore-f05-f08-contract-compatibility-readiness-design.md)，更新 D1/D2/D3 和权益/兑换模型。**F05 仅设计已收敛、F06/F07 用户决定关口已明确但实际政策未决、F08 测试方案已准备但真实版本/运行证据未取得**；F01～F04 原设计收敛状态不变，55 项原测试仍 NOT RUN。
 
-**用户新决议（2026-10-22）**：U03 **公众开放注册已确定**；U04、U06～U11 的产品/运营方向已部分获准，剩余具体额度/字段/邮件/保留、管理员实际备用身份等仍待定。U05 用户请求先评测 MFA 体验，**与既定 `aal2` 管理安全门槛有未解决的安全变更冲突**；不得在真实管理端悄然降级。详细参见 [U03～U11 当前决议](./aisencore-u03-u11-user-decisions-2026-10-22.md)。本 D4 既有 43+12 场景仍是**设计，全部未实际执行**，完整开发就绪仍 BLOCKED。
+**用户新决议（2026-10-22）**：U03 **公众开放注册已确定**；U04、U06～U11 的产品/运营方向已部分获准，剩余具体额度/字段/邮件/保留、管理员实际备用身份等仍待定。U05 **Admin TOTP MFA 已明确纳入 MVP**，低打扰会话体验仍须实测；始终保留 `aal2` 与实时管理员资格检查，不得降级。详细参见 [U03～U11 当前决议](./aisencore-u03-u11-user-decisions-2026-10-22.md)。本 D4 既有 43+12 场景仍是**设计，全部未实际执行**，完整开发就绪仍 BLOCKED。
 
 **后续用户明确批准 Admin TOTP MFA 纳入 MVP（同日）**：此前的“先不加入频繁 MFA”现转为**会话内低打扰**要求，而不是要取消管理 `aal2`。已形成 [MVP Auth/权益/MFA 低请求量与验收设计](./aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)。新增 AUTH-P01～P12 共 **12 项待执行用例**，用于用户 Auth SDK 网络调用预算、Pro 权益按需复核、R2 实时授权、Admin TOTP 注册登录/刷新/恢复、常规 Data API 单请求内 RLS/资格校验及 P50/P95。**原 I/R 43 项与 A 12 项仍 NOT RUN，新增 12 项亦 NOT RUN，真实可用性/成本/安全并未测试通过**。
 
@@ -178,7 +180,7 @@
 
 | 文档/分类 | 检查要点 | 本阶段需否修改 |
 | --- | --- | --- |
-| [现行 spec](../../spec/requirements.md) | U01/U02 已确认，U03～U11 未得到新批准；不得改变业务范围或额度 | **无需修改** |
+| [现行 spec](../../spec/requirements.md) | U01/U02、U03 公众注册、U05 MFA/单人运营及 U04/U06～U11 部分方向已确认；具体参数待定，不得自行修改业务范围或额度 | **无需修改** |
 | [domains](../../architecture/domains/README.md) | 成员退出与恢复、管理员保底、码和授权业务不变量继续有效 | **无需修改** |
 | [backend](../../architecture/backend/README.md) | 43 项标准用例和错误模型保持唯一逻辑权威；D4 提出 F01/F02/F04/F05 候选安全审查 | **无需改逻辑权威**，链接可经总计划找到 D4 |
 | [database](../../architecture/database/README.md) | D1 的表/事务设计已明确为候选；必须先解决暴露函数/锁序风险 | **无需直接改规则**，风险在 D4 审查台账 |

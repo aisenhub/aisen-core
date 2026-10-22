@@ -13,13 +13,13 @@
 | 公共准入 | `CheckAccess(product_key, capability?)`（`check_access`） | 用户本人或携带其 JWT 的 SaaS 后端 | RPC | 否 |
 | 本人成员 | `EnsureMembership(product_key)` | 首次合法业务接入 | RPC | 仅无记录时创建 |
 | 本人成员 | `LeaveProduct` / `RejoinProduct` | 本人明确操作 | RPC | 是 |
-| 兑换 | `RedeemCode(code)` | 已登录用户 | RPC | 是 |
+| 兑换 | `RedeemCode(product_key, code)` | 已登录用户 | RPC | 是 |
 | 本人权益查询 | 本人授权/兑换记录 | 已登录用户 | Data API + RLS | 否 |
 | 管理：产品与套餐 | `SetProductStatus`、产品资料维护、`UpsertPlan` | 平台管理员 | RPC（写）/ Data API（读） | 是 |
 | 管理：成员 | `SuspendMembership`、`RestoreMembership` | 平台管理员 | RPC | 是 |
 | 管理：权益与兑换码 | `CreateCodes`、`RevokeCode`、`GrantEntitlement`、`RevokeGrant` | 平台管理员 | RPC | 是 |
 | 管理：账号与管理员 | `BlockAccount` / `UnblockAccount`、`GrantAdmin` / `RevokeAdmin` | 平台管理员 | RPC | 是 |
-| 管理：用户查询 | `AdminFindUser(user_id)` 精确查；`AdminSearchUsers(email?)` 分页列出/限量搜索 | 平台管理员 | Edge Function（Auth Admin API） | 否 |
+| 管理：用户查询 | `AdminFindUser(user_id)` 精确查；`AdminSearchUsers(email?)` 分页列出/限量搜索 | 平台管理员 | 优先受限 PostgreSQL 只读 RPC；安全/性能不成立时单次受保护 Edge 聚合 | 否 |
 | 管理：列表与审计 | 成员、授权、兑换码、事件、审计列表 | 平台管理员 | Data API + 管理员 RLS | 否 |
 
 承载方式的依据见[数据库访问与可信事务](../database/database-access-and-transactions.md#2-执行机制决定)。账号注销首版为人工流程，**不提供**自助注销接口（见[平台管理员与账号生命周期](../domains/platform-admin-and-account-lifecycle.md)）。不同 SaaS 只需对接公共身份/成员/权益契约，各自业务 API 保持独立。
@@ -32,21 +32,38 @@
 
 **统一检查顺序**（唯一权威，针对受保护产品业务）：认证 → 平台账号限制 → 产品存在且 `active` → 当前产品成员 `active` → 所需权益（capability）→ SaaS 自己的具体资源/业务权限 → 产品自身的计量与执行。**不带 capability 的 `CheckAccess` 只判断成员层准入**；带功能键时检查 Free 基础套餐与当前有效授权的布尔并集，带额度键时返回非负上限，`allowed` 表示是否具有正额度，**已用量/是否仍可消耗由 SaaS 自己再判断**。成员/授权历史查询不机械要求 active；用户主动兑换、管理员管理与产品首次 ensure 另按专项规定跳过不适用的检查步骤。前五步由公共函数完成，后两步属于 SaaS。无需为每步单独发请求，同一次可信请求可复用合理的新鲜结果。
 
+### 2.1 错误优先级和拒绝时允许的副作用（X-01）
+
+下表纳入**已批准的 DEC-01 新兑换签名**；设计决定已生效不等于 SQL、负向测试或旧公开入口下线已完成。任何分支不泄露兑换码哈希/明文、其他用户邮箱、管理员名单与内部封禁理由。
+
+| 操作 | 检查顺序与传输结果 | 被拒绝时可保留的副作用 |
+| --- | --- | --- |
+| `CheckAccess` | JWT 无效→401；可信计算时 blocked→产品不可用→none/left/suspended→缺权益，各自 HTTP 200 + `allowed=false/reason`；技术故障→503/5xx | **无**，查询必须无副作用 |
+| `EnsureMembership` | 认证→blocked→产品 active→成员；none 首次合法创建，active 幂等；left/suspended 拒绝 | **无**；只有成功才创建成员和 join 事件 |
+| `LeaveProduct / RejoinProduct` | 认证→blocked→当前成员状态及合法转换；竞争/不合法状态返回冲突 | **无**；成功状态和事件同事务 |
+| `RedeemCode(product_key, code)`（批准合同） | 认证→blocked→本人限流→声明产品 active→**声明产品成员 left/suspended 先于查码一致拒绝**→none/active 才查询码及核对归属；跨产品/未知/撤销/过期/用尽统一失败；声明成员合法后本人已兑优先于随后码失效；技术故障 503/5xx | **仅约定的失败尝试/限流记录**；不写成员、grant、redemption、码次数或成功审计。**不应存在旧单参入口泄露真实码归属的旁路** |
+| 管理 Data API / RPC | JWT→aal2→实时管理员 active + 非 blocked→目标参数和状态；M1 保底冲突为 409 `STATE_CONFLICT` | **无**；不写成功审计 |
+| Admin 身份只读查询 | JWT 真实性→aal2→实时管理员资格→受限 UUID[]/精确邮箱、字段白名单/分页；SQL 不可安全读取时 Edge 聚合，未完整搜索必须标记 `search_incomplete` | **无**，不暴露是否存在未覆盖的用户 |
+
+传输例外固定：`CheckAccess` 业务拒绝为 HTTP 200 + `allowed=false`；`RedeemCode` **可预期**业务拒绝为 HTTP 200 + `ok=false,code`（含限流），不得把未知技术异常吞为业务失败；其他受控写入按 401/403/409/429/503 等稳定业务码映射。数据库写入遵循[受保护 RPC/锁合同](../database/rpc-security-and-locking-contract.md)。DEC-01 已批准，必须同步更新领域/DB/调用方，并真实运行 REV-B01；正式迁移前不可声称风险已在服务端修复。
+
 ## 3. 候选请求与响应语义
 
 - **`EnsureMembership(product_key)`**：返回 `membership_status=active` 与布尔 `created`；已 `left/suspended` 禁止隐式恢复。只在首次真正需登录的合法产品业务中调用，而非注册、登录、支付回调、产品展示或只读查询。
 - **`GetMyProducts()`**：返回本人已关联产品的 `product_key`、`product_status`、`membership_status`，以及当前有效权益摘要（套餐键、`ends_at`）。
 - **`CheckAccess(product_key, capability?)`**：
   - 不带 `capability`：判断能否使用该产品需成员资格的服务；
-  - 带 `capability`：按产品 `free` 基础套餐 + 有效未撤销授权引用的套餐版本，功能取并集、同名额度取最大值；额度键返回 `limit`，`allowed` 只表示上限大于 0，**不替产品判断剩余额度**。无 Free 配置则无额外能力。
+  - 带 `capability`：按该产品受控 `current_free_plan_id` 当前 Free 版本 + 有效未撤销授权引用的原套餐版本，功能取并集、同名额度取最大值；额度键返回 `limit`，`allowed` 只表示上限大于 0，**不替产品判断剩余额度**。无 Free 配置则无额外能力。
   - 返回 `allowed`、稳定 `reason`、`product_status`、`membership_status`（未加入表示为 `none`，不是持久化状态）、可选 `entitlement`（有效套餐键与最晚 `ends_at`）、`evaluated_at`。
   - **响应语义固定**：请求已认证且服务能够可信计算时，即使平台被限制、产品不可用、成员不是 `active` 或缺少权益，也返回 **HTTP 200 + `allowed=false` + 对应 `reason`**；`allowed=true` 同样为 200。无效/缺失认证返回 401，可信计算失败返回 5xx/503，不伪装成 `allowed=false`。调用 SaaS 据 `allowed` 决定禁止新的受保护业务操作。
   - 无副作用；不返回订单秘密、管理员封禁原因或他人信息；`allowed=true` 不代表对任意项目/文件有权限，也**不**扣减额度。
-- **`RedeemCode(code)`**：成功返回产品、套餐、`starts_at`、`ends_at`、是否新建成员；预期业务失败返回 `ok=false` / `code` / 可选 `retry_after_seconds`，不提交成员/码/授权更改（限流尝试计数除外）。已通过身份、平台限制及限流检查后，**本人已兑换**优先于该码后续用尽/过期/撤销，返回 `REDEEM_ALREADY_USED`；其他未兑换者只能得到统一的 `REDEEM_CODE_INVALID`。成员规则见[计费权益 §5](../domains/billing-and-entitlements.md#5-授权与产品成员状态的关系唯一权威)。
+- **`RedeemCode(product_key, code)`**：成功返回产品、套餐、`starts_at`、`ends_at`、是否新建成员；预期业务失败返回 `ok=false` / `code` / 可选 `retry_after_seconds`，不提交成员/码/授权更改（限流尝试计数除外）。已通过身份、平台限制及限流检查后，**在声明产品/成员检查通过之后，本人已兑换**优先于该码后续用尽/过期/撤销，返回 `REDEEM_ALREADY_USED`；其他未兑换者只能得到统一的 `REDEEM_CODE_INVALID`。成员规则见[计费权益 §5](../domains/billing-and-entitlements.md#5-授权与产品成员状态的关系唯一权威)。
+- **兑换兼容窗口**：先盘点 Aisenlens/其他调用方和旧 `redeem_code(code)` 签名；新签名正式实施期间旧入口不能继续作为公开的码归属探针，需撤销 EXECUTE 或仅返回不查询码的明确升级错误。旧客户端必须在批准的版本发布序列中升级；实现、审计和错误分布均须经真实接口验证。
+- **`GrantEntitlement`（DEC-05）**：必须带 `mode='duration'` + 正天数（同套餐可信顺延）或 `mode='explicit_window'` + 完整 starts_at/ends_at（显式 null 才永久），互斥且 request_id actor-scoped。首次持久化参数和时段，重试不能按新时钟再延长；同键异参 `STATE_CONFLICT`。旧显式调用需经兼容映射而不能将省略 ends_at 默认永久。
 - **成员变更**：成功返回新状态；不向客户端透露 `pre_suspend_status` 或内部管理原因；重复无状态变化请求不重复写事件。
 - **`CreateCodes(request_id)`**：首次创建成功返回本次明文码列表，**仅此一次（可在该响应内复制/下载）**；重试同一 `request_id` 不重复发码且不返回明文，后续不存在明文导出接口。**`GrantEntitlement(request_id)`** 同样以独立幂等键防管理重试重复授权。
 - **`BlockAccount` / `RevokeAdmin`**：对目标操作使用共同的“至少保留一名 `active` 且未全局 `blocked` 的管理员”事务保护；违反或并发冲突返回 `STATE_CONFLICT`，不写变更。该约束仅用于防止管理入口被规则性锁死，不替代 MFA 设备丢失时的受控运维恢复。
-- **`AdminFindUser / AdminSearchUsers`**：只读管理员 Edge Function 在 JWT + `aal2` 与当前管理员资格复核后执行。ID 查用 Auth Admin `getUserById`，列表用分页 `listUsers`；**邮箱不是该 SDK 的原生过滤参数**，MVP 仅对有限分页集合做服务端精确匹配并返回 `search_incomplete` 表示未完整扫描，绝不能将未覆盖部分认定为查无此人。成员页按本页有限 UUID 逐个补邮箱，限制并发。返回字段仅 ID、邮箱等管理必需信息。
+- **`AdminFindUser / AdminSearchUsers / AdminBatchUserEmails`（DEC-06）**：优先使用受保护 PostgreSQL 只读 RPC 查询有限 UUID[] / 精确邮箱及有界分页；仅能由当前 JWT+`aal2`+active 管理员+非 blocked 调用，private definer 最小只读授权、强制字段白名单且不得开放 `auth.users` Data API 或对匿名/普通用户授予 SELECT。**须先在真实 Supabase Auth/RLS/owner 环境证明 SQL 可安全访问**；无法证明或负向测试失败时，不再要求用户二次选择，直接回退单次受保护 Edge 批量聚合、内部有并发与扫描上限的 Auth Admin SDK 查询。**SDK 没有可假定的原生 UUID[] 批量接口**；有限搜索未覆盖需 `search_incomplete`，本页邮箱失败仅降级 UUID，不伪称不存在。返回字段限 id/管理必需邮箱等。
 
 ## 4. 错误模型
 
@@ -80,7 +97,7 @@
 
 - `EnsureMembership`：`UNIQUE(user_id, product_id)` + 原子创建；重复 `active` 无新事件，`left/suspended` 不自动复活。
 - `LeaveProduct`、`RejoinProduct`、封禁/解封：在当前状态条件下原子执行；旧并发请求不能覆盖新封禁。
-- `RedeemCode`：码行锁 + 同用户/套餐续期事务锁 + `UNIQUE(code_id,user_id)` + `UNIQUE(source_type,source_ref)`；锁定已存在的码后先检测**本人重复兑换**，再校验未兑换用户的码是否用尽/撤销/过期；预期业务拒绝不改变码/授权/成员（仅保留限流失败尝试计数），真正的 SQL 异常整体回滚。
+- `RedeemCode`：先锁声明产品/成员后查码、无需回补低序计划行锁，码行锁 + 同用户/套餐续期事务锁 + `UNIQUE(code_id,user_id)` + `UNIQUE(source_type,source_ref)`；锁定已存在的码后先检测**本人重复兑换**，再校验未兑换用户的码是否用尽/撤销/过期；预期业务拒绝不改变码/授权/成员（仅保留限流失败尝试计数），真正的 SQL 异常整体回滚。
 - 请求超时后不得断定失败，先读取本人授权/兑换状态再安全重试；`CreateCodes` 带稳定 `request_id` 重试不得重复生成，若首次明文丢失，只能按批次查询、撤销并以新的请求重新创建，不能从哈希恢复明文。
 - 客户端缓存仅用于 UI；新的云端关键操作由可信服务端复核当前状态。不设 Redis 跨请求授权缓存或自签产品 JWT。
 - 封禁或产品暂停后的下一次可信检查应拒绝新受保护操作；已开始任务和已签发短期 R2 URL 的撤权边界按产品风险定义。本地 Free 离线继续可用。
@@ -129,7 +146,7 @@
 | R-02 | 未加入用户兑换有效码 | 同一事务内创建 `active` 成员、兑换记录与授权 |
 | R-03 | `left` 或 `suspended` 用户兑换 | 拒绝，码的已用次数不变 |
 | R-04 | 两个用户并发兑换只剩 1 次的码 | 仅一人成功，`redeemed_count` 不超过上限 |
-| R-05 | 同一用户重复提交已成功兑换的单次码，后续该码已用尽/过期/撤销 | 只产生一条授权；第二次始终返回 `REDEEM_ALREADY_USED`（在身份、全局限制及限流允许后），不增加失败计数 |
+| R-05 | 同一用户重复提交已成功兑换的单次码，后续该码已用尽/过期/撤销 | 只产生一条授权；**声明产品/成员 none 或 active 且身份、全局限制、限流通过之后**，已兑本人返回 `REDEEM_ALREADY_USED`；若已经 left/suspended 必须先拒绝且不查码，不能再次消费码次数 |
 | R-06 | 尚未兑换过该码的用户输入不存在/撤销/过期/用尽码 | 统一返回 `REDEEM_CODE_INVALID`，不泄露具体原因，失败计数保留 |
 | R-07 | 已有同套餐有效授权时再兑换周期码 | 新授权从现有最晚到期时间顺延 |
 | R-08 | 永久授权码 | `ends_at` 为空，`CheckAccess` 持续允许直至撤销 |
@@ -143,6 +160,18 @@
 
 验收还应覆盖 401/403/404/409/429/503 区别、超时后的状态确认、资源不可枚举检查以及 RLS 正反向测试（推荐 pgTAP）；以上为**测试场景规格**，尚未创建自动测试或运行数据库。
 
+### 6.1 DEC-01～06 批准后的额外运行验收（全部 NOT RUN）
+
+| 新场景 | 正向/负向边界与可复核证据 |
+| --- | --- |
+| REV-DEC01-01～08 | `redeem_code(product_key, code)` 对 left/suspended 输入随机码、真实码及跨产品码在码定位前相同拒绝；none/active 的未知/跨产品/撤销/过期/用尽码统一失败；本人历史已兑仅在成员准入通过后优先；失败计数可保存而不修改成员/grant/码次数，旧单参不可作为探针，双连接无死锁 |
+| REV-DEC02-01～08 | Edge 仅接收限定白名单小型 JSON，拒绝超体积、异常 schema、视频/API Key/Token；JWT/成员/Pro/属主无旁路；R2 final 唯一条件写，客户端不能写 final；DB pending 过期预留逻辑释放与 R2 物理清理分离，R2/DB 单侧成功、断线、同键并发、删除失败的对账与恢复可证实 |
+| REV-DEC03-G0A/G0B/G3 | G0A 先有真实四类高保真、多宽度 Token 参考与用户签收记录；获 G0A 后按独立授权做 G0B 最小 React-admin/MUI 原型；再由 G3 验证全部页面的截图、键盘可达、响应式、MFA、秘密保护与错误码 E2E |
+| REV-DEC04-01～05 | Free v1→v2 仅切换同产品 `current_free_plan_id` 且审计；现有/新用户下次可信读取使用新默认，不回写已发行 code/历史 grant；NULL 安全默认与指针回退、匿名本地 Free 不依赖网络 |
+| REV-DEC05-01～07 | `duration` 与 `explicit_window` 完全互斥，永久必须显式 ends_at=null；首次可信时段保存，重试不按新时钟重复顺延；同 actor/request_id 相同输入幂等、异参冲突；空值/时区/未来生效与安全投影/RLS/GRANT 负向 |
+| REV-DEC06-01～06 | 仅当前真实 `aal2` 且 active Admin/非 blocked 可批量读必要邮箱，UUID[]/精确邮箱/分页/字段有界；anon/普通用户/撤权/过期拒绝；实际 auth.users SQL 权限、查询计划及 P50/P95 验证；SQL 不安全则一次受保护 Edge 聚合，本页失败只降级 UUID 并返回不完整标记 |
+
+**计数与版本**：上述均为对既有 I-01～I-28、R-01～R-15 及 D4/REV 测试的**追加规格**，不是已执行或已通过数量；实施须留存真实 SQL/HTTP/R2/浏览器日志、环境版本、失败注入与回退证据。
 ## 7. 交付边界与尚待实施决定
 
 进入开发前需最终确认：函数签名与返回 JSON 字段、PostgREST 自定义错误的版本兼容、Supabase CLI 与 Edge Runtime 版本、RLS 逐表 SQL、管理员种子与密钥保管、邮件服务与回调域名、限流参数、长任务/R2 撤权时效。

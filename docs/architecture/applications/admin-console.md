@@ -1,8 +1,8 @@
 # AisenCore 内部 Admin 管理前端架构
 
-> 状态：MVP **应用层架构设计**；原 D3 确立 Resource/Provider/可信交互，**新增 [D3-UI 页面级 UI/UX 详细设计](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md)** 补充信息架构/推荐路由、桌面与窄屏线框、逐页字段与交互状态、MFA/发码/无障碍和验收。两者仍是**未开发的设计候选**，不代表真实页面、图形设计稿或后端已运行。
+> 状态：MVP **应用层长期架构**；本文规定 Admin Resource、Provider、敏感操作合同。原 [D3-UI 页面施工设计](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md)保存候选路由、线框与测试安排，未形成真实页面或已批准视觉稿。
 >
-> **UI-G0 强制编码前置条件**：所有 Admin 字体/字号/色彩、空间、Shell、统一组件与页面模板的**唯一全局权威**为 [Admin UI Design System](./admin-ui-design-system.md)。必须在任何正式 Admin Theme/Layout/页面编码前准备四类可见高保真基准并由用户明确批准，只有 `UI-G0 APPROVED` 才允许编码；**当前 UI-G0 = NOT APPROVED / BLOCKED，规范文档不等于已通过视觉验收**。页面业务 IA/权限仍以 D3-UI/D3 为准。
+> **UI-G0 强制编码前置条件**：所有 Admin 字体/字号/色彩、空间、Shell、统一组件与页面模板的**唯一全局权威**为 [Admin UI Design System](./admin-ui-design-system.md)。必须在任何正式 Admin Theme/Layout/页面编码前准备四类可见高保真基准并由用户明确批准，只有四类基准视觉和 Token 经项目所有者真实签收、`UI-G0A APPROVED` 后才能按另行编码授权进入 G0B 真实原型；**当前 UI-G0A = NOT APPROVED / BLOCKED，规范文档不等于已通过视觉验收**。业务 IA/权限以本文、[管理员领域](../domains/platform-admin-and-account-lifecycle.md)与[公共 API](../backend/api-contract-and-mvp-acceptance.md)为准。
 >
 > **开发时选用规范**：[Admin 设计规则与模式入口](../../development/frontend/admin-design-guide.md)覆盖字体中文混排、表格/表单/确认、导航位置和长内容/错误状态的开发审查。迁入的设计原则**不新增**业务 API、角色或高权限数据读取，不替代原有 UI-G0 视觉权威。
 >
@@ -27,7 +27,7 @@ Admin 是 AisenCore 的**公共能力管理门面**：查看必要的平台用�
 | 导航资源/页面（候选） | MVP 最少用途 | 写入与边界 |
 | --- | --- | --- |
 | **产品管理** | 产品列表、详情、注册/修改基本资料、发布/暂停/恢复 | 所有写入经可信管理接口；产品暂停不批量变更成员 |
-| **公共用户查询** | 按邮箱或 UUID 查找 Auth 用户，并关联其必要的产品成员和账号限制摘要 | **只读 Edge Function** 用 Auth Admin API 查询，客户端不访问 auth.users；成员列表先分页、仅对本页 UUID 做有并发上限的 `getUserById` 查询补邮箱，不假定原生批量查用户接口 |
+| **公共用户查询** | 仅按受控精确邮箱或 UUID 查找，关联最小必要成员/限制摘要 | **DEC-06 A**：优先经过隔离测试的受限只读 SQL RPC（批次 UUID[]/精确邮箱、限页与字段、JWT+aal2+当前管理员资格）；SQL Auth 权限/安全/性能不可行时自动回退单次受保护 Edge 聚合 Auth Admin API，绝不暴露 auth.users Data API |
 | **产品成员** | 按产品筛选成员、查看 active/left/suspended、可信封禁/解封和历史事件摘要 | 解封恢复封禁前状态；普通产品退出和重加仍遵守本人操作规则 |
 | **产品权益与套餐** | 查询授权/必要历史、创建或停用套餐版本、人工授予或撤销授权 | 被已有授权**或已发行码**引用的套餐权益不可原地修改；停用套餐不自动作废旧码；以受保护管理 RPC 修改并审计，不隐式变更成员 |
 | **自有兑换码** | 平台所有者/管理员创建、查询和管理兑换码及必要领取记录 | **首版重点**；发码与兑换条件由计费权益领域决定，核销防重复与权限由可信端负责 |
@@ -45,7 +45,7 @@ Admin 是 AisenCore 的**公共能力管理门面**：查看必要的平台用�
    `BlockAccount` 与 `RevokeAdmin` 必须由可信 RPC 共同保护最后一名未被全局封禁的有效管理员；UI 仅展示冲突和确认，不通过前端计数替代事务校验。
 5. 账号级封禁与产品成员封禁彼此独立。Admin 登录不会给管理员自动创建所有产品的成员身份，也不自动恢复任何已退出或封禁的成员。
 6. **首版强制 Supabase Auth TOTP MFA**。管理员进入资源前需要当前会话 `aal2`；未完成 MFA 由 Auth Provider 引导验证；服务端 RLS/管理 RPC 同时复核管理员资格与 `aal2`。丢失设备通过受控运维恢复，不能只靠 UI 判断 MFA 状态。
-7. **2026-10-22 用户明确把 TOTP MFA 列为 MVP 必做**，同时要求低打扰/低请求量：登录时必要的 TOTP enroll/challenge/verify 建立 `aal2`，有效管理会话中**不因为每次读列表、翻页、操作按钮而重新向 Auth MFA 服务器发起挑战**；普通管理 RLS/RPC 在原本一次业务请求中检查已签发 JWT 的 `aal2` + 当前名册/blocked。UI `checkAuth/canAccess` 可短暂缓存只供导航，不每次导航另行 `getUser()` + `admin_check_access`，并在 JWT 等级变化/401/403 时失效。真正的 Auth Admin Edge 仍需服务器额外资格校验。完整要求与 AUTH-P06～P11 验收见 [专项 Auth/MFA 优化](../../Plans/aisencore-mvp/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)。
+7. **Admin TOTP MFA 为 MVP 必做**，同时要求低打扰/低请求量：登录时必要的 TOTP enroll/challenge/verify 建立 `aal2`，有效管理会话中**不因为每次读列表、翻页、操作按钮而重新向 Auth MFA 服务器发起挑战**；普通管理 RLS/RPC 在原本一次业务请求中检查已签发 JWT 的 `aal2` + 当前名册/blocked。UI `checkAuth/canAccess` 可短暂缓存只供导航，不每次导航另行 `getUser()` + `admin_check_access`，并在 JWT 等级变化/401/403 时失效。真正的 Auth Admin Edge 仍需服务器额外资格校验。完整长期要求见[平台管理员与恢复控制](../domains/platform-admin-and-account-lifecycle.md)；AUTH-P06～P11 属实施时的真实验收用例。
 
 完整权限与账号生命周期以[平台管理员专项](../domains/platform-admin-and-account-lifecycle.md)为准；登录/会话以[多 SaaS 会话专项](./auth-and-multi-saas-sessions.md)为准。
 
@@ -53,14 +53,34 @@ Admin 是 AisenCore 的**公共能力管理门面**：查看必要的平台用�
 
 优先遵循 React-admin 现成 **Resource + Data Provider + Auth Provider** 契约，不另造通用 HTTP/缓存/表单/路由框架。
 
-- **普通列表/详情查询**：统一选择 **PostgREST + 管理员 RLS**；Data Provider 将 React-admin 的分页、排序、筛选转换为 Supabase Data API（须从服务端响应获得总数以支持分页）；先评估 `ra-supabase` 的版本兼容性，必要时只封装局部 Provider，不自行搭建每个 Resource 的读 API。`auth.users` 不暴露 Data API；用户邮箱与 ID 的只读查询由管理员 Edge Function 调用 Auth Admin API：ID 用 `getUserById`，普通列表用 `listUsers` 分页；邮箱搜索只对**受控范围的分页结果**做服务端精确匹配，若达到扫描上限必须提示搜索未覆盖全体，不能误报不存在。对本页成员邮箱用限并发逐 ID 获取，禁止把它写成 Auth Admin 原生批量接口。严格字段白名单和浏览器不接触密钥。
+- **普通列表/详情查询**：统一选择 **PostgREST + 管理员 RLS**；Data Provider 将 React-admin 的分页、排序、筛选转换为 Supabase Data API（须从服务端响应获得总数以支持分页）；先评估 `ra-supabase` 的版本兼容性，必要时只封装局部 Provider，不自行搭建每个 Resource 的读 API。`auth.users` 不暴露 Data API。**DEC-06 A 已批准**：优先受保护 PostgreSQL 只读 RPC 对本页有限 UUID[] 补邮箱、做有界精确邮箱查找与分页，内核必须同时验证真实 JWT/`aal2`/active admin/blocked、最小字段与受限参数，并在隔离环境证明 `auth.users` SELECT 的 owner/权限安全可行；**证据失败立即技术性回退**一次受保护 Edge 请求聚合内部有限并发 Auth Admin getUserById/listUsers 查询，禁止声称 SDK 有原生 UUID[] 批量 API。任何扫描未覆盖部分须标 `search_incomplete`，不能误报不存在；失败降级 UUID 主列表、严格隐私和浏览器无密钥。
 - **敏感写入**：产品、成员、套餐、授予/撤销、发码/撤码和平台限制全部由**单次管理 RPC** 承载，函数按当前资格、`aal2`、目标状态判权并与审计同事务提交；`BlockAccount` / `RevokeAdmin` 冲突按 `STATE_CONFLICT` 提示而不假装成功。Auth Admin 用户查询及确需 Auth Admin 权限的账号操作通过 Edge Function，不能绕过对管理员的保底检查；数据库变更仍调用相应受保护函数。浏览器不持有 `service_role` 或秘密。
-- **适配原则**：**读路径已定**，仅 `ra-supabase` 包版本和局部扩展方式在安装前做兼容性验证。变更动作通过小型管理 RPC 适配器发起，成功后失效相关 TanStack Query 缓存，不让标准 CRUD Data Provider 直接写受保护表。
+- **适配原则**：读路径仍为安全 RLS；普通产品/套餐 create/update 采用标准 DataProvider 封装**单个受保护 RPC**，仅特殊不可逆/敏感动作使用独立命令 Mutation；任何操作均不得将 CRUD 直通受保护表。具体接口响应与缓存参见 §4.1，`ra-supabase` 版本安装前再核验。
 - **查询与更新体验**：利用 React-admin 默认的 TanStack Query 机制做界面状态缓存与成功后的刷新/失效处理。缓存用于展示，不是权限判断凭据；操作失败不得假装后端已修改成功。
 - **异常呈现**：接入既定 HTTP 状态码和稳定业务错误码；401 引导身份恢复，403 管理权限不足，409 并发/状态冲突应刷新当前记录，429/503/网络超时作恰当提示与有限重试。不能把暂时服务异常误称为用户被封禁。
 - **结果一致性**：高风险操作优先等待服务端确认再显示最终成功；请求超时后先查询实际状态，不能假定操作未发生并盲目重复生成兑换码/授予权益。
 
 公共 API 的逻辑契约及错误语义，以[API MVP 与验收专项](../backend/api-contract-and-mvp-acceptance.md)为权威；数据库写入边界见[数据库访问与可信事务](../database/database-access-and-transactions.md)。
+
+### 4.1 标准 DataProvider 与特殊命令（A-03）
+
+**普通资源继续复用 React-admin 的标准 DataProvider 与表单生态**：`getList/getOne/getMany` → RLS 受限 PostgREST 读取，能一一对应受保护管理 RPC 的普通产品/套餐创建和允许字段修改由 `dataProvider.create/update` 封装**单次** RPC、返回稳定 `id` 和安全 record，保留原生校验、加载、通知、缓存失效与重定向。撤销、封禁、批次发行、管理员直接授予属于**危险/特殊命令**，采用显式自定义 DataProvider 方法或 Mutation，绝不让浏览器直接 PATCH/INSERT 受保护业务表，亦不构建第二套 UI、表单、缓存、路由框架。
+
+| Resource | 安全读取 | 写操作与失效 |
+| --- | --- | --- |
+| products / plans | 受 RLS 的安全字段与版本列表 | 普通 create/update → 单 RPC；刷新产品、套餐及关联权益；冻结套餐拒绝修改权益字段 |
+| users（虚拟） | Auth Admin 受限身份查询，稳定 id/必要邮箱 | 不经 Data API 访问 auth.users；高权账号操作经 Edge 验证 |
+| memberships | RLS 分页、邮箱按需受保护补全 | suspend/restore 特殊命令；刷新成员、事件、相关权益 |
+| grants | 本人/管理员安全投影 | grant/revoke 命令带 request_id；刷新授权与权益 |
+| code-batches / codes | 无 code_hash/无明文的安全投影 | createCodes/revokeCodes 命令；刷新安全码与批次；首次明文只在当次组件易失内存 |
+| redemptions / audit | 只读脱敏分页 | 不接受普通 CRUD 写入 |
+| admins / restrictions | 管理员受限只读 | grant/revokeAdmin、block/unblock 高风险命令；当前身份变化清空敏感缓存 |
+
+标准 create/update 返回服务端确定的 id+record；特殊命令返回其实际业务结果，不伪造普通 CRUD。401/403 应使管理资格相关查询立即失效；409 刷新对象；超时/未知结果先按 request_id 查持久事实，不能盲目重新发码/授权。**码明文绝不放入 TanStack Query cache、URL、localStorage、日志或遥测**。
+
+**A-02 / DEC-06 方案已批准，NOT IMPLEMENTED**：用户列表本页 N+1 被受限只读 SQL RPC 优先处理；若实际权限/查询计划、越权或 P50/P95 证据不满足，工程师直接切换为已批准的**单次 Edge 批量聚合回退**。本页邮箱失败降级 UUID，不阻塞合法成员主查询、不得误报完整性。该技术选择不解除 UI-G0A；未签收四类可见高保真与 Token 前不可开始 Admin 正式编码。
+
+**Free 管理（DEC-04）**：`plans` 常规新建受保护 RPC 可创建**首次写入后权益不可再编辑**的 Free 新版本；“将此版本设为当前 Free”是独立、需确认的**受保护高风险命令** `admin_set_default_free_plan`，必须验证同产品 Free 家族、展示旧/新版本及影响、L0/L3/L4 内切换与审计，绝不修改历史发码或 grant。人工直授表单选择互斥的 `duration` 顺延与 `explicit_window` 显式时段（后者含明确永久），不可把空白字段默认为永久。
 
 ## 5. 典型管理流程
 
