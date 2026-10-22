@@ -58,8 +58,8 @@
   - **响应语义固定**：请求已认证且服务能够可信计算时，即使平台被限制、产品不可用、成员不是 `active` 或缺少权益，也返回 **HTTP 200 + `allowed=false` + 对应 `reason`**；`allowed=true` 同样为 200。无效/缺失认证返回 401，可信计算失败返回 5xx/503，不伪装成 `allowed=false`。调用 SaaS 据 `allowed` 决定禁止新的受保护业务操作。
   - 无副作用；不返回订单秘密、管理员封禁原因或他人信息；`allowed=true` 不代表对任意项目/文件有权限，也**不**扣减额度。
 - **`RedeemCode(product_key, code)`**：成功返回产品、套餐、`starts_at`、`ends_at`、是否新建成员；预期业务失败返回 `ok=false` / `code` / 可选 `retry_after_seconds`，不提交成员/码/授权更改（限流尝试计数除外）。已通过身份、平台限制及限流检查后，**在声明产品/成员检查通过之后，本人已兑换**优先于该码后续用尽/过期/撤销，返回 `REDEEM_ALREADY_USED`；其他未兑换者只能得到统一的 `REDEEM_CODE_INVALID`。成员规则见[计费权益 §5](../domains/billing-and-entitlements.md#5-授权与产品成员状态的关系唯一权威)。
-- **兑换兼容窗口**：先盘点 Aisenlens/其他调用方和旧 `redeem_code(code)` 签名；新签名正式实施期间旧入口不能继续作为公开的码归属探针，需撤销 EXECUTE 或仅返回不查询码的明确升级错误。旧客户端必须在批准的版本发布序列中升级；实现、审计和错误分布均须经真实接口验证。
-- **`GrantEntitlement`（DEC-05）**：必须带 `mode='duration'` + 正天数（同套餐可信顺延）或 `mode='explicit_window'` + 完整 starts_at/ends_at（显式 null 才永久），互斥且 request_id actor-scoped。首次持久化参数和时段，重试不能按新时钟再延长；同键异参 `STATE_CONFLICT`。旧显式调用需经兼容映射而不能将省略 ends_at 默认永久。
+- **上线前唯一新合同（项目根 `AGENTS.md` 强制规则）**：公开兑换只实现 `redeem_code(product_key,code)`；更新当前全部调用方及测试，**不实现/不保留旧 `redeem_code(code)` 的兼容入口、别名或灰度分支**。若本地草案已有旧签名，直接替换并确保其不可执行，不需要旧客户端版本发布序列；只针对当前接口执行错误侧信道与 RPC 权限负向验证。
+- **`GrantEntitlement`（DEC-05）**：必须带 `mode='duration'` + 正天数（同套餐可信顺延）或 `mode='explicit_window'` + 完整 starts_at/ends_at（显式 null 才永久），互斥且 request_id actor-scoped。首次持久化参数和时段，重试不能按新时钟再延长；同键异参 `STATE_CONFLICT`。上线前直接更新所有当前调用方为唯一新模式；**不保留旧显式接口兼容映射**，绝不能把遗漏 `ends_at` 当永久。
 - **成员变更**：成功返回新状态；不向客户端透露 `pre_suspend_status` 或内部管理原因；重复无状态变化请求不重复写事件。
 - **`CreateCodes(request_id)`**：首次创建成功返回本次明文码列表，**仅此一次（可在该响应内复制/下载）**；重试同一 `request_id` 不重复发码且不返回明文，后续不存在明文导出接口。**`GrantEntitlement(request_id)`** 同样以独立幂等键防管理重试重复授权。
 - **`BlockAccount` / `RevokeAdmin`**：对目标操作使用共同的“至少保留一名 `active` 且未全局 `blocked` 的管理员”事务保护；违反或并发冲突返回 `STATE_CONFLICT`，不写变更。该约束仅用于防止管理入口被规则性锁死，不替代 MFA 设备丢失时的受控运维恢复。
@@ -166,7 +166,7 @@
 | --- | --- |
 | REV-DEC01-01～08 | `redeem_code(product_key, code)` 对 left/suspended 输入随机码、真实码及跨产品码在码定位前相同拒绝；none/active 的未知/跨产品/撤销/过期/用尽码统一失败；本人历史已兑仅在成员准入通过后优先；失败计数可保存而不修改成员/grant/码次数，旧单参不可作为探针，双连接无死锁 |
 | REV-DEC02-01～08 | Edge 仅接收限定白名单小型 JSON，拒绝超体积、异常 schema、视频/API Key/Token；JWT/成员/Pro/属主无旁路；R2 final 唯一条件写，客户端不能写 final；DB pending 过期预留逻辑释放与 R2 物理清理分离，R2/DB 单侧成功、断线、同键并发、删除失败的对账与恢复可证实 |
-| REV-DEC03-G0A/G0B/G3 | G0A 先有真实四类高保真、多宽度 Token 参考与用户签收记录；获 G0A 后按独立授权做 G0B 最小 React-admin/MUI 原型；再由 G3 验证全部页面的截图、键盘可达、响应式、MFA、秘密保护与错误码 E2E |
+| REV-DEC03-G0/G3 | 项目所有者已删除原 G0B 真实 React-admin/MUI 视觉基础；**未来视觉载体、顺序及签收条件待重议，UI-G0A NOT APPROVED**。正式业务施工未获许可；UI-G3 真实页面截图、键盘、响应式、MFA、秘密和错误码 E2E 仍 NOT RUN |
 | REV-DEC04-01～05 | Free v1→v2 仅切换同产品 `current_free_plan_id` 且审计；现有/新用户下次可信读取使用新默认，不回写已发行 code/历史 grant；NULL 安全默认与指针回退、匿名本地 Free 不依赖网络 |
 | REV-DEC05-01～07 | `duration` 与 `explicit_window` 完全互斥，永久必须显式 ends_at=null；首次可信时段保存，重试不按新时钟重复顺延；同 actor/request_id 相同输入幂等、异参冲突；空值/时区/未来生效与安全投影/RLS/GRANT 负向 |
 | REV-DEC06-01～06 | 仅当前真实 `aal2` 且 active Admin/非 blocked 可批量读必要邮箱，UUID[]/精确邮箱/分页/字段有界；anon/普通用户/撤权/过期拒绝；实际 auth.users SQL 权限、查询计划及 P50/P95 验证；SQL 不安全则一次受保护 Edge 聚合，本页失败只降级 UUID 并返回不完整标记 |

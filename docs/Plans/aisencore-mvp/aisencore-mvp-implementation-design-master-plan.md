@@ -132,6 +132,8 @@
 
 **产物**：Admin 资源/Provider/页面与交互规格。**通过判据**：UI 实现不需要猜测权限、字段和错误处理。
 
+**2026-10-22 MVP 审计建议收敛（只更新设计）**：Admin 导航按“当前产品运营 / 全平台管理”任务组织，关联兑换/事件/限制表合并为详情/子列表；用户只做利用现有受限数据的综合详情，邮箱按 DEC-06 批量 `getMany`；发码未知结果仅作非秘密 request_id 恢复，冻结套餐复制预填新版本，直授界面把顺延/固定时段/永久互斥且明确确认。均不新增通用服务/框架/后台，详细见 [Admin 架构](../../architecture/applications/admin-console.md) 与 [D3-UI](./aisencore-mvp-d3-ui-admin-uiux-design.md)；后端 FK 迁移顺序/直授幂等/授权断档与跨设备邮件/MFA 安全以 D1/D2/D4 的最小核验补丁为准，SQL/浏览器验收仍 NOT RUN。
+
 ### 4.6A 新增 UI1 — Admin 页面与交互详细设计（D3-UI）
 
 - [x] **独立设计交付**：在 [D3-UI 文档](./aisencore-mvp-d3-ui-admin-uiux-design.md) 中补足导航/路由、宽窄屏 Shell、逐页字段和操作、文本线框、组件/状态/错误/无障碍，以及兑换码一次性明文和 Admin MFA 关键旅程；**只是设计，没有 React/Figma/Cloudflare 页面**。
@@ -146,7 +148,7 @@
 - [ ] **用户明确视觉签收与 Token/版本冻结**：提交真实画板/图片/静态设计参考、各宽度问题清单与审批日期，用户明确同意唯一方向，`UI-G0A APPROVED` 才可释放 Admin 正式前端编码；当前 **NOT APPROVED / BLOCKED**。
 - [ ] **后续浏览器 UI-G3 质量验收**：编码/部署后验证截图对比、跨屏幕排版、无障碍和后端权限 E2E；视觉基线批准本身**不意味着页面开发已经完成**。
 
-**严格阶段关系**：D3 技术 → D3-UI 页面文字规格 → **UI-G0（批准实物视觉基线，前端编码硬门槛）** → Admin Theme/Layout/共享模板和业务页开发 → 真实 D3-UI-X / UI-G3 验收。独立 DB/RPC 开发如获授权可依自己的条件推进，不得由此推导所有 MVP 开发同时被 UI-G0 阻断。
+**更新后的阶段关系（2026-10-22）**：第 01～05 项现有设计与验收合同保留；原 `development` 真实 React-admin/MUI G0B 基础已删除。**新的方法采用按风险制作单文件交互 HTML、先验证业务模块关系与异常路径、交付时配套体验引导**，见[开发工作流](../../development/frontend/interaction-benchmark-workflow.md)；具体原型的真实体验、视觉/Token 签收与正式施工授权仍未完成。`UI-G0A NOT APPROVED`，不启动正式 DB/RPC/Auth/Edge/Admin 业务代码，UI-G3、安全 E2E 与上线许可分别验收。见[六项计划](../20261022-admin-mvp-six-step-master-plan.md)。
 
 ### 4.7 工作 7 — 环境、迁移、发布与最小运维（D3）
 

@@ -84,7 +84,7 @@
 - 索引 `(product_id,is_active,plan_key)`（产品套餐列表候选；若小数据量应压缩索引，待 EXPLAIN 核验）。
 
 **`public.entitlement_grants`**
-- `id uuid PK`；`user_id uuid NOT NULL REFERENCES auth.users(id)`；`product_id uuid NOT NULL REFERENCES public.products(id)`；`plan_id uuid NOT NULL`；`source_type text NOT NULL`；`source_ref text NOT NULL`；`starts_at timestamptz NOT NULL`；`ends_at timestamptz NULL`；`revoked_at timestamptz NULL`；`revoked_by uuid NULL`；`revoke_reason text NULL`；`created_at timestamptz NOT NULL`。**DEC-05 直授 mode/完整首次规范输入和可信算出的时段必须在受限技术列或 private 幂等行中存储**；旧 `admin_request_fingerprint` 只在历史/必要语义中保留，不是新表强制字段。
+- `id uuid PK`；`user_id uuid NOT NULL REFERENCES auth.users(id)`；`product_id uuid NOT NULL REFERENCES public.products(id)`；`plan_id uuid NOT NULL`；`source_type text NOT NULL`；`source_ref text NOT NULL`；`starts_at timestamptz NOT NULL`；`ends_at timestamptz NULL`；`revoked_at timestamptz NULL`；`revoked_by uuid NULL`；`revoke_reason text NULL`；`created_at timestamptz NOT NULL`。**DEC-05 直授 mode/完整首次规范输入和可信算出的时段必须在受限技术列或 private 幂等行中存储**（例如仅 Admin 记录保存 `grant_mode`/`requested_duration_days`，不可对 `redeem_code` 来源施加“必须有 duration 天数”的全表 NOT NULL/CHECK）；旧 `admin_request_fingerprint` 只在历史/必要语义中保留，不是新表强制字段。
 - `FOREIGN KEY(plan_id,product_id) REFERENCES public.plans(id,product_id)`；`UNIQUE(source_type,source_ref)`；`CHECK(ends_at IS NULL OR ends_at>starts_at)`；`source_type` 只允许批准来源。管理来源必须具有可比较的首次请求证据；若保留旧指纹，还应额外校验 32 字节，但**不强制全部新授权创建指纹**。
 - 索引 `(user_id,product_id,starts_at DESC)` 与 `(user_id,plan_id,ends_at DESC) WHERE revoked_at IS NULL AND ends_at IS NOT NULL`，分别支持当前权益和同套餐续期。严禁以删除行撤销权益或在成员状态转换时改动它。
 - `source_ref` 对兑换按 `code_id:user_id` 确定；对 Admin 使用 actor-scoped `admin:<actor_user_id>:<request_id>`。**DEC-05 已批准**：用受保护的完整首次规范输入+可信算出的时段/请求模式做幂等比较，只有旧记录无法从强类型列还原时保留私有 fingerprint；普通 Data API 不得 SELECT 技术列。
@@ -227,18 +227,16 @@ CREATE POLICY admin_codes_read ON public.redemption_codes FOR SELECT
 
 ### 4.6 M4：核销、同套餐续期与失败限流
 
-`RedeemCode(input)` 单事务的顺序必须兼顾“本人重复兑换优先”和“不改动失败业务状态”：
+**以 DEC-01 A 与 [F02 L0～L8 全入口总序](./aisencore-f01-f04-security-convergence-design.md#3-f02唯一事务锁总序与逐操作锁矩阵) 为唯一实现合同**；下面只描述业务顺序，不能自行引入“先查码再确定产品/成员”的旧实现：
 
-1. 从已验证 JWT 取 `auth.uid()`，先排除平台 blocked；**取得本用户 rate_limits 行锁、修剪 15 分钟窗口**，达到 10 条返回 `RATE_LIMITED`（正常业务结果）。
-2. 在受控内存里规范化输入并 SHA-256 查码（未知码不暴露是否存在）；**未知** → 写本次失败时间，正常返回 `REDEEM_CODE_INVALID`，不得创建成员或授权。
-3. 对找到的码，根据只读 ID 定位所属产品；**先在 L1/L2 后取得 L3 产品 SHARE、L5 已存在成员 FOR UPDATE（若有），再取 L6 码 FOR UPDATE**；锁内重新校验码/用户/产品绑定。**首先查询 `redemptions(code_id,auth.uid())`**，如已存在返回 `REDEEM_ALREADY_USED`，不新增失败次数或 grant，哪怕码后来用尽/过期/撤销；身份、blocked 与限流仍按已定优先级。
-4. 尚未兑过的请求核验码未撤销、未过期、次数未耗尽、产品 active 与成员是否可入会；`plans.is_active` **不影响旧码兑现**。已有 left/suspended 按既定规则拒绝；**缺成员时暂不插入，待 L6/L7 验证成功后在 L8 最终写入阶段原子创建 active + join event**。既有成员与全局限制必须依锁内权威状态判定。
-5. 取得同用户/同套餐续期事务锁，重新读取最新有效周期授权的未来最晚到期（忽略撤销和过期）；周期 `starts_at=max(now,latest_unrevoked_ends_at)`，`ends_at=starts_at+grant_duration_days`；NULL 时长生成永久授权。不因已有永久同套餐授权伪造周期叠加。
-6. 确定来源 `source_type='redeem_code', source_ref=code_id:user_id`；**先 INSERT grant → 后 INSERT redemption → 码 redeemed_count+1**，必要新成员与事件同事务；UNIQUE 和 CHECK 在意外竞态时仍为底线。
-7. 可预期无效/left/suspended/用尽等业务拒绝时，**只允许记录最新一次失败限流信息（符合已定规则），不得留下任何新成员、事件、grant、兑换或码次数变化**；例如将成员创建推迟到所有业务检查完成后，或在有明确锁保护时保证后续拒绝路径不产生部分写。技术异常则必须让事务整体回滚（包括此次失败统计），交 D2 对应 HTTP 5xx 映射。
-8. 代码/明文/错误信息绝不在错误响应区分未知/撤销/用尽/过期；客户端超时先查本人授权与兑换历史，不能推断未提交。
+1. 从本人 JWT 取 `auth.uid()`，锁内检查账号 `blocked`、本人 15 分钟失败窗口/限流，以及**不可信声明的** `product_key` 是否存在且 active；依 F02 顺序取得 L1/L2/L3 与已存在成员的 L5。**`left/suspended` 必须在读取码表之前统一拒绝**，其失败是否计数依现行 X-01/DEC-01 合同，不能因审计建议私改；此时不查询码哈希或真伪。
+2. 成员为 `none/active` 后才规范化并哈希码、取 L6 码锁，核对码真实产品归属必须等于声明产品；对未知/跨产品/撤销/过期/耗尽执行非泄露失败语义。本人成员合法且查到码时，先检查本人的 `redemptions(code_id,user_id)`；已经兑过返回 `REDEEM_ALREADY_USED`，不得新增 grant 或重复失败计数。顺序和例外以 D2 X-01 为准。
+3. 所有能正常返回 `ok=false` 的预期拒绝分支不得留下成员、事件、grant、redemption、`redeemed_count` 的部分写；唯经批准的失败限流记录可按窗口正常提交。推荐**先完成所有业务校验，末尾集中一次原子写入**，技术异常直接抛出使整个事务回滚，绝不吞成 `ok=false`。
+4. 合法兑换在同套餐 L7 锁内读取真实授权区间；周期顺延从 **now 或与当前有效期连续衔接的末端** 开始。**不能简单把孤立远期 `explicit_window` 授权的最大 `ends_at` 当作当前连续权益**，否则会漏掉中间无权限的空档并把新兑换推迟一个月。未来排期如果真实需要保留，必须计算连通区间；不得未经用户确认擅自禁止已经批准的显式未来区间。永久 grant 单独按已批准语义处理。
+5. 成功分支依锁序创建必要的 `active` 成员/`join` 事件、确定性来源的唯一 grant、redemption 及码计数，在同一事务提交；旧码可在套餐 `is_active=false` 时兑现但受码自身撤销/到期/计次限制。任何失败必须整笔回滚。
+6. 失败窗口/频率数值、`REDEEM_ALREADY_USED` 优先级、错误码及是否计入提前拒绝，都只能按已批准的 DEC-01 / D2 X-01 统一执行；在真实隔离数据库以两设备同码、双码续期、成员 left/suspended、断档未来 grant、超时/故障注入验证，不让静态设计冒充测试通过。
 
-**竞争检验**：两名用户兑同一张剩一次码 → 只有一笔提交；同用户同一码两设备重试 → 仅一 grant；同用户两张不同码同套餐同时续期 → 依 L1/L7 事务锁连接，不重叠；码在首次成功后被撤销/到期/用尽，老用户 `REDEEM_ALREADY_USED`、其他用户 `REDEEM_CODE_INVALID`。特别用 [LCK-01～07](./aisencore-f01-f04-security-convergence-design.md#34-必须真实执行的并发及故障用例) 验证隐含锁不会制造死锁，不能因设计完成宣称已运行通过。
+**竞争验证**：两人争最后一码、同人同码重放、同人同套餐两码同时续期、已兑后撤码/过期、新产品声明与码真实归属不一致，以及远期时间窗断档都必须有实际 SQL/HTTP 负向证据。
 
 ### 4.7 其他高权限写入与准入读
 
@@ -272,8 +270,8 @@ CREATE POLICY admin_codes_read ON public.redemption_codes FOR SELECT
 | 序列 | 独立 migration 逻辑 | 依赖与验证关口 |
 | --- | --- | --- |
 | M00 | 确认项目 PostgreSQL/Supabase 版本；创建/检查 private Schema、所需 pgcrypto（若实际码 RNG/摘要采用），函数属主和默认 REVOKE 策略 | 不假设 extension 已可用；分离开发/生产、拒绝默认 PUBLIC EXECUTE |
-| M01 | products、product_memberships、membership_events、platform_admins、platform_account_restrictions、admin_audit_log | Auth FK、状态/审计 CHECK/索引、默认不级联 |
-| M02 | plans、entitlement_grants、redemption_code_batches、redemption_codes、redemptions、redemption_rate_limits | 所有跨表复合 FK、唯一来源、码计数与哈希/指纹长度 |
+| M01 | products（含可空 `current_free_plan_id` 列，**先不引用尚不存在的 plans 表**）、product_memberships、membership_events、platform_admins、platform_account_restrictions、admin_audit_log | Auth FK、状态/审计 CHECK/索引、默认不级联 |
+| M02 | plans（建立 `UNIQUE(id,product_id)`）及授权/发码/兑换/限流表，**此后 ALTER TABLE products 补齐 `(current_free_plan_id,id) → plans(id,product_id)` 同产品复合 FK** | 外键目标须先存在；先插产品→建 Free 套餐→受保护更新产品指针即可，不无理由强制引入延迟 FK；校验指向的是 Free 家族 |
 | M03 | 私有资格/验证助手、只读管理员策略；各表 RLS/GRANT/列级读取白名单；核心受保护管理/自助 RPC | 函数 owner、search_path、RPC 公开 Schema、业务拒绝事务提交的一致性审查；**全表默认禁止终端写入** |
 | M04 | 在本人身份已确认且 U05 决定的情况下，通过受控运维过程引导首个管理员资格；注册真实产品由可信管理接口进行 | 引导不内嵌真实 owner UUID，保底约束不在初始化时把未创建管理员误拒绝；恢复能力明确 |
 | M05 | 隔离环境权限/事务/竞争/回滚测试，检查 Admin DataProvider、SaaS 客户端最小查询及“云端服务故障拒绝” | pgTAP、并发工具、JWT/AAL 真实验证；通过前不得部署生产 |
@@ -289,7 +287,7 @@ CREATE POLICY admin_codes_read ON public.redemption_codes FOR SELECT
 | Admin + 最后管理员 | I-14～I-15、I-26～I-27 | 无 `aal2` 管理读取/写入均拒绝；自封禁/撤权保底；并发管理员互封禁，失败不产生假审计 |
 | SaaS 和本地优先 | I-02～I-04、I-19～I-25 | Aisenlens 匿名 Free/本人在线 Pro/备份；公共校验不代替产品文件授权；退出不删除备份，跨产品不混权 |
 | 兑换、安全限流 | R-01～R-06、R-10～R-12 | 码明文只首次；码 hash 不可查询；已用尽/过期/撤销对本人重复与其他用户不同分支；15 分钟限流可提交、拒绝不增 grant |
-| 权益、续期与套餐冻结 | R-07～R-09、R-13～R-15 | 周期续期事务锁；永久授权；码撤销不追溯 grant；已有 grant 或 issued code 时更新 features/limits 拒绝，旧有效码在 plan 停用后仍可兑换 |
+| 权益、续期与套餐冻结 | R-07～R-09、R-13～R-15 | 双模式直授首次入参持久化后重试不重复顺延；远期显式时段不冒充连续权益/延迟新兑换；周期续期事务锁；永久授权；套餐冻结与旧有效码不因 plan 停用失效 |
 
 测试应包含 `git diff --check`、数据库 pgTAP 断言、双事务并发（非串行假测试）、拒绝读取 `code_hash` 的 SQLSTATE/HTTP、审核日志去敏、回滚故障注入。只有创建实际 SQL 和隔离 DB 后才能填写通过证据。**本次 D1 只交付设计，没有运行任何 pgTAP 或部署**。
 
