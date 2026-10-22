@@ -2,7 +2,7 @@
 
 > 状态：**DEC-01～DEC-06 ALL A APPROVED（2026-10-22 项目所有者在当前对话中明确同意全部推荐方案）/ DOCUMENT CONTRACT UPDATED / RUNTIME NOT RUN**。此批准授权把方案写入 [spec](../../spec/requirements.md) 和 [architecture](../../architecture/README.md)，**不代表开发、数据库迁移、Supabase/Cloudflare 资源、Admin 视觉签收、Git 提交或生产发布已获执行许可**。以下表格保留方案 A/备选 B/C 的决策依据，**A 为全部六项已批准的唯一当前设计路线**。
 >
-> 关联：[整改总计划](./master-plan.md) · [方案与验收矩阵](./candidate-architecture-and-acceptance-matrices.md) · [静态现状](./s0-evidence-and-design-decisions.md) · [U03～U11 已有决议](../aisencore-mvp/aisencore-u03-u11-user-decisions-2026-10-22.md)。
+> 关联：[整改总计划](./master-plan.md) · [实施与验收](../aisencore-mvp/aisencore-mvp-d4-test-and-readiness-review.md) · [现行需求](../../spec/requirements.md) · [U03～U11 决议](../aisencore-mvp/aisencore-u03-u11-user-decisions-2026-10-22.md)。
 
 ## 一、六项核心架构决定（用户已全选推荐 A）
 
@@ -20,7 +20,7 @@
 ## 二、六项决定批准后仍必须冻结的实施细节（技术实现负责，不再让用户替工程师拍板）
 
 - **DEC-01**：公开 RPC 的版本兼容、错误优先级、left/suspended 与失败次数精确定义、旧签名何时移除、REV-B01 对照、没有侧信道的负向测试。
-- **DEC-02**：最终选型对应最小角色与凭据、R2 条件写/CopyObject 的当前 SDK 真实支持、对象 key、SHA-256、过期 quota 逻辑释放与物理清理、故障对账、审计和版本清理执行者。
+- **DEC-02**：已选 Edge 小 JSON 路线，须测最小角色与凭据、R2 **final 条件创建**的实际 SDK 支持、对象 key、SHA-256、过期 quota 逻辑释放与物理清理、故障对账、审计和版本清理执行者；Worker/CopyObject 旧路线非首发条件。
 - **DEC-03**：制度 A 已获批；高保真文件/截图/Token 版号及项目所有者看到**实际画面后的 G0A 视觉签收**尚未发生，当前 UI-G0A 仍 BLOCKED；G0B 需要另行代码授权。
 - **DEC-04**：Free 版本迁移/引用、不存在 Free 时的安全能力默认值、变更历史与可回滚指针、未来周期授权不提前生效。
 - **DEC-05**：缺省/NULL/永久/UTC 微秒/首次 computed ends_at 的规范化、actor 请求命名空间、同键异参冲突、合法 select=* 的安全投影。

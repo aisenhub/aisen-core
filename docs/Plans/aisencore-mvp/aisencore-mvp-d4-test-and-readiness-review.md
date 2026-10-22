@@ -4,9 +4,9 @@
 
 > **阶段性质：设计与静态审查，不是已经执行的测试。** 本文件承接已完成设计阶段的测试规格、风险台账与未验证门槛，执行清单按 Plans 规则清理。本报告中所有案例统一为 **NOT RUN**；本阶段只执行了文档一致性与工作区静态检查。业务预期仅源自 [API 逻辑验收唯一权威](../../architecture/backend/api-contract-and-mvp-acceptance.md)、[现行需求](../../spec/requirements.md) 与已批准[领域/技术架构](../../architecture/README.md)，绝不把候选实现写成已通过。
 >
-> 设计输入：[D0 范围/用户决策](./aisencore-mvp-d0-scope-and-baseline.md)、[D1 物理数据库/可信事务](./aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/Aisenlens](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3 Admin/环境与 R2](./aisencore-mvp-d3-admin-infrastructure-design.md)。
+> 设计输入：[现行需求与 MVP 范围](../../spec/requirements.md)、[D1 物理数据库/可信事务](./aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/Aisenlens](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3 Admin/环境与 R2](./aisencore-mvp-d3-admin-infrastructure-design.md)。
 >
-> **后续第三方 BaaS 建议安全审查（2026-10-22）**：已形成 [原子配额/RPC/JWT/Redis 适用性评审](./aisencore-mvp-baas-quota-security-lessons.md)，新增 **BAAS-Q01～Q10 共 10 项未来负向/性能测试候选**（其中消费型额度用例只在业务真实引入时触发），均 **NOT RUN**。严禁把外部 `public SECURITY DEFINER` 的负数扣余额示例部署生产，也不把动态 Pro/blocked 放进 JWT 作当前权威；原 **55 项 I/R/A** 和后续 **12 项 AUTH-P** 均保留 NOT RUN。
+> **后续第三方 BaaS 建议安全审查（2026-10-22）**：已形成 [BAAS-Q01～Q10 安全测试指南](../../development/testing/README.md)，新增 **BAAS-Q01～Q10 共 10 项未来负向/性能测试候选**（其中消费型额度用例只在业务真实引入时触发），均 **NOT RUN**。严禁把外部 `public SECURITY DEFINER` 的负数扣余额示例部署生产，也不把动态 Pro/blocked 放进 JWT 作当前权威；原 **55 项 I/R/A** 和后续 **12 项 AUTH-P** 均保留 NOT RUN。
 >
 > **新增 D3-UI 阶段追踪（2026-10-22）**：原 D4 在 D3 Resource/Provider 技术设计之后完成，**当时尚未包含真实 Admin 页面布局/线框/无障碍规格**。用户已批准并形成 [D3-UI 页面详细设计](./aisencore-mvp-d3-ui-admin-uiux-design.md)，列出 **D3-UI-X01～X18 共 18 条新的 UI/安全/可访问性/响应式验收**，全部 **NOT RUN**。该增量不改写已形成的 D4 原 I/R/A **55 项**，也不把历史 D4 误称为已评审后来新增的全部 UI，真实前端 MVP 必须未来另行实现并 E2E 留证。
 >
@@ -133,7 +133,7 @@
 | --- | --- | --- | --- |
 | **F01** | **P0 / D1+D2 数据库安全负责人** | 原 D1/D2 候选的 exposed `public SECURITY DEFINER` 存在扩权面风险；默认函数 PUBLIC EXECUTE 和所有者 RLS 绕过须防护 | **DESIGN RESOLVED / RUNTIME NOT VERIFIED**：[F01 决议](./aisencore-f01-f04-security-convergence-design.md#2-f01公开普通权限包装层--非暴露的定点扩权内核) 固定 public INVOKER + private 最小 DEFINER；私有 USAGE/EXECUTE 必须授且内核独立鉴权；真实权限、角色/SQLSTATE 仍待隔离测试 |
 | **F02** | **P0 / D1+D2 事务负责人** | 原 D1 锁序只有局部描述，redeem 先锁码再取成员可能与其它入口倒序 | **DESIGN RESOLVED / RUNTIME NOT VERIFIED**：[F02 决议](./aisencore-f01-f04-security-convergence-design.md#3-f02唯一事务锁总序与逐操作锁矩阵) 给出 L0～L8 和全入口操作矩阵、LCK-01～07；实际 FK/唯一隐含锁/双连接死锁与时段测试未运行 |
-| **F03** | **P0 / D2+D3 R2 实现负责人** | R2 预签 PUT URL 到期前可重用、HEAD 只看元数据，直接拿暂存对象当 ready 会允许覆写 | **DESIGN RESOLVED / RUNTIME NOT VERIFIED**：[F03 双键方案](./aisencore-f01-f04-security-convergence-design.md#4-f03r2-备份对象不可被旧-put-重放改写) 固定 staging PUT → 条件 CopyObject → 可信 final 校验 → ready；R2-01～06/产品字段 U09 的真实证明仍需 |
+| **F03** | **P0 / D2+D3 JSON Edge 实现** | 已批准 DEC-02 A（非敏感小 JSON 经过 Edge 的 schema/限体/sha256 校验再条件创建唯一 R2 final），R2/DB 仍无共同事务 | **DESIGN APPROVED / RUNTIME NOT VERIFIED**：详见[当前 F03 负向与失败用例](./aisencore-f01-f04-security-convergence-design.md#4-f03aisenlens-受保护-edge--r2-json-备份dec-02-a)，不再要求客户端 staging/Worker/CopyObject 旧路线 |
 | **F04** | **P0 / D1+D2 鉴权/API 负责人** | 仅有 MFA 的 UI gate 不保证 Admin Edge 调用 Auth Admin 前用 caller 身份重验真实名单与 blocked | **DESIGN RESOLVED / RUNTIME NOT VERIFIED**：[F04 信任链](./aisencore-f01-f04-security-convergence-design.md#5-f04管理员-totp当前资格与-auth-admin-密钥链) 固定 JWT/`aal2` → 原 JWT 资格 RPC → 最小权限 Auth Admin 查询，ADM-01～06 未运行 |
 | **F05** | **P1 / D1+D2 字段契约负责人** | 原 D1/D2 发码有效默认、`request_id` 作用域、直接 grant 参数变更和套餐 NULL/PATCH 未固定 | **DESIGN RESOLVED / RUNTIME NOT VERIFIED**：按 [F05 参数/幂等收敛](./aisencore-f05-f08-contract-compatibility-readiness-design.md#2-f05公共-rpc-精确参数和错误幂等语义) 确定 canonical v1、`(created_by,request_id)`、actor-scoped admin grant `source_ref`+辅助指纹、计划全字段提交；真实 SQL/HTTP/PostgREST 未运行 |
 | **F06** | **P1 / D2+D3 产品/运营负责人** | Aisenlens 额度/备份字段/恢复/离线体验需要 U04/U09/U10/U11 的产品政策 | **GATES DEFINED / USER DECISIONS PENDING**：[F06 门槛](./aisencore-f05-f08-contract-compatibility-readiness-design.md#3-f06aisenlens-产品级决策与测试拆分) 已区分固定安全底线和政策后验收；未替用户决定功能键、配额或恢复策略，R2 真实运行仍未验证 |
@@ -164,7 +164,7 @@
 | **D4 文档测试设计** | **可判 COMPLETED**（以本阶段静态审查通过为条件） | 43 个标准逻辑案例加 R2 追加案例均具有设计条目；不代表任何测试 PASS |
 | **产品无关的公共代码工程骨架** | **CONDITIONALLY READY（仅潜在开发准备）** | 设计输入足够起草项目结构/非生产类型定义与测试框架，但**用户尚未授权实际编码**；开发开始前需明确依赖锁定/安全计划，原先的无代码边界持续有效 |
 | **D1 数据/RPC 安全核心实现** | **BLOCKED（运行安全尚未验证）** | F01/F02/F04/F05 的**文档合同已收敛**，但真实 PostgreSQL/PostgREST/RLS/OWNER、锁竞态/CLI/SDK 与 F08 测试执行未有证据，仍不可宣称实现安全通过 |
-| **Aisenlens + R2 产品端完整功能实现与验收** | **BLOCKED（产品决策和 R2 运行证明不足）** | F03 staging/final 方案及 F06 安全底线已有设计，但 U04/U09/U10/U11 未决，真实 CopyObject/内容校验/配额与不可覆盖仍未实测 |
+| **Aisenlens + R2 产品端完整功能实现与验收** | **BLOCKED（U09/U10 产品数值及 R2/Edge 运行证明不足）** | DEC-02 A Edge 非敏感 JSON→R2 final 设计已批准，但实际内容校验/SDK 条件写/配额和 DB/R2 对账尚未运行；不要求旧 staging→CopyObject 路线 |
 | **正式上线/环境开放** | **BLOCKED（未达到可部署门槛）** | U03/U05/U06/U07/U08、没有实际实现、环境/迁移/测试/安全恢复演练、没有真实证据和批准 |
 
 **总判定：文档设计可以完成，但 AisenCore MVP“全量正式开发就绪”目前为 `BLOCKED`。** 这不代表不能在未来单独获得授权后先启动产品无关且不受阻断决策影响的工作；只是不能将完整系统或核心安全 RPC 宣称开工/上线条件全部具备。

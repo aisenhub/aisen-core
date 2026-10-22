@@ -2,7 +2,7 @@
 
 > **定位**：面向以后 AisenCore Admin React-admin/MUI 开发的**设计原则与具体执行指南**；源自对临时参考 `参考/design` 的有边界重构，**不是直接复制 AisenLens 的设计系统或已完成的前端代码**。
 >
-> **状态（2026-10-22）**：规范已建立，**未完成高保真设计、用户视觉签收、真实浏览器与组件运行验收**。`UI-G0 = NOT APPROVED / BLOCKED`；此目录存在不能释放 Admin 正式 Theme/Layout/业务页面编码。
+> **状态（2026-10-22）**：规范已建立，**未完成高保真设计、用户视觉签收、真实浏览器与组件运行验收**。`UI-G0A = NOT APPROVED / BLOCKED`；此目录存在不能释放 Admin 正式 Theme/Layout/业务页面编码。
 >
 > **技术选型**：Admin 继续使用 React-admin + MUI + TypeScript，保留 [Admin 业务设计](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md) 与 [D3 Resource/Provider](../../Plans/aisencore-mvp/aisencore-mvp-d3-admin-infrastructure-design.md)；不从参考项目引入 Tailwind、Base UI、shadcn、独立数据缓存/路由框架、AisenLens 专属主题和产品功能。
 >
@@ -19,7 +19,6 @@
 | 文字/色彩/布局/密度/图标/动效的**通用方法** | [设计基础](./admin-design-foundations.md) | 细化“如何使用”而不是再定义 Token |
 | 标准组件/列表详情/设置表单与保存模型 | [组件与页面模式](./admin-design-components-and-patterns.md) | 优先 React-admin/MUI，最小扩展，不写平行控件 |
 | UI-G0 高保真前门禁 / UI-G3 真实浏览器验收 | [规则与页面验证矩阵](./admin-design-verification.md) | 标明证据/阶段/权威数据，不把设计或构建当视觉通过 |
-| 原迁移范围/舍弃内容/历史来源 | [迁移边界](./admin-design-migration-record.md) | 临时参考目录删除后仍可追溯选择原因 |
 
 ### 基本执行协议
 
