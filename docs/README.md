@@ -15,15 +15,15 @@
 ## 当前计划、待办与实施设计
 
 - [Plans 工作区与保留/删除规则](./Plans/README.md)：只保留活动计划、实际待办、有效设计正文和必要阶段基线；完成的执行清单及时删除。
-- [MVP 总计划（ACTIVE）](./Plans/aisencore-mvp-implementation-design-master-plan.md)：整体阶段依赖、实际开发与发布门槛。
+- [MVP 总计划（ACTIVE）](Plans/aisencore-mvp/aisencore-mvp-implementation-design-master-plan.md)：整体阶段依赖、实际开发与发布门槛。
 - [当前 TODO](./Plans/TODO.md)：尚待确认的产品/运营参数、UI-G0 视觉签收及真实后端、MFA、R2、浏览器测试。
-- [D0 阶段范围/技术基线](./Plans/aisencore-mvp-d0-scope-and-baseline.md)：阶段初始决策与 D1 输入，保留为必要基线。
-- [D1 数据库设计](./Plans/aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/Aisenlens 设计](./Plans/aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3 Admin/环境设计](./Plans/aisencore-mvp-d3-admin-infrastructure-design.md)：实施候选而非已运行代码。
-- [D3-UI Admin 页面设计](./Plans/aisencore-mvp-d3-ui-admin-uiux-design.md)及[UI-G0 全局视觉规范](./architecture/applications/admin-ui-design-system.md)：页面文本线框已形成，**UI-G0 高保真参考和用户视觉批准仍 BLOCKED**。
-- [D4 测试/开发就绪评审](./Plans/aisencore-mvp-d4-test-and-readiness-review.md)：逻辑/安全/R2 增量测试设计，全部 NOT RUN。
-- [F01～F04 安全收敛](./Plans/aisencore-f01-f04-security-convergence-design.md)、[F05～F08 契约及兼容准备](./Plans/aisencore-f05-f08-contract-compatibility-readiness-design.md)：仅设计收敛，真实环境验收仍未执行。
-- [U03～U11 当前决议](./Plans/aisencore-u03-u11-user-decisions-2026-10-22.md)：已确认项与真实待定条件。
-- [Auth/Pro/MFA 低请求量设计](./Plans/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)、[BaaS/RPC 安全评审](./Plans/aisencore-mvp-baas-quota-security-lessons.md)：增量安全/性能用例设计，尚未运行。
+- [D0 阶段范围/技术基线](Plans/aisencore-mvp/aisencore-mvp-d0-scope-and-baseline.md)：阶段初始决策与 D1 输入，保留为必要基线。
+- [D1 数据库设计](Plans/aisencore-mvp/aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/Aisenlens 设计](Plans/aisencore-mvp/aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3 Admin/环境设计](Plans/aisencore-mvp/aisencore-mvp-d3-admin-infrastructure-design.md)：实施候选而非已运行代码。
+- [D3-UI Admin 页面设计](Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md)及[UI-G0 全局视觉规范](./architecture/applications/admin-ui-design-system.md)：页面文本线框已形成，**UI-G0 高保真参考和用户视觉批准仍 BLOCKED**。
+- [D4 测试/开发就绪评审](Plans/aisencore-mvp/aisencore-mvp-d4-test-and-readiness-review.md)：逻辑/安全/R2 增量测试设计，全部 NOT RUN。
+- [F01～F04 安全收敛](Plans/aisencore-mvp/aisencore-f01-f04-security-convergence-design.md)、[F05～F08 契约及兼容准备](Plans/aisencore-mvp/aisencore-f05-f08-contract-compatibility-readiness-design.md)：仅设计收敛，真实环境验收仍未执行。
+- [U03～U11 当前决议](Plans/aisencore-mvp/aisencore-u03-u11-user-decisions-2026-10-22.md)：已确认项与真实待定条件。
+- [Auth/Pro/MFA 低请求量设计](Plans/aisencore-mvp/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)、[BaaS/RPC 安全评审](Plans/aisencore-mvp/aisencore-mvp-baas-quota-security-lessons.md)：增量安全/性能用例设计，尚未运行。
 
 ## 开发规范、资料与模板
 

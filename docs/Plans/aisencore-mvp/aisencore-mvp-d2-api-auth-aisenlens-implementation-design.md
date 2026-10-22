@@ -1,6 +1,6 @@
 # D2｜公共 API、Supabase Auth 与 Aisenlens/R2 接入实施设计
 
-> **成熟度：D2 文档型实施设计（实施候选）**。以下 SQL 签名、路由、JSON 示例、对象路径和服务器内部状态用于指导下一步实现，**不是已经创建或真实测通的接口**。本文件不得重定义已有业务不变量；冲突时以 [现行唯一 API 逻辑权威](../architecture/backend/api-contract-and-mvp-acceptance.md)、[业务领域规则](../architecture/domains/README.md) 与 [D1 物理/事务设计](./aisencore-mvp-d1-database-implementation-design.md) 为准。
+> **成熟度：D2 文档型实施设计（实施候选）**。以下 SQL 签名、路由、JSON 示例、对象路径和服务器内部状态用于指导下一步实现，**不是已经创建或真实测通的接口**。本文件不得重定义已有业务不变量；冲突时以 [现行唯一 API 逻辑权威](../../architecture/backend/api-contract-and-mvp-acceptance.md)、[业务领域规则](../../architecture/domains/README.md) 与 [D1 物理/事务设计](./aisencore-mvp-d1-database-implementation-design.md) 为准。
 >
 > **2026-10-22 安全设计收敛（F01～F04）**：对外 SQL 签名/JSON/HTTP 业务契约不变，但其实现层采用 [私有最小扩权 RPC、L0～L8 锁序、R2 staging→final 校验和管理员 MFA/Auth Admin 链路](./aisencore-f01-f04-security-convergence-design.md)，优先于本文旧的单对象确认/锁定示例。真实环境尚未验证。
 >
@@ -152,7 +152,7 @@
 | `admin-user-lookup` Edge | 有界分页、精确查，`search_incomplete` 明示未完全覆盖 | 无 JWT 401；资格不够 403 | Auth Admin 不可用 503/5xx，不误报查无此人 |
 | Aisenlens 备份 Edge | **由本阶段新增候选产品接口**统一 Problem Details 错误结构与常规 2xx/4xx/5xx；数据和权限按用户/产品校验 | 401/403；不能把缺少配额当作签名通过 | 503/5xx：不发新 R2 URL、不把未完成上传记作已提交 |
 
-**公共稳定业务码**严格复用 [现有逻辑权威 §4](../architecture/backend/api-contract-and-mvp-acceptance.md#4-错误模型)：`AUTH_REQUIRED`、`ADMIN_REQUIRED`、`ACCOUNT_RESTRICTED`、`PRODUCT_UNAVAILABLE`、`MEMBERSHIP_REQUIRED/LEFT/SUSPENDED`、`ENTITLEMENT_REQUIRED`、`REDEEM_CODE_INVALID`、`REDEEM_ALREADY_USED`、`RESOURCE_FORBIDDEN`、`STATE_CONFLICT`、`INVALID_INPUT`、`RATE_LIMITED`、`SERVICE_UNAVAILABLE`。Aisenlens 文件超额/过期/冲突等可在产品侧使用**独立产品错误码**，不得覆盖这些公共码的含义。
+**公共稳定业务码**严格复用 [现有逻辑权威 §4](../../architecture/backend/api-contract-and-mvp-acceptance.md#4-错误模型)：`AUTH_REQUIRED`、`ADMIN_REQUIRED`、`ACCOUNT_RESTRICTED`、`PRODUCT_UNAVAILABLE`、`MEMBERSHIP_REQUIRED/LEFT/SUSPENDED`、`ENTITLEMENT_REQUIRED`、`REDEEM_CODE_INVALID`、`REDEEM_ALREADY_USED`、`RESOURCE_FORBIDDEN`、`STATE_CONFLICT`、`INVALID_INPUT`、`RATE_LIMITED`、`SERVICE_UNAVAILABLE`。Aisenlens 文件超额/过期/冲突等可在产品侧使用**独立产品错误码**，不得覆盖这些公共码的含义。
 
 **PostgREST 实现约束**：PostgREST 官方可通过 `RAISE SQLSTATE 'PTxyz'` 或 `PGRST` 特殊 SQLSTATE 映射自定义 HTTP 错误，实际受所部署版本约束。建议 D3/D4 验证的样例为 `RAISE SQLSTATE 'PGRST' USING MESSAGE='<JSON with code/message>', DETAIL='<JSON with status>'`；这会使 SQL 事务回滚，**绝不可用于兑换“必须持久化失败次数”的正常业务拒绝**。未核对运行时前不把候选 SQLSTATE 写成已经工作的稳定协议。API 响应中以独立稳定 `code` 供客户端处理，不把原始 PG 错误信息透传成用户文案。
 

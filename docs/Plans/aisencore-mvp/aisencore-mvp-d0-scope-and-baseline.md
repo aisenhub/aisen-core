@@ -2,7 +2,7 @@
 
 - **状态**：COMPLETED（D0 文档执行与联动检查已完成；**U01、U02 已由用户明确确认**，U03～U08 保持待定；D1 开始需另行授权）
 - **阶段**：[MVP 实施设计总计划](./aisencore-mvp-implementation-design-master-plan.md) §3 D0、§4.1 工作 1
-- **需求权威**：[现行需求](../spec/requirements.md)；**逻辑架构权威**：[主架构](../architecture/current-main-architecture.md)、[架构总索引](../architecture/README.md)及五类专项；**已有测试场景**：[API 契约](../architecture/backend/api-contract-and-mvp-acceptance.md)
+- **需求权威**：[现行需求](../../spec/requirements.md)；**逻辑架构权威**：[主架构](../../architecture/current-main-architecture.md)、[架构总索引](../../architecture/README.md)及五类专项；**已有测试场景**：[API 契约](../../architecture/backend/api-contract-and-mvp-acceptance.md)
 - **本次许可范围**：仅分析和修订本阶段所需的 Markdown 计划/索引；不编写业务代码、安装依赖、执行 SQL/迁移、创建/连接云资源、修改部署配置、提交 Git。
 
 ## 一、目标与完成判据
@@ -55,19 +55,19 @@ D0 的成果不是具体 SQL 或 UI，而是让 D1（数据库物理模型与权
 
 | 模块 | 已确认的首版必要能力 | 规则出处/界限 |
 | --- | --- | --- |
-| ① 统一身份 | Supabase Auth 邮箱密码与确认邮件、密码找回、共享用户 ID | [会话专项](../architecture/applications/auth-and-multi-saas-sessions.md)；不等于跨站 SSO |
-| ② 产品/成员 | 产品目录与状态；首次合法业务按需加入、退出/明确重加、成员暂停/恢复及事件 | [身份和产品模型](../architecture/domains/identity-and-product-model.md)、[成员生命周期](../architecture/domains/membership-lifecycle.md)；登录不建成员 |
-| ③ 管理员/平台限制 | 平台 `blocked`、受 MFA/`aal2` 保护的 Admin、最后可用管理员规则、人工注销渠道 | [管理员与账号](../architecture/domains/platform-admin-and-account-lifecycle.md)；不建 RBAC |
-| ④ 套餐/权益 | 各产品独立 Free/Pro，布尔功能、额度上限、周期与永久授权，赠予/撤销及在线检查 | [计费权益](../architecture/domains/billing-and-entitlements.md)；各 SaaS 自己统计用量 |
-| ⑤ 自有兑换码 | 管理员批量发码、哈希存储、首次明文、幂等/限流、兑换和授权原子事务 | [计费权益](../architecture/domains/billing-and-entitlements.md)、[数据约束](../architecture/database/entitlements-and-redemption-constraints.md)；首版不依赖支付渠道 |
-| ⑥ 公共读写 API | RLS 下的 PostgREST 查询、单事务受保护 RPC、`CheckAccess` 无副作用；审计与撤权 | [API 契约及 43 项逻辑验收](../architecture/backend/api-contract-and-mvp-acceptance.md)；业务数据不进入公共核心 |
-| ⑦ 内部 Admin | React-admin 管理产品、公共用户查询、成员、套餐/授权与兑换码 | [Admin 应用](../architecture/applications/admin-console.md)；读 RLS/写 RPC，不自动获私有产品数据 |
-| ⑧ SaaS 接入 | 共享用户 JWT 验证、真实受保护业务触发加入、公共准入、产品自身资源鉴权 | [后端接入](../architecture/backend/public-api-and-saas-integration.md)；**首发产品已确定为本地优先的 Aisenlens**，应按[本地优先专项](../architecture/applications/local-first.md)细化接入，不套用纯云端 SaaS 作为其实际使用路径 |
+| ① 统一身份 | Supabase Auth 邮箱密码与确认邮件、密码找回、共享用户 ID | [会话专项](../../architecture/applications/auth-and-multi-saas-sessions.md)；不等于跨站 SSO |
+| ② 产品/成员 | 产品目录与状态；首次合法业务按需加入、退出/明确重加、成员暂停/恢复及事件 | [身份和产品模型](../../architecture/domains/identity-and-product-model.md)、[成员生命周期](../../architecture/domains/membership-lifecycle.md)；登录不建成员 |
+| ③ 管理员/平台限制 | 平台 `blocked`、受 MFA/`aal2` 保护的 Admin、最后可用管理员规则、人工注销渠道 | [管理员与账号](../../architecture/domains/platform-admin-and-account-lifecycle.md)；不建 RBAC |
+| ④ 套餐/权益 | 各产品独立 Free/Pro，布尔功能、额度上限、周期与永久授权，赠予/撤销及在线检查 | [计费权益](../../architecture/domains/billing-and-entitlements.md)；各 SaaS 自己统计用量 |
+| ⑤ 自有兑换码 | 管理员批量发码、哈希存储、首次明文、幂等/限流、兑换和授权原子事务 | [计费权益](../../architecture/domains/billing-and-entitlements.md)、[数据约束](../../architecture/database/entitlements-and-redemption-constraints.md)；首版不依赖支付渠道 |
+| ⑥ 公共读写 API | RLS 下的 PostgREST 查询、单事务受保护 RPC、`CheckAccess` 无副作用；审计与撤权 | [API 契约及 43 项逻辑验收](../../architecture/backend/api-contract-and-mvp-acceptance.md)；业务数据不进入公共核心 |
+| ⑦ 内部 Admin | React-admin 管理产品、公共用户查询、成员、套餐/授权与兑换码 | [Admin 应用](../../architecture/applications/admin-console.md)；读 RLS/写 RPC，不自动获私有产品数据 |
+| ⑧ SaaS 接入 | 共享用户 JWT 验证、真实受保护业务触发加入、公共准入、产品自身资源鉴权 | [后端接入](../../architecture/backend/public-api-and-saas-integration.md)；**首发产品已确定为本地优先的 Aisenlens**，应按[本地优先专项](../../architecture/applications/local-first.md)细化接入，不套用纯云端 SaaS 作为其实际使用路径 |
 
 **核心范围与条件性范围**：
 - **首批公共能力必须**能完成“公共注册登录 → 产品/成员 → Free/Pro 权益检查 → 自有码发行/核销 → Admin 可信管理”的闭环，并覆盖跨产品隔离和失败不放行。
 - **爱发电**是后续初期候选渠道，支付宝/Stripe 再往后；目前不要求支付 Webhook、收单、续费或退款成为首批公共 MVP 开发前置，也不撤销未来商业目标。
-- **R2** 已作为文件存储技术选型，**Aisenlens 首批必须交付 R2 文件/配置备份能力（U02 已确认）**，因此文件授权、备份索引、对象组织、下载/恢复、配额及安全边界的实施设计不再是可任选的首发延期项。具体允许备份的内容仍遵守[本地优先专项](../architecture/applications/local-first.md)：不得据此扩大到视频、项目数据、AI 结果或 API Key 的云备份；备份元数据位置、具体字段与签名协议留待相应详细设计，不自动并入 D1 公共成员/权益表。
+- **R2** 已作为文件存储技术选型，**Aisenlens 首批必须交付 R2 文件/配置备份能力（U02 已确认）**，因此文件授权、备份索引、对象组织、下载/恢复、配额及安全边界的实施设计不再是可任选的首发延期项。具体允许备份的内容仍遵守[本地优先专项](../../architecture/applications/local-first.md)：不得据此扩大到视频、项目数据、AI 结果或 API Key 的云备份；备份元数据位置、具体字段与签名协议留待相应详细设计，不自动并入 D1 公共成员/权益表。
 - 不建设首版公共用户门户、通用组织 RBAC、跨域 SSO、公共用量账本、通用离线许可证、Redis 总线、统一 BI 或跨 SaaS 自动删除。
 - 生产邮件/回调、人工注销与个人数据处理责任是**正式对外开放前条件**，不是可永久忽略的非目标。
 
@@ -132,7 +132,7 @@ React-admin：管理员登录、RLS 列表、RPC 写操作
 | **U07** | 人工账号注销的对外入口、数据保留/删除期限、通知与合规责任？ | 首版人工受理已定，但具体期限和合法保留不能猜测 | 正式对外开放前 | **待你确定政策** |
 | **U08** | 谁负责人工分发兑换码，预计单次批量发码的业务规模？ | **人工发放已定**；批量上限数值与运营流程尚未定，默认不建设公开码商店 | D3 Admin 发码 UI 设计前 | **待你决定分发责任/规模** |
 
-**D0 当时**：U01、U02 已确认，U03～U08 仍待定。**2026-10-22 后续用户决议更新**：U03 已选公开注册；U04～U11 的产品/运营方向已部分确定，具体余项见 [当前用户决议记录](./aisencore-u03-u11-user-decisions-2026-10-22.md) 及 [现行 spec](../spec/requirements.md)。本表保留 D0 结束时的历史状态，不应再被理解为“当前 U03～U08 全部待定”。
+**D0 当时**：U01、U02 已确认，U03～U08 仍待定。**2026-10-22 后续用户决议更新**：U03 已选公开注册；U04～U11 的产品/运营方向已部分确定，具体余项见 [当前用户决议记录](./aisencore-u03-u11-user-decisions-2026-10-22.md) 及 [现行 spec](../../spec/requirements.md)。本表保留 D0 结束时的历史状态，不应再被理解为“当前 U03～U08 全部待定”。
 
 ### 3.5 不应要求用户逐条裁决的纯技术设计
 
@@ -153,12 +153,12 @@ React-admin：管理员登录、RLS 列表、RPC 写操作
 
 | 相关文档或目录 | 核对内容 | 实际处理 |
 | --- | --- | --- |
-| [`docs/spec/requirements.md`](../spec/requirements.md) | MVP 范围、技术已定/待定、上线前义务 | **无需修改**：D0 没有获得新的用户业务决定，不应把建议冒充正式需求 |
-| [`docs/architecture/`](../architecture/README.md) 的 domains/backend/database/applications/infrastructure 五类及主架构 | 范围职责、已确定技术、M1～M5 的规则、产品与账户边界 | **无需修改**：仅将已有逻辑架构映射为可执行设计计划，未改变架构结论；已核对架构索引及相关专项内容/标题 |
-| [`docs/development/`](../development/README.md) | 计划/架构/开发指南之间的文档职责 | **已更新**开发指南总入口的目录职责表，新增 Plans 说明；不提前编写开发规范 |
-| [`docs/Plans/`](./README.md) | 固定阶段流程、总计划 D0 勾选、用户决策索引 | **已更新**计划总入口与总计划，新增本 D0 详细计划及成果 |
+| [`docs/spec/requirements.md`](../../spec/requirements.md) | MVP 范围、技术已定/待定、上线前义务 | **无需修改**：D0 没有获得新的用户业务决定，不应把建议冒充正式需求 |
+| [`docs/architecture/`](../../architecture/README.md) 的 domains/backend/database/applications/infrastructure 五类及主架构 | 范围职责、已确定技术、M1～M5 的规则、产品与账户边界 | **无需修改**：仅将已有逻辑架构映射为可执行设计计划，未改变架构结论；已核对架构索引及相关专项内容/标题 |
+| [`docs/development/`](../../development/README.md) | 计划/架构/开发指南之间的文档职责 | **已更新**开发指南总入口的目录职责表，新增 Plans 说明；不提前编写开发规范 |
+| [`docs/Plans/`](../README.md) | 固定阶段流程、总计划 D0 勾选、用户决策索引 | **已更新**计划总入口与总计划，新增本 D0 详细计划及成果 |
 | [`docs/README.md`](../README.md) | 全局目录索引与文档权威说明 | **已更新** Plans 导航、阶段计划/联动复核规则 |
-| 历史 [`docs/review/`](../review/) | 既往审查记录是否属于本阶段当前需求/架构权威 | **无需修改**：历史审查报告含 `file:///` 绝对链接，不作为新 D0 相对链接错误或当前需求依据 |
+| 历史 [`docs/review/`](../../review) | 既往审查记录是否属于本阶段当前需求/架构权威 | **无需修改**：历史审查报告含 `file:///` 绝对链接，不作为新 D0 相对链接错误或当前需求依据 |
 
 ### 4.2 已执行的静态验证
 

@@ -1,6 +1,6 @@
 # MVP｜Supabase BaaS、原子配额与低请求量鉴权：外部建议采纳/拒绝及安全检查清单
 
-> **状态：DESIGN REVIEW ONLY / RUNTIME NOT VERIFIED（2026-10-22）**。已完成的阶段执行清单按 Plans 规则清理，技术采纳/拒绝及测试依据保留于本文。本文件**仅审查第三方通用技术建议对 AisenCore 的适用性**，不表示照抄示例 SQL/JavaScript，也未在真实 Supabase/R2 执行。业务事实以 [正式需求](../spec/requirements.md)为准，已有 [Auth/Pro/Admin MFA 低请求量方案](./aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)、[F01～F04](./aisencore-f01-f04-security-convergence-design.md)、[F05～F08](./aisencore-f05-f08-contract-compatibility-readiness-design.md)继续有效。
+> **状态：DESIGN REVIEW ONLY / RUNTIME NOT VERIFIED（2026-10-22）**。已完成的阶段执行清单按 Plans 规则清理，技术采纳/拒绝及测试依据保留于本文。本文件**仅审查第三方通用技术建议对 AisenCore 的适用性**，不表示照抄示例 SQL/JavaScript，也未在真实 Supabase/R2 执行。业务事实以 [正式需求](../../spec/requirements.md)为准，已有 [Auth/Pro/Admin MFA 低请求量方案](./aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)、[F01～F04](./aisencore-f01-f04-security-convergence-design.md)、[F05～F08](./aisencore-f05-f08-contract-compatibility-readiness-design.md)继续有效。
 
 ## 1. 逐项采纳决议（优先保持 MVP 简单）
 

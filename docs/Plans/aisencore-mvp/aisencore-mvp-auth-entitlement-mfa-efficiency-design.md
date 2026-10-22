@@ -2,7 +2,7 @@
 
 > **状态：DESIGN COMPLETED / RUNTIME NOT VERIFIED**；本文件保留专项有效约束和待执行测试，完成的执行清单已删除。本轮用户已批准**将 Admin TOTP MFA 纳入 MVP**，同时明确目标：尽量降低 Supabase Free 的不必要 Auth/DB/Edge 调用与客户端感知延迟。本文是**待实现的规范**，无实际 API、SQL、代码、生产配置或 p95 性能取证。
 >
-> 与 [正式需求](../spec/requirements.md)、[统一会话](../architecture/applications/auth-and-multi-saas-sessions.md)、[本地优先](../architecture/applications/local-first.md)、[公共 API](../architecture/backend/public-api-and-saas-integration.md)、[D2 接口/Auth](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3 Admin Provider](./aisencore-mvp-d3-admin-infrastructure-design.md)、[F01～F04 安全收敛](./aisencore-f01-f04-security-convergence-design.md)及 [D4 分层验收](./aisencore-mvp-d4-test-and-readiness-review.md)共同使用。**不修改**既有 `check_access` / `admin_check_access` 的已定义业务错误语义或要求跳过可信鉴权。
+> 与 [正式需求](../../spec/requirements.md)、[统一会话](../../architecture/applications/auth-and-multi-saas-sessions.md)、[本地优先](../../architecture/applications/local-first.md)、[公共 API](../../architecture/backend/public-api-and-saas-integration.md)、[D2 接口/Auth](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3 Admin Provider](./aisencore-mvp-d3-admin-infrastructure-design.md)、[F01～F04 安全收敛](./aisencore-f01-f04-security-convergence-design.md)及 [D4 分层验收](./aisencore-mvp-d4-test-and-readiness-review.md)共同使用。**不修改**既有 `check_access` / `admin_check_access` 的已定义业务错误语义或要求跳过可信鉴权。
 
 ## 1. 用户已批准的 MVP 方向及层次
 

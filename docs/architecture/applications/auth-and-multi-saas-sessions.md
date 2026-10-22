@@ -20,7 +20,7 @@
 
 MVP 尽量用 Supabase 官方 Auth SDK 的登录、令牌刷新、登出与密码重置机制。浏览器部署需正确配置允许的回调/重定向地址、防开放重定向及 HTTPS；若采用服务端渲染/PKCE，要按框架使用受支持方案，不自行手写交换令牌与存储协议。桌面端回调与凭据存储按具体客户端能力实现，不能把 refresh token 记入本地备份或日志。
 
-**低请求量会话原则（MVP）**：由 SDK 集中管理 `getSession` / `onAuthStateChange` 及必要刷新；`getSession` 读取本地存储且必要时可能联网，不等于可信服务器验签。采用非对称签名 JWT 时，`getClaims` 可以通过可缓存 JWKS 验签，而 `getUser` 会访问 Auth 服务器，因此禁止对每次 render、页面导航、Pro 按钮或 Admin 列表访问重复调用 `getUser`。信任边界和完整方案见[低请求量 Auth / Pro / MFA 专项](../../Plans/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)；普通用户 MVP **不强制 MFA**。
+**低请求量会话原则（MVP）**：由 SDK 集中管理 `getSession` / `onAuthStateChange` 及必要刷新；`getSession` 读取本地存储且必要时可能联网，不等于可信服务器验签。采用非对称签名 JWT 时，`getClaims` 可以通过可缓存 JWKS 验签，而 `getUser` 会访问 Auth 服务器，因此禁止对每次 render、页面导航、Pro 按钮或 Admin 列表访问重复调用 `getUser`。信任边界和完整方案见[低请求量 Auth / Pro / MFA 专项](../../Plans/aisencore-mvp/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)；普通用户 MVP **不强制 MFA**。
 
 ## 3. 邮箱确认、找回密码与账户恢复
 
@@ -28,7 +28,7 @@ MVP 尽量用 Supabase 官方 Auth SDK 的登录、令牌刷新、登出与密�
 - 使用 Supabase Auth 的确认邮件和密码重置流程；重置时要求使用可信、单次/时效适当的链接与允许的回调地址。提示语避免向未授权人员泄露邮箱是否已注册。
 - 生产环境邮件发送能力要验证到达率、退信与限额；默认邮件服务限制可能不满足实际用户规模，发信供应商和域名以后选择。
 - 用户可用的恢复过程应清晰区分：密码找回、会话重新登录、产品成员 `left` 的明确重新加入、管理员解除 `suspended`、全局账号恢复。前两项不改变成员封禁。
-- 内部管理员**必须**启用并完成 Supabase Auth 的 **TOTP MFA**：`aal1` 只能进入官方 TOTP enroll/challenge/verify，取得新的可信 `aal2` JWT 后才能查询 `admin_check_access` 及任何管理数据；管理 RLS 与 RPC 还要读取当前管理员名册和 blocked。只读 Auth Admin Edge **先验 JWT/`aal2`、用该原 JWT 复核当前资格，之后才执行服务端 Auth Admin 查询**，详细的最小权限与在途撤权窗口见 [F04 安全收敛](../../Plans/aisencore-f01-f04-security-convergence-design.md#5-f04管理员-totp当前资格与-auth-admin-密钥链)；按[管理员专项](../domains/platform-admin-and-account-lifecycle.md)执行，不自建 2FA。
+- 内部管理员**必须**启用并完成 Supabase Auth 的 **TOTP MFA**：`aal1` 只能进入官方 TOTP enroll/challenge/verify，取得新的可信 `aal2` JWT 后才能查询 `admin_check_access` 及任何管理数据；管理 RLS 与 RPC 还要读取当前管理员名册和 blocked。只读 Auth Admin Edge **先验 JWT/`aal2`、用该原 JWT 复核当前资格，之后才执行服务端 Auth Admin 查询**，详细的最小权限与在途撤权窗口见 [F04 安全收敛](../../Plans/aisencore-mvp/aisencore-f01-f04-security-convergence-design.md#5-f04管理员-totp当前资格与-auth-admin-密钥链)；按[管理员专项](../domains/platform-admin-and-account-lifecycle.md)执行，不自建 2FA。
 - **2026-10-22 用户进一步确认 Admin TOTP MFA 为 MVP 必做**：一次可信 challenge/verify 建立 `aal2` 会话后，**普通列表读/管理 RPC 用现有 JWT 在同一业务请求/事务内检查 MFA 等级和实时管理资格，不额外串行调用 MFA/Auth API、也不每操作弹验证码**；刷新后真实 `aal` 若降级或会话失效，须重新完成必要挑战。UI `checkAuth/canAccess` 可短期缓存导航资格，但不得让后端信任缓存。因素丢失恢复属 MVP 验收，真实备用账号身份尚待确定。
 
 ## 4. 会话、登出与失效语义
@@ -57,7 +57,7 @@ MVP 尽量用 Supabase 官方 Auth SDK 的登录、令牌刷新、登出与密�
 - 在 SaaS A 登出默认不影响 B；显式全局登出需明确告知用户影响范围，已签发短期 JWT 的实际失效窗口须如实处理。
 - 本地匿名 Free 不要求登录；首次需登录服务才触发成员；本地 Pro 按既定在线复核。
 - 管理员资格和 `aal2` 必须由管理 RPC/RLS 复核；跨 Project SaaS 需验证非对称 JWT 的签名、iss/aud/exp 并单独核验具体资源权限；单项目共享回调/发信/安全配置限制应在上线清单中检查。
-- **MVP Admin MFA 真实验收**：完成首次 TOTP enroll、challenge/verify、新 `aal2` JWT、正常会话不逐请求再次挑战、会话刷新/新登录/AAL 降级与因素遗失恢复；在列表和写 RPC 中量测额外 Auth/MFA HTTP 应为 0（不包括实际 JWT 刷新、必要新 MFA），参照 [AUTH-P06～P11](../../Plans/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md#43-admin-测试矩阵全部-not-run)。
+- **MVP Admin MFA 真实验收**：完成首次 TOTP enroll、challenge/verify、新 `aal2` JWT、正常会话不逐请求再次挑战、会话刷新/新登录/AAL 降级与因素遗失恢复；在列表和写 RPC 中量测额外 Auth/MFA HTTP 应为 0（不包括实际 JWT 刷新、必要新 MFA），参照 [AUTH-P06～P11](../../Plans/aisencore-mvp/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md#43-admin-测试矩阵全部-not-run)。
 - 产品封禁及平台全局阻断在新关键授权判断时不可被旧 JWT 中的过期权限声明绕过。
 
 不在首版建设第三方身份融合、跨域无感 SSO、通用用户画像、多设备风控平台；具体邮件供应商、回调清单、各产品界面文案及日常会话参数在上线前按产品确定。**MFA 强制策略与邮箱确认开关已确定**，不是实施时的任选项。

@@ -1,6 +1,6 @@
 # D4｜43 项分层测试规格、跨 D0～D3 评审及正式开发就绪结论
 
-> **阶段性质：设计与静态审查，不是已经执行的测试。** 本文件承接已完成设计阶段的测试规格、风险台账与未验证门槛，执行清单按 Plans 规则清理。本报告中所有案例统一为 **NOT RUN**；本阶段只执行了文档一致性与工作区静态检查。业务预期仅源自 [API 逻辑验收唯一权威](../architecture/backend/api-contract-and-mvp-acceptance.md)、[现行需求](../spec/requirements.md) 与已批准[领域/技术架构](../architecture/README.md)，绝不把候选实现写成已通过。
+> **阶段性质：设计与静态审查，不是已经执行的测试。** 本文件承接已完成设计阶段的测试规格、风险台账与未验证门槛，执行清单按 Plans 规则清理。本报告中所有案例统一为 **NOT RUN**；本阶段只执行了文档一致性与工作区静态检查。业务预期仅源自 [API 逻辑验收唯一权威](../../architecture/backend/api-contract-and-mvp-acceptance.md)、[现行需求](../../spec/requirements.md) 与已批准[领域/技术架构](../../architecture/README.md)，绝不把候选实现写成已通过。
 >
 > 设计输入：[D0 范围/用户决策](./aisencore-mvp-d0-scope-and-baseline.md)、[D1 物理数据库/可信事务](./aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/Aisenlens](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3 Admin/环境与 R2](./aisencore-mvp-d3-admin-infrastructure-design.md)。
 >
@@ -8,9 +8,9 @@
 >
 > **新增 D3-UI 阶段追踪（2026-10-22）**：原 D4 在 D3 Resource/Provider 技术设计之后完成，**当时尚未包含真实 Admin 页面布局/线框/无障碍规格**。用户已批准并形成 [D3-UI 页面详细设计](./aisencore-mvp-d3-ui-admin-uiux-design.md)，列出 **D3-UI-X01～X18 共 18 条新的 UI/安全/可访问性/响应式验收**，全部 **NOT RUN**。该增量不改写已形成的 D4 原 I/R/A **55 项**，也不把历史 D4 误称为已评审后来新增的全部 UI，真实前端 MVP 必须未来另行实现并 E2E 留证。
 >
-> **UI-G0 新增正式编码前硬关口（2026-10-22）**：根据用户最新决定，已形成 [UI-G0 全局设计系统权威](../architecture/applications/admin-ui-design-system.md)。必须先统一 MUI 主题/字号/间距/布局/组件，并产出**四类可见的高保真基准页、宽窄屏评估及用户显式视觉签收**，才可把 `UI-G0` 设为 `APPROVED` 释放 Admin 前端正式编码。现仅有设计规范正文，**G01～G12 均 NOT RUN、UI-G0 NOT APPROVED / BLOCKED**；之后仍须执行 D3-UI-X01～X18 的真实浏览器截图/无障碍/权限 E2E。此补订不改变历史 D4 原 55 项、AUTH 12、BAAS 10 的 NOT RUN 状态。
+> **UI-G0 新增正式编码前硬关口（2026-10-22）**：根据用户最新决定，已形成 [UI-G0 全局设计系统权威](../../architecture/applications/admin-ui-design-system.md)。必须先统一 MUI 主题/字号/间距/布局/组件，并产出**四类可见的高保真基准页、宽窄屏评估及用户显式视觉签收**，才可把 `UI-G0` 设为 `APPROVED` 释放 Admin 前端正式编码。现仅有设计规范正文，**G01～G12 均 NOT RUN、UI-G0 NOT APPROVED / BLOCKED**；之后仍须执行 D3-UI-X01～X18 的真实浏览器截图/无障碍/权限 E2E。此补订不改变历史 D4 原 55 项、AUTH 12、BAAS 10 的 NOT RUN 状态。
 >
-> **设计规则迁移与 UI 验收细化（2026-10-22）**：用户提供的临时设计副本中的通用 `rules` 原则现经 [Admin 规则索引](../development/frontend/admin-design-rules.md)与 [真实页面验证矩阵](../development/frontend/admin-design-verification.md) 专门适配，**62 条原 ID（其中 3 条条件适用）不是新增 62 项 E2E 测试或已运行的自动化 gate**。其字体混排、列表返回/草稿、一次明文 UNKNOWN、动态视口/局部滚动、焦点/可访问性作为原 D3-UI-X01～X18 和 UI-G0-G01～G12 的**补充判据**，旧用例状态一律 NOT RUN。原项目脚本/CI 和先前运行记录不作为 AisenCore 测试证据。
+> **设计规则迁移与 UI 验收细化（2026-10-22）**：用户提供的临时设计副本中的通用 `rules` 原则现经 [Admin 规则索引](../../development/frontend/admin-design-rules.md)与 [真实页面验证矩阵](../../development/frontend/admin-design-verification.md) 专门适配，**62 条原 ID（其中 3 条条件适用）不是新增 62 项 E2E 测试或已运行的自动化 gate**。其字体混排、列表返回/草稿、一次明文 UNKNOWN、动态视口/局部滚动、焦点/可访问性作为原 D3-UI-X01～X18 和 UI-G0-G01～G12 的**补充判据**，旧用例状态一律 NOT RUN。原项目脚本/CI 和先前运行记录不作为 AisenCore 测试证据。
 
 ## 1. 分层模型、风险等级与执行顺序
 
@@ -178,14 +178,14 @@
 
 | 文档/分类 | 检查要点 | 本阶段需否修改 |
 | --- | --- | --- |
-| [现行 spec](../spec/requirements.md) | U01/U02 已确认，U03～U11 未得到新批准；不得改变业务范围或额度 | **无需修改** |
-| [domains](../architecture/domains/README.md) | 成员退出与恢复、管理员保底、码和授权业务不变量继续有效 | **无需修改** |
-| [backend](../architecture/backend/README.md) | 43 项标准用例和错误模型保持唯一逻辑权威；D4 提出 F01/F02/F04/F05 候选安全审查 | **无需改逻辑权威**，链接可经总计划找到 D4 |
-| [database](../architecture/database/README.md) | D1 的表/事务设计已明确为候选；必须先解决暴露函数/锁序风险 | **无需直接改规则**，风险在 D4 审查台账 |
-| [applications](../architecture/applications/README.md) | D3 Admin MFA/一次性码与 D2 本地/R2 均有设计且尚未实现 | **无需修改** |
-| [infrastructure](../architecture/infrastructure/README.md) | 技术已选，但真实环境/版本/密钥/测试都不存在 | **无需修改** |
-| [development](../development/README.md) | 后续实施须落实真实 pgTAP/JWT/R2 测试工具/CI；D4 未写代码、未锁工具版本 | **无需修改**（测试详细规格放 D4 文件） |
-| [Plans 总计划](./aisencore-mvp-implementation-design-master-plan.md)、[Plans 索引](./README.md)、[docs 总入口](../README.md) | 需要追加 D4 测试/就绪评审入口、阶段状态与风险说明 | **本阶段同步更新** |
+| [现行 spec](../../spec/requirements.md) | U01/U02 已确认，U03～U11 未得到新批准；不得改变业务范围或额度 | **无需修改** |
+| [domains](../../architecture/domains/README.md) | 成员退出与恢复、管理员保底、码和授权业务不变量继续有效 | **无需修改** |
+| [backend](../../architecture/backend/README.md) | 43 项标准用例和错误模型保持唯一逻辑权威；D4 提出 F01/F02/F04/F05 候选安全审查 | **无需改逻辑权威**，链接可经总计划找到 D4 |
+| [database](../../architecture/database/README.md) | D1 的表/事务设计已明确为候选；必须先解决暴露函数/锁序风险 | **无需直接改规则**，风险在 D4 审查台账 |
+| [applications](../../architecture/applications/README.md) | D3 Admin MFA/一次性码与 D2 本地/R2 均有设计且尚未实现 | **无需修改** |
+| [infrastructure](../../architecture/infrastructure/README.md) | 技术已选，但真实环境/版本/密钥/测试都不存在 | **无需修改** |
+| [development](../../development/README.md) | 后续实施须落实真实 pgTAP/JWT/R2 测试工具/CI；D4 未写代码、未锁工具版本 | **无需修改**（测试详细规格放 D4 文件） |
+| [Plans 总计划](./aisencore-mvp-implementation-design-master-plan.md)、[Plans 索引](../README.md)、[docs 总入口](../README.md) | 需要追加 D4 测试/就绪评审入口、阶段状态与风险说明 | **本阶段同步更新** |
 
 ## 9. D4 输出状态与局限
 

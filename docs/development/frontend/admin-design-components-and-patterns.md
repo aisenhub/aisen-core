@@ -1,6 +1,6 @@
 # Admin 标准组件准入、页面模式及任务保护
 
-> 用途：把参考通用 `components/contract.md`、`controls.md`、`patterns/*.md` 的可复用思想映射到 AisenCore Admin；字段/业务动作仍以 [D3-UI](../../Plans/aisencore-mvp-d3-ui-admin-uiux-design.md)、[D3](../../Plans/aisencore-mvp-d3-admin-infrastructure-design.md)、[F05](../../Plans/aisencore-f05-f08-contract-compatibility-readiness-design.md) 为准，视觉数值见 [UI-G0](../../architecture/applications/admin-ui-design-system.md)。
+> 用途：把参考通用 `components/contract.md`、`controls.md`、`patterns/*.md` 的可复用思想映射到 AisenCore Admin；字段/业务动作仍以 [D3-UI](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md)、[D3](../../Plans/aisencore-mvp/aisencore-mvp-d3-admin-infrastructure-design.md)、[F05](../../Plans/aisencore-mvp/aisencore-f05-f08-contract-compatibility-readiness-design.md) 为准，视觉数值见 [UI-G0](../../architecture/applications/admin-ui-design-system.md)。
 
 ## 组件准入和变更审核
 

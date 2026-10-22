@@ -4,7 +4,7 @@
 >
 > **状态（2026-10-22）**：规范已建立，**未完成高保真设计、用户视觉签收、真实浏览器与组件运行验收**。`UI-G0 = NOT APPROVED / BLOCKED`；此目录存在不能释放 Admin 正式 Theme/Layout/业务页面编码。
 >
-> **技术选型**：Admin 继续使用 React-admin + MUI + TypeScript，保留 [Admin 业务设计](../../Plans/aisencore-mvp-d3-ui-admin-uiux-design.md) 与 [D3 Resource/Provider](../../Plans/aisencore-mvp-d3-admin-infrastructure-design.md)；不从参考项目引入 Tailwind、Base UI、shadcn、独立数据缓存/路由框架、AisenLens 专属主题和产品功能。
+> **技术选型**：Admin 继续使用 React-admin + MUI + TypeScript，保留 [Admin 业务设计](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md) 与 [D3 Resource/Provider](../../Plans/aisencore-mvp/aisencore-mvp-d3-admin-infrastructure-design.md)；不从参考项目引入 Tailwind、Base UI、shadcn、独立数据缓存/路由框架、AisenLens 专属主题和产品功能。
 >
 > **当前统一入口**：[frontend/README.md](./README.md)。本文件是其 Admin 设计专题细则，而非单独设计系统目录入口；字体/颜色/尺寸仍只由 [UI-G0](../../architecture/applications/admin-ui-design-system.md) 决定。
 
@@ -12,9 +12,9 @@
 
 | 要解决的问题 | 唯一主入口 | 本目录如何使用 |
 | --- | --- | --- |
-| Admin 功能范围/权限/安全合同 | [正式需求](../../spec/requirements.md)、[D3](../../Plans/aisencore-mvp-d3-admin-infrastructure-design.md) | 不通过 UI/规则改写业务状态、数据模型或 API |
+| Admin 功能范围/权限/安全合同 | [正式需求](../../spec/requirements.md)、[D3](../../Plans/aisencore-mvp/aisencore-mvp-d3-admin-infrastructure-design.md) | 不通过 UI/规则改写业务状态、数据模型或 API |
 | **品牌、字体字号精确候选、全局 Theme/布局/组件 Token、UI-G0 门槛** | **[Admin UI-G0 全局唯一视觉权威](../../architecture/applications/admin-ui-design-system.md)** | 这里不维护第二套 HEX、px 配色、主题运行值 |
-| Admin 页面 IA/路由/业务动作 | [D3-UI 页面详细规格](../../Plans/aisencore-mvp-d3-ui-admin-uiux-design.md) | 把规则映射到真实业务场景 |
+| Admin 页面 IA/路由/业务动作 | [D3-UI 页面详细规格](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md) | 把规则映射到真实业务场景 |
 | 设计原则/适用条件/验证问题 | [规则目录](./admin-design-rules.md)与机器可读 [admin-design-rules.json](./admin-design-rules.json) | 先按实际页面读取有关分类；保持原 `UX-*` ID 可追踪 |
 | 文字/色彩/布局/密度/图标/动效的**通用方法** | [设计基础](./admin-design-foundations.md) | 细化“如何使用”而不是再定义 Token |
 | 标准组件/列表详情/设置表单与保存模型 | [组件与页面模式](./admin-design-components-and-patterns.md) | 优先 React-admin/MUI，最小扩展，不写平行控件 |

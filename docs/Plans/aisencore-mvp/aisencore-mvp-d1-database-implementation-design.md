@@ -8,7 +8,7 @@
 >
 > **BaaS/RPC 安全适用性补订（2026-10-22）**：按 [原子配额反例与安全检查](./aisencore-mvp-baas-quota-security-lessons.md) 在**未来真的存在消费型产品操作时**检查可信成本正数/上下限、真实 actor/对象归属、F02 锁序、条件写/请求指纹幂等与审计。拒绝将外部 `public SECURITY DEFINER consume_user_quota(cost_amount)` 示例作为迁移；客户端传负数可能**增加**余额、且默认函数 EXECUTE/owner/RLS 会扩大攻击面。**不新增本 D1 表或 RPC**；现有 R2 配额是产品元数据 `ready+reserved` 事务，不是 AisenCore 通用余额。
 >
-> 设计输入：[D0 基线及 U01/U02](./aisencore-mvp-d0-scope-and-baseline.md)；业务真相以 [产品/成员/管理逻辑模型](../architecture/database/database-constraints-and-audit.md)、[权益/兑换约束](../architecture/database/entitlements-and-redemption-constraints.md)、[访问与事务边界](../architecture/database/database-access-and-transactions.md) 和 [业务领域架构](../architecture/domains/README.md) 为准。
+> 设计输入：[D0 基线及 U01/U02](./aisencore-mvp-d0-scope-and-baseline.md)；业务真相以 [产品/成员/管理逻辑模型](../../architecture/database/database-constraints-and-audit.md)、[权益/兑换约束](../../architecture/database/entitlements-and-redemption-constraints.md)、[访问与事务边界](../../architecture/database/database-access-and-transactions.md) 和 [业务领域架构](../../architecture/domains/README.md) 为准。
 >
 > **本轮范围**：公开 PostgreSQL 关系结构、约束、索引、读权限、受保护 RPC 的事务/锁设计，标注 D2 API 和 Aisenlens R2 的接口。**不执行 SQL、不创建 migration、云资源、业务代码或部署。**
 
@@ -247,7 +247,7 @@ CREATE POLICY admin_codes_read ON public.redemption_codes FOR SELECT
 
 ## 5. Aisenlens R2 备份的数据归属与权限边界
 
-**已确认的首发需求**：本地 Aisenlens 首批支持用户主动触发的 R2 **私有配置/文件备份**；首条真实链路是本地匿名 Free 继续离线运行，需登录 Pro/私有备份时本人登录公共 Auth、合法按需加入并获取公共准入，签发经授权的短期文件访问凭证后客户端直传/直读 R2。公共 Supabase/PostgreSQL 不收发文件字节，也不接收原始视频、拉片项目数据、AI 结果或 AI Key。参考[本地优先架构](../architecture/applications/local-first.md)与[数据/文件归属](../architecture/database/product-data-and-files.md)。
+**已确认的首发需求**：本地 Aisenlens 首批支持用户主动触发的 R2 **私有配置/文件备份**；首条真实链路是本地匿名 Free 继续离线运行，需登录 Pro/私有备份时本人登录公共 Auth、合法按需加入并获取公共准入，签发经授权的短期文件访问凭证后客户端直传/直读 R2。公共 Supabase/PostgreSQL 不收发文件字节，也不接收原始视频、拉片项目数据、AI 结果或 AI Key。参考[本地优先架构](../../architecture/applications/local-first.md)与[数据/文件归属](../../architecture/database/product-data-and-files.md)。
 
 | 数据或判断 | 所属组件（D1 结论） | 后续必要实施设计 |
 | --- | --- | --- |

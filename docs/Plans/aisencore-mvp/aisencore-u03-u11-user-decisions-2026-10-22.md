@@ -1,6 +1,6 @@
 # AisenCore / Aisenlens｜U03～U11 用户决策记录（2026-10-22）
 
-> **状态**：用户已明确首版方向，仍存在部分业务参数/人员和生产安全待决。本文是持续有效的用户决议记录；完成的任务同步清单已删除。本记录不是已运行的产品功能、数据库或实际 Supabase/SMTP/R2 配置；正式业务规则已按适用领域回写到 [spec](../spec/requirements.md)、[权益领域](../architecture/domains/billing-and-entitlements.md)、[账号管理](../architecture/domains/platform-admin-and-account-lifecycle.md)、[本地优先](../architecture/applications/local-first.md)。
+> **状态**：用户已明确首版方向，仍存在部分业务参数/人员和生产安全待决。本文是持续有效的用户决议记录；完成的任务同步清单已删除。本记录不是已运行的产品功能、数据库或实际 Supabase/SMTP/R2 配置；正式业务规则已按适用领域回写到 [spec](../../spec/requirements.md)、[权益领域](../../architecture/domains/billing-and-entitlements.md)、[账号管理](../../architecture/domains/platform-admin-and-account-lifecycle.md)、[本地优先](../../architecture/applications/local-first.md)。
 >
 > **已确定且持续有效**：U01 Aisenlens 是首发本地优先产品、U02 首批私有 R2 配置备份必须支持。后续用户说明优先于此前的“推荐选项”，但诸如“候选硬上限”“可测试技术候选值”“稍后开发实际字段”仍**不是已经冻结的最终配置**。
 
@@ -20,7 +20,7 @@
 
 ## 2. 永久 Pro 的已有正确物理模型与首版策略
 
-**无需引入“不可能到期的日期”或长期 JWT**。AisenCore 已有 [权益逻辑](../architecture/domains/billing-and-entitlements.md#3-mvp-权益逻辑模型)：每条 `entitlement_grants` 使用 `starts_at timestamptz NOT NULL`、`ends_at timestamptz NULL`、`revoked_at`。Pro 永久授权表示 `ends_at IS NULL` 且未撤销、开始时间已到；**并不是无限续费的 365 天订阅，也不是永不过期的 JWT**。CheckAccess 仍实时检查产品 active、成员状态、blocked、授权被撤销与功能键；永久只意味着这条**产品套餐授权没有预定自然到期日**，不绕过风险/管理封禁。
+**无需引入“不可能到期的日期”或长期 JWT**。AisenCore 已有 [权益逻辑](../../architecture/domains/billing-and-entitlements.md#3-mvp-权益逻辑模型)：每条 `entitlement_grants` 使用 `starts_at timestamptz NOT NULL`、`ends_at timestamptz NULL`、`revoked_at`。Pro 永久授权表示 `ends_at IS NULL` 且未撤销、开始时间已到；**并不是无限续费的 365 天订阅，也不是永不过期的 JWT**。CheckAccess 仍实时检查产品 active、成员状态、blocked、授权被撤销与功能键；永久只意味着这条**产品套餐授权没有预定自然到期日**，不绕过风险/管理封禁。
 
 **建议的产品套餐组织（候选键名，不是实际 seed）**：
 
@@ -37,7 +37,7 @@
 
 ## 3. Admin MFA：已纳入 MVP，解决重复验证的体验诉求
 
-**后续 2026-10-22 用户确认覆盖本文件最初记录的“暂缓 MFA”提议**：当前 [管理员领域权威](../architecture/domains/platform-admin-and-account-lifecycle.md#1-平台管理员最小可信机制) 要求 Admin TOTP MFA/`aal2`，用户现已明确**加入 MVP**。因此不再存在“是否取消生产 MFA”的政策冲突，实际还需要评测**如何不增加重复网络认证与操作延迟**；保持管理 RLS/RPC 的每请求真实 `aal2` 与数据库当前资格授权。
+**后续 2026-10-22 用户确认覆盖本文件最初记录的“暂缓 MFA”提议**：当前 [管理员领域权威](../../architecture/domains/platform-admin-and-account-lifecycle.md#1-平台管理员最小可信机制) 要求 Admin TOTP MFA/`aal2`，用户现已明确**加入 MVP**。因此不再存在“是否取消生产 MFA”的政策冲突，实际还需要评测**如何不增加重复网络认证与操作延迟**；保持管理 RLS/RPC 的每请求真实 `aal2` 与数据库当前资格授权。
 
 **MVP 已确认的低打扰方案**：Supabase Auth 官方 TOTP 登录第一因素后 challenge/verify 取得 `aal2`；已验证会话里的普通 Admin 数据读取与管理 RPC **在当前业务请求中核验 JWT `aal2` + 实时资格**，**不应每次单独发 `getUser`、MFA challenge/verify、`admin_check_access` 远程请求**。需要重新登录、会话 `aal` 降级、因素失效时才重新执行必要挑战。新设备/刷新/浏览器重开与恢复仍需在 SDK 版本和会话策略下实测，详见 [MVP Auth/Pro/Admin 优化](./aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)。
 
