@@ -6,7 +6,7 @@
 >
 > **2026-10-22 追加用户决定**：Admin **TOTP MFA 明确纳入 MVP**。原 F04 `aal1→TOTP→aal2→管理员资格` 安全链不改变；性能/体验补充以[低请求量 Auth/Pro/Admin 专项](./aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)为准：有效 `aal2` 会话的普通 Data API/管理 RPC **不会另起 MFA challenge/verify 网络请求**，后台从当前经验证 JWT + 资格表在原业务请求内鉴权，Auth Admin Edge 保留服务器资格检查。
 >
-> **外部 `SECURITY DEFINER` 示例安全反例（2026-10-22）**：禁止把未验证费用正数/actor/属主/EXECUTE 的消费函数直接建于 exposed `public`；一个负 `cost_amount` 可被扣除而令余额变大。F01 最小权限和 F02 全入口锁序、F03 R2 跨系统补偿、F04 当前管理员资格原则均不因“少一次 RPC”而放宽，详见[BAAS 原子配额安全清单](./aisencore-mvp-baas-quota-security-lessons.md)。
+> **外部 `SECURITY DEFINER` 示例安全反例（2026-10-22）**：禁止把未验证费用正数/actor/属主/EXECUTE 的消费函数直接建于 exposed `public`；一个负 `cost_amount` 可被扣除而令余额变大。F01 最小权限和 F02 全入口锁序、F03 R2 跨系统补偿、F04 当前管理员资格原则均不因“少一次 RPC”而放宽，详见[BAAS-Q01～Q10 安全测试指南](../../development/testing/README.md)。
 >
 > 四项关联：[D4 F01～F04 风险](./aisencore-mvp-d4-test-and-readiness-review.md#61-静态交叉评审发现的问题与风险台账)；D1 [物理/RLS/事务候选](./aisencore-mvp-d1-database-implementation-design.md)、D2 [接口/Auth/R2](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、D3 [管理端与基础设施](./aisencore-mvp-d3-admin-infrastructure-design.md)。
 >
@@ -18,7 +18,7 @@
 | --- | --- | --- |
 | **F01** | 对外 `public` RPC 一律以 **SECURITY INVOKER** 最薄包装；真正需扩权的单事务业务函数放 **`private` 不暴露 schema** 且最小 `SECURITY DEFINER` 所有者；所有被授权执行的私有内核本身再验证身份与操作权限 | **设计收敛；未验证** NOLOGIN owner/GRANT/RLS/PostgREST |
 | **F02** | 固定全局 Admin 写锁 → 目标账号门禁锁 → 用户限流 → 产品 → 套餐 → 成员 → 码 → 授权续期 → 写入/审计，按实际对象子集取得，绝不逆序；兑换特殊分支明确 | **设计收敛；未验证** pg 两连接竞态/死锁/时段 |
-| **F03** | **用户只得 staging PUT 短 URL**，永久 final 对象只由可信产品服务复制/确认写入，ready 记录始终指向从未暴露过客户端 PUT 的 final key；源 ETag 条件复制与最终内容校验 | **设计收敛；未验证** R2 CopyObject 条件/重放/Worker |
+| **F03** | **DEC-02 A 已批准**：Aisenlens 小型非敏感白名单 JSON 由受保护 Edge 可信校验、用受限 R2 权限条件创建唯一 final；通过产品 DB pending/ready/对账处理非 ACID，客户端不能写 final；普通其它私有文件才直传 | **设计获批；SDK/R2/Edge/补偿未实测** |
 | **F04** | `aal1` 只做官方 TOTP enroll/verify，取得被验证的 `aal2` JWT → `admin_check_access` 当前名册资格；Edge 持原用户 JWT 复核后才使用 Auth Admin 服务端秘密 | **设计收敛；未验证** SDK/JWT/资格撤销与 Auth Admin E2E |
 
 **“设计收敛”不能替代 D4 最终全量 READY**；F05～F08、U03～U11 仍按原评审台账保留，亦无实际测试结果。
@@ -124,52 +124,30 @@ PostgREST 识别 JWT 的具体网关配置与 Supabase SDK/CLI 版本必须实�
 | `LCK-06` | 码未知/失效、限流时间窗口临界、业务拒绝、写审计故障 | 失败次数回滚或失败后留下成员/grant/码计数副作用（R-06/R-11/I-15） |
 | `LCK-07` | 多码批次撤销与多个 redeem、产品暂停并行，设置短事务等待超时 | 循环死锁或部分撤销/审计提交；若发生真实 deadlock 需定位隐式 FK 锁并修总序 |
 
-## 4. F03｜R2 备份对象不可被旧 PUT 重放改写
+## 4. F03｜Aisenlens 受保护 Edge → R2 JSON 备份（DEC-02 A）
 
-### 4.1 以 staging/final **双键**作为确认后的不可变边界
+> 当前获批的首发路线是 **Aisenlens 用户主动提交的非敏感、小体积白名单 JSON 经 Supabase Edge 校验、使用受限 R2 凭据条件创建唯一 final 对象**，不是历史的客户端 staging PUT/Worker/CopyObject 方案。详细权威为[产品数据与文件架构](../../architecture/database/product-data-and-files.md)；其它普通文件的客户端 R2 直传设计不受本例外影响。
 
-```text
-Aisenlens 用户主动选择允许字段 → JWT/本人与产品权益
-   → Edge: 写 Aisenlens 自有备份元数据 pending / quota reservation
-   → 仅签短期 PUT 到 staging/<user>/<intent_uuid>/<random>（私有、不可列举）
-   → 客户端直传 R2 staging（期间即使签名被重复使用，也只能覆写 staging）
-   → backup-complete: 产品元数据 pending → verifying（幂等锁）
-      ├─ R2 staging HEAD 得到 ETag/真实 size
-      ├─ 可信产品验证层执行受条件约束的 CopyObject staging → unique final key
-      ├─ 可信层验证**final 实际内容**、允许配置 schema/大小/digest
-      ├─ 原子提交备份元数据 final_key + actual_bytes + checksum + ready / quota
-      └─ 失败则 failed/pending + 安全清理或补偿；final 即便存在也不对外列出
-   → 本人下载请求再次经授权，只签单个 final GET
-   → 旧 staging PUT URL 重放只影响 staging，永远不改 ready final
-```
+### 4.1 唯一现行流程与边界
 
-**信任边界**：最终 R2 key 由服务端不可预测地生成、每次备份独占、数据库 `UNIQUE(final_key)`，**永远不给任何客户端发 final PUT URL**；服务端需要为 final 创建时避免已存在同 key 被覆盖的条件写/先占用原子策略并在隔离 R2 兼容性环境证明。R2 当前 S3 API 列出 `CopyObject` 和 `x-amz-copy-source-if-match` 支持；以 HEAD ETag 为源条件复制候选，防 staging 在检查与复制之间被替换，失败应退回验证/重试状态。**ETag 不是通用内容安全/密码学 SHA-256 校验的替代品**；源复制和 final 内容校验/版本绑定必须一起完成。
+1. 客户端只序列化经 U09 明确允许的配置/模板 JSON，禁止视频、项目/时间轴、AI 结果、API Key/Token；Edge 验 JWT、当前 blocked/产品/成员/权益、大小上限、schema 版本和 SHA-256。白名单与具体上限仍待产品确认，禁止自动把 256 KiB 当生产限制。
+2. 受保护产品 RPC 按当前用户+产品+请求标识，在同一数据库事务中锁定、幂等记录 `pending` 与 `ready + 有效 reserved` 的配额预留；过期 pending 逻辑额度立即释放，但实际物理 R2 删除另需对账。
+3. Edge 对客户端不可写的唯一 `final_key` 可信执行条件创建；不能发放 final PUT、长期 R2 key、bucket 列表权限。不能拿 HEAD/ETag 替代 JSON 内容/白名单/摘要校验；SDK 条件创建能力和费用在隔离环境实测。
+4. R2 final 成功后，受保护 RPC **再核验权限/预留**并原子提交 `ready`、实际字节/摘要及审计。R2 创建成功而 DB 写失败需要孤儿隔离与有界 reconciliation；DB ready 成功而 HTTP 响应丢失，应以原请求标识读原状态，不重新写 final 或重复计费。R2 与 PostgreSQL 没有跨系统 ACID。
+5. 本人仅列举自己 `ready`，每次实时授权后签短期 R2 GET，由客户端直接下载；删除由 `deleting→deleted` 及可重试的实际物理清理保证。已签 GET URL 到期前可能继续有效。
 
-**字节传输边界**：**Aisenlens 客户端仍直接 PUT/GET R2，不经公共 PostgreSQL/PostgREST/Edge 转发**。要验证 final 文件内容白名单，推荐由**可信 R2 产品验证组件**（例如经评审的 Cloudflare Worker + R2 访问权限）内部读取/解析/有条件复制，Edge 只负责本人/权限/元数据控制与可信调用签发；它是 Aisenlens 自有的窄范围备份验证，不成为 AisenCore 通用文件业务服务。该组件及 Worker/SDK 的实际能力、最小权限与资源成本尚需 D3 实施前做独立安全评估；如果使用其它服务端校验途径，也必须维持“客户端文件字节不经公共 Supabase”的既有边界。
+### 4.2 F03 真实负向/故障用例（全部 NOT RUN）
 
-### 4.2 完整的状态/异常序列
+| 案例 | 必须验证 |
+| --- | --- |
+| R2-01 | 相同请求重试及丢失响应不重复计费、不覆盖 final，同键异参冲突 |
+| R2-02 | 超大小、非法字段/schema、含显著秘密等不可信输入拒绝，不产生 ready |
+| R2-03 | final 已存在及两个设备并发条件创建不会覆盖任何 ready 字节 |
+| R2-04 | blocked、left/suspended、无权限、跨用户/跨产品、超额请求没有非法授权副作用 |
+| R2-05 | pending 超时逻辑额度可用、物理对象后续对账；签 GET 撤权时间窗实测 |
+| R2-06 | R2 创建成功/DB ready 失败、DB ready/HTTP 失败、DB 标删/R2 删除失败均可幂等补偿 |
 
-| 元数据状态 | 进入和唯一动作 | 出错恢复 |
-| --- | --- | --- |
-| `pending` | L1 用户身份/产品权益已确认，原子保留 ready+reserved 限额，生成随机 staging/final keys；同 `request_id` 幂等 | PUT 未发生/URL 过期清理 staging 并释放 reservation；不显示列表 |
-| `verifying` | `backup-complete` 抢到本人 intent 行的单独锁，禁止两个 complete 双计费；用实际 size/ETag 条件 CopyObject 再验 final 内容 | R2/DB 失败保持非 ready 或标 failed；若 final 物理已有且元数据未提交，异步对账/清理该“孤儿 final”；不自动复制两次覆盖 |
-| `ready` | 数据库仅存唯一 final key/可信 content digest/版本/实际 bytes；最终对象不再允许客户端 PUT | 重复 complete 只返回既有 ready 非秘密数据；签发 GET 时仍校验本人及当前权益 |
-| `failed/deleting/deleted` | 幂等撤销 intent 或用户删备份、可信服务端删对象并结算额度 | R2 对象与元数据状态不一致时定期 reconciliation；对象实际删除失败应重试/告警而非声称已彻底清除 |
-
-**配额**：事务下按 **committed ready + reserved pending/verifying** 占用量结算，`expected_bytes` 只能用于预留的**上限约束**，确认后以真实 final 大小结算；PUT 超预计与配额则不 ready，可靠释放/隔离 staging/final；跨用户跨产品不能共用占用行。实际配额数字/单位/容量单位 U04 未定，不在 F03 决议中发明。
-
-**字段白名单**：U09 决定哪些非敏感配置/拉片模板允许备份。客户端本地序列化白名单 + 服务端对 final 内容的结构字段验证缺一不可；**HEAD 仅能验证 size/ETag 等元数据，绝不能证明内容无 API Key/私人文本**。可信验证器应拒绝意外字段、错误格式/版本和明显秘密字段，不能不实保证用户自由文本绝不可能包含秘密；视频、完整项目/时间轴、AI 结果和 API Key 默认不允许备份的架构边界不变。
-
-**撤权时间窗**：被 block/left/权益过期后拒绝**新签名和新的服务器 complete**；已发 staging PUT URL 到期前仍可能 PUT，故绝对不能通过 staging 存储公开资料，也不能将其当最终文件；已经发出的 final GET URL 在过期前也可能继续访问。需要在产品/技术验证后选短 TTL，不能声明即时撤销历史 URL。
-
-### 4.3 隔离 R2 必须验收的测试
-
-- **R2-01**：同一 staging URL 在未过期时重复 PUT A→B，已 ready final 的 SHA-256/内容始终为提交版本；重复 complete 不重新结算。
-- **R2-02**：HEAD 后、条件 CopyObject 前重写 staging，源条件必须失败或实际复制版本再经 final 完整校验；不能把与已校验来源不同的 final 标 ready。
-- **R2-03**：final key 已存在/同时两个 complete，对象不能被覆盖；必须拒绝并清理或产生新唯一 key，不能无声改变旧 ready。
-- **R2-04**：欠配额/超预计大小/错误 schema/包含禁止字段，不能提交 ready，释放额度并对账清理。
-- **R2-05**：用户被 blocked 后仍能使用未到期 staging PUT URL，但无法完成 ready 或新签发；过期后 URL 失效；final GET 的旧 URL 残余 TTL 真实记录。
-- **R2-06**：Copy 成功但 DB 写失败、DB ready 成功但清理 staging 失败，对账最终消除孤儿而不丢失 ready 对象。恢复/版本政策 U10 待定。
+旧 staging PUT 重放、HEAD/CopyObject 源条件竞态是**未采用的 B 路线或未来另建的普通文件直传路径**的测试案例，不能作为首发 Aisenlens JSON 必经实现步骤。
 
 ## 5. F04｜管理员 TOTP、当前资格与 Auth Admin 密钥链
 
@@ -211,7 +189,7 @@ Aisenlens 用户主动选择允许字段 → JWT/本人与产品权益
 | 下游 | 必须同步的设计 | 测试/上线前仍需证明 |
 | --- | --- | --- |
 | D1 | `public invoker/private definer`、`authenticated` 对私有内核最小 USAGE/EXECUTE、definer owner/RLS、L0～L8 锁矩阵与 M1/M2/M4 | SQL 可编译、pgTAP、GRANT/真实 JWT、两事务死锁与行重验 |
-| D2 | 原 RPC 对外名字与业务 JSON/HTTP 不变；Auth Admin 与 `admin_check_access` 用新调用链；R2 staging→final 不可复写 | PostgREST SQLSTATE 200/401/503、Edge 验签、R2 条件 Copy 与最终校验 |
+| D2 | 用户 redeem 双参数、管理员双模式直授与 Auth Admin MFA 使用现行接口；Aisenlens Edge 限定 JSON 条件写 R2 final | PostgREST 200/401/503、Edge 内容校验、R2 SDK 条件写/失败对账 |
 | D3 | React-admin 原 Resource/一次性明文/Provider 流程不改；MFA gate、Edge 执行先后、R2 窄产品验证组件/CI secret 分级对齐 | SDK 版本、AAL 刷新、密钥与构建扫描、Worker/Edge 兼容和对象权限 |
 | D4 | 只将 F01～F04 标为**DESIGN RESOLVED / RUNTIME NOT VERIFIED**，补上 LCK/R2/ADM 用例，原 43+12 项仍 NOT RUN；F05～F08 不变 | 用户明确的开发/测试授权后实际补证，P0 运行关口未解除 |
 
@@ -221,8 +199,8 @@ Aisenlens 用户主动选择允许字段 → JWT/本人与产品权益
 
 - [Supabase Database Functions](https://supabase.com/docs/guides/database/functions)：`SECURITY INVOKER/DEFINER` 与空 search_path，默认函数 `PUBLIC EXECUTE`、ALTER DEFAULT PRIVILEGES 的作用域、definer owner 可绕过 RLS；**真实部署权限须实际查询与验证**。
 - [Supabase Securing Edge Functions](https://supabase.com/docs/guides/functions/auth)：须按实际 SDK/项目 signing key 模式选择真实用户验证方式，不得把可公开 API Key 当用户 JWT。
-- [Cloudflare R2 Presigned URLs](https://developers.cloudflare.com/r2/api/s3/presigned-urls/)：同一预签名 URL 在 TTL 内可重复使用，必须分离 staging 和 final。
-- [Cloudflare R2 S3 API compatibility](https://developers.cloudflare.com/r2/api/s3/api/)：目前列有 `CopyObject`、`x-amz-copy-source-if-match`、`HeadObject`/条件操作，**实际 Edge/Worker 使用的 SDK/环境/对象大小限制仍须隔离桶验证**。
+- [Cloudflare R2 Presigned URLs](https://developers.cloudflare.com/r2/api/s3/presigned-urls/)：仅作为恢复 GET 和通用其它客户端直传的 bearer URL/重放风险参考，**首发 Aisenlens 小 JSON 不签发 staging PUT**。
+- [Cloudflare R2 S3 API compatibility](https://developers.cloudflare.com/r2/api/s3/api/)：**首发必须在真实 SDK 验证不可覆盖的 final 条件创建及失败响应**，CopyObject 仅属旧 B 路线/其它文件产品可选测试。
 - [PostgreSQL Advisory Locks](https://www.postgresql.org/docs/current/explicit-locking.html#ADVISORY-LOCKS)：仅事务级锁自动随事务结束释放；命名空间/hash 碰撞只影响串行，不可用于授权判断。
 
-**当前实际证据仅是设计文本与静态 Markdown/工作区检查**。没有编写代码/SQL，没有执行 pgTAP、真实 JWT、双事务、Supabase Auth Admin 或 R2 CopyObject，没有创建环境、部署或提交。
+**当前实际证据仅是设计文本与静态 Markdown/工作区检查**。没有编写代码/SQL，没有执行 pgTAP、真实 JWT、双事务、Supabase Auth Admin 或 R2 final 条件写，没有创建环境、部署或提交。

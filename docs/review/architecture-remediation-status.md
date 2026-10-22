@@ -1,5 +1,8 @@
 # 架构审查逐项整改核对与验证
 
+> **2026-10-22 全面清理说明（本文件为 10 月 21 日的历史审核快照）**：下面 M1～M6、S1～S9、D1～D9 的原结论与 268 链接、未提交等描述仅对**当时**有效，不应覆盖后续已批准的 DEC-01～06 A。首发 Aisenlens 限定非敏感 JSON R2 备份**已成为 MVP 必需且 DEC-02 A 为 Edge 校验写 R2**，不再属于此旧表 D4 所说的可延期项目。最新需求/安全边界见[spec](../spec/requirements.md)和[主架构](../architecture/current-main-architecture.md)，后续运行整改进度见[有效整改总计划](../Plans/20261022-review-remediation/master-plan.md)、[TODO](../Plans/TODO.md)。用户视觉 G0A、真实 MFA 恢复和生产测试均 NOT RUN。
+
+
 > 状态：**架构文档整改完成，实施验证待开展**（2026-10-21）。对照[原始审查报告](./architecture-review.md)逐项核对。这里的“已整改”只表示**逻辑架构及文档冲突修订到位**，不表示已创建 SQL 迁移、部署数据库/RLS/RPC、接入 SaaS 或通过运行时测试。
 >
 > 工作区：`E:\Projects\Aisencore`。本轮接续先前 Agent 中断的未提交修改，未重置、未提交已有工作，不更动生产资源。

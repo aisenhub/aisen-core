@@ -2,17 +2,17 @@
 
 > **F05～F08 设计合同随 DEC-04/05/06 A 版本化更新**：Admin 发码批次幂等优先用可完整恢复首次输入语义的强类型列和 NULL-safe 比较，只有不完整时才留受限 fingerprint；管理员直授保留 actor-scoped request_id，`duration`/`explicit_window` 两模式互斥，首次可信计算授权时段必须持久化、同键异参 `STATE_CONFLICT`。`current_free_plan_id` 指向同产品不可变 Free 家族版本；受限 Admin 邮箱 SQL RPC 优先验证，不安全即 Edge 单次聚合回退。原正文 `canonical v1 fingerprint` 必选、旧直授单模式、旧 Free 原地修改示例均被**现行[权益 DB 长期合同](../../architecture/database/entitlements-and-redemption-constraints.md)及[Admin 架构](../../architecture/applications/admin-console.md)覆盖**，只可用于兼容测试差异，不能直接实施。F05-C01～12、V00～07 SQL/HTTP/SDK 仍 NOT RUN。
 
-> **实施设计状态（2026-10-22）**：F05 **DESIGN RESOLVED / RUNTIME NOT VERIFIED**；F06/F07 **GATES DEFINED / USER DECISIONS PENDING**；F08 **VALIDATION PLAN READY / VERSIONS & RUNS NOT VERIFIED**。已完成的执行清单按 Plans 规则删除，真实待验收合同以本文为准。**不是**已经编写的 SQL、SDK、API、测试或创建的云资源。
+> **实施设计状态（2026-10-22）**：F05 **DESIGN RESOLVED / RUNTIME NOT VERIFIED**；F06/F07 **GATES DEFINED / REMAINING PARAMETERS PENDING**；F08 **VALIDATION PLAN READY / VERSIONS & RUNS NOT VERIFIED**。已完成的执行清单按 Plans 规则删除，真实待验收合同以本文为准。**不是**已经编写的 SQL、SDK、API、测试或创建的云资源。
 >
 > 业务权威：[spec](../../spec/requirements.md)、[D1 数据和安全](./aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/Aisenlens](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3 管理/运维](./aisencore-mvp-d3-admin-infrastructure-design.md)、[D4 43+12 验收](./aisencore-mvp-d4-test-and-readiness-review.md)；与 [F01～F04 私有内核/锁序/R2/MFA 收敛](./aisencore-f01-f04-security-convergence-design.md) 一起使用。U01 Aisenlens 本地优先、U02 首批 R2 私有备份已确认；U03 公开注册目标、U05 单人运营与 Admin TOTP MFA 已确认，U04/U06～U11 按[当前用户决议](./aisencore-u03-u11-user-decisions-2026-10-22.md)区分方向与待定参数；本文**不替用户设定**额度、备份字段、域名、发码上限或恢复责任人。
 >
-> **2026-10-22 补充费用与资源安全审查**：未来如新增真实消费型业务，则费用需可信确定、严格 `>0` 且上限、同 actor/请求指纹幂等与事务回滚；拒绝直接复制 `public SECURITY DEFINER` 的示例扣减 SQL，详见[专项评审及 BAAS-Q01～Q10](./aisencore-mvp-baas-quota-security-lessons.md)。现有 F05 发码/管理员 grant 的真实请求幂等契约不变，**本轮不新增未来消费 API 或公共表**；F08 真实 SDK/DB/R2 执行仍 NOT RUN。
+> **2026-10-22 补充费用与资源安全审查**：未来如新增真实消费型业务，则费用需可信确定、严格 `>0` 且上限、同 actor/请求指纹幂等与事务回滚；拒绝直接复制 `public SECURITY DEFINER` 的示例扣减 SQL，详见[BAAS-Q01～Q10 安全测试指南](../../development/testing/README.md)。现有 F05 发码/管理员 grant 的真实请求幂等契约不变，**本轮不新增未来消费 API 或公共表**；F08 真实 SDK/DB/R2 执行仍 NOT RUN。
 
 ## 1. 决议总览与适用层次
 
 | 问题 | 本轮约束 | 可立即定型的部分 | 后续尚需 |
 | --- | --- | --- | --- |
-| F05 · RPC 参数/批次幂等与 Admin grant | 对外函数签名精确、业务参数类型/默认三态、canonical v1、actor-scoped request_id、单事务幂等指纹/响应脱敏 | **设计规格固定**，避免 UI 与 DB 各算哈希 | SQL 编译、真实 PostgREST schema cache/HTTP/RLS 验收 |
+| F05 · RPC 参数/批次幂等与 Admin grant | 有效参数/default/NULL、强类型首次值与时段证据、actor-scoped request_id、双模式 grant、受控元数据与响应脱敏 | DEC-05 A 已批准，实施合同固定 | SQL/PostgREST/RLS/并发/旧行迁移待实测 |
 | F06 · Aisenlens 产品政策 | 定义可安全先做的验证和政策依赖条件，拒绝凭空默认产品行为 | **范围与用户决定门槛明确** | U04/U09/U10/U11 用户确认才能冻结产品级通过断言 |
 | F07 · 环境/运营/法律政策 | 发布前可执行的审批/恢复/安全环境 gate | **门槛及取证要求明确** | U03/U05/U06/U07/U08 确认、真实环境演练 |
 | F08 · SDK/DB/Edge/R2 兼容 | 版本发现方法、变更源、矩阵、test fixtures、runbook、失败分级 | **验证准备充分** | 真实版本锁、工具/SQL/签名/两连接/R2 隔离环境运行证据 |
@@ -29,46 +29,34 @@
 | RPC 对外函数形参（类型） | 必需/允许空 | 输入约束 / 默认处理 | 响应与拒绝约束 |
 | --- | --- | --- | --- |
 | `admin_create_codes(product_id uuid,plan_id uuid,config jsonb,quantity integer,request_id uuid)` | 5 个形参**都必须出现**，UUID 不能 NULL；`config` 必须非空 object | 产品/套餐关联，`quantity>0`；config v1 仅 `grant_duration_days`、`max_redemptions`、`expires_at`，详 §2.2；运营批量上限由 U08 确认，不能生产默认无限 | 首次仅 1 次明文，重放只给批次非秘密元数据；相同键不同规范化配置为 STATE_CONFLICT；无成功却不可确认则查询状态 |
-| `admin_grant_entitlement(target_user_id uuid,product_id uuid,plan_id uuid,starts_at timestamptz,ends_at timestamptz,reason text,request_id uuid)` | 所有键必须出现；`ends_at` 可 SQL NULL 表示永久，其余不能 NULL | `starts_at` 用真实 timestamptz，`ends_at>starts_at` 或永久；reason trim 后非空；不额外发明自动续期/试用策略，时间由已定业务合法条件检查 | 同 actor/request_id 同**规范化全部参数**重复返回原 grant 非秘密元数据，差异 409 冲突；无新授权/审计 |
-| `admin_upsert_plan(product_id uuid,plan_id uuid,plan_key text,name text,features jsonb,limits jsonb,default_duration_days integer,is_active boolean)` | **明确采用全字段提交**，全部键必须出现；`plan_id=NULL` = 新建；`default_duration_days=NULL` 保留“无默认时长”的语义 | 更新必须回传当前值或经业务允许的新值，不能通过省略字段触发隐式清空；`features/limits` 必须各为合法 JSON 类型，非 NULL；冻结字段 `product_id,plan_key,features,limits` 有历史引用则必须完全不变；非权益展示字段与停用遵循原权威 | 不提供通用 PATCH；记录已冻结字段非法更新拒绝，服务端比较数据库**当前行**而不是信任 UI 原值；旧有效码不因 plan 停用失效 |
+| `admin_grant_entitlement(target_user_id uuid,product_id uuid,plan_id uuid,mode text,duration_days integer,starts_at timestamptz,ends_at timestamptz,reason text,request_id uuid)` | 互斥 duration/explicit_window；显式 NULL 结束才永久 | 首次受控保存规范输入+可信计算时段；duration 同套餐 L7 顺延，explicit_window 完整提供开始结束 | 同 actor 请求重复返回原 grant，异参 STATE_CONFLICT，不产生双 grant/审计 |
+| `admin_upsert_plan(product_id uuid,plan_id uuid,plan_key text,name text,features jsonb,limits jsonb,default_duration_days integer,is_active boolean)` | **明确采用全字段提交**，全部键必须出现；`plan_id=NULL` = 新建；`default_duration_days=NULL` 保留“无默认时长”的语义 | 更新必须回传当前值或经业务允许的新值，不能通过省略字段触发隐式清空；`features/limits` 必须各为合法 JSON 类型，非 NULL；Free 家族创建后权益永不原位改动，非 Free 已有任何历史引用则冻结权益字段；非权益展示字段与停用遵循原权威 | 不提供通用 PATCH；记录已冻结字段非法更新拒绝，服务端比较数据库**当前行**而不是信任 UI 原值；旧有效码不因 plan 停用失效 |
 | `admin_revoke_grant(grant_id uuid,reason text)`、`admin_revoke_code(code_id uuid,reason text)` | 不能为空 | 幂等目标状态；审计同事务，重复撤销不增加有效副作用 | 按既定可预期业务错误/409；没有新发码明文 |
-| `redeem_code(code text)` | 非 NULL，码原文仅在该请求内使用 | 服务端规范化格式与 hash；**不接受客户端哈希**，限流与本人重复优先保持原规则 | 预期兑换失败 **HTTP 200 `ok=false`**，提交失败计数；首次/重复成功保持 M4，无明文入日志 |
+| `redeem_code(product_key text,code text)` | 两参数非 NULL，product_key 为不可信声明 | 先在声明产品核对 left/suspended 成员，再查码并对比真实归属；未知/跨产品一律无效码 | 预期拒绝 HTTP 200 ok=false、失败次数受控；旧单参公开入口必须安全下线 |
 | `check_access(product_key text,capability text)` | 按原 D2 公开接口候选规定；无效输入不能成为匿名授权 | 本人 JWT/有效权益实时判断，`capability` 不扩大到产品数据所有权 | 可可信计算的业务拒绝 **HTTP 200 `allowed=false`**；JWT 不合法 **401**，服务故障 **503**，不是一个“false” |
 
 **重要参数策略**：MVP 不把 `admin_upsert_plan` 做成“省略字段保留旧值”的隐式 PATCH；React-admin 表单先读取安全的现值，再**全字段提交**。如果实现者将来需要 PATCH，必须另设单一命名 `patch jsonb` 及 `expected_version` 的独立审查接口，并明确区分 JSON 对象里缺失、显式 null 与字段更新；**现在不声称已经批准新接口或新增表列**。并发重复编辑不能仅以客户端表单状态防丢写，实际实现需补充一致性/409 验证。
 
-### 2.2 发行批次 v1 规范化有效配置与指纹
+### 2.2 发码首次有效配置的规范化与强类型幂等（DEC-05 A）
 
-**服务端唯一规范**：`redemption_code_batches.config_fingerprint bytea(32)` 始终由可信数据库内核计算；不接受客户端发来的 digest，也不 hash 原始 `config` 文本/未标准化 JSON。与 D1 `UNIQUE(created_by,request_id)` 在**同一事务**使用，防竞态与 M3 明文泄露。
+**已批准取舍**：继续保留服务端 actor-scoped `(created_by,request_id)` 唯一和第一次明文仅出现一次的合同，**优先在批次受保护元数据中存首次实际有效字段并使用 NULL-safe 等值比较**，不再要求所有新批次一律维护 canonical v1 SHA-256 指纹。只有确实无法由强类型列重建首次输入等价性的旧行/字段，才在 private 技术列保留带明确定义的指纹或附加字段；任何值都禁止经普通 Data API SELECT。
 
-| config 键 | 缺省值 | 显式 JSON null | 有值时的有效类型/约束 |
-| --- | --- | --- | --- |
-| `grant_duration_days` | SQL NULL（永久） | **允许**，与缺省等价 | JSON integer、`>0`，不能小数/字符串/布尔 |
-| `max_redemptions` | **1** | **拒绝**（不是默认 1） | JSON integer、`>=1`，且受可信防滥用硬上限（真实上限/运营额外上限 U08） |
-| `expires_at` | SQL NULL（无截止） | **允许**，与缺省等价 | RFC3339 含时区字符串 → 解析成 `timestamptz`，规范成 UTC 微秒精度；精度/超界输入按 SQL 类型严格拒绝 |
+| 配置字段 | 默认与 NULL 语义 | 有效检查 |
+| --- | --- | --- |
+| `grant_duration_days` | 缺省或显式 NULL = 永久 | 非空必须严格正整数 |
+| `max_redemptions` | 缺省=1；显式 JSON null **拒绝** | 非空必须正整数并受可信上限，U08 真实批次限额仍未定 |
+| `expires_at` | 缺省或显式 NULL = 码没有截止 | 非空需带时区 RFC3339，规范到 UTC 微秒 |
+| `quantity / product / plan / created_by` | 必填，actor 来自已校验身份 | product/plan 一致、活动发码资格、正数 quantity、绝不接受客户端 created_by 或指纹 |
 
-**固定 canonical v1 输入**：对内核已验的 `created_by, product_id, plan_id, quantity, effective grant_duration_days, max_redemptions, expires_at` 构造**命名字段、固定顺序且版本标识的类型化序列**（候选：`canonical_version=1` 的 `jsonb_build_object`，再按已锁定 PostgreSQL 主版本和其 `jsonb` 文本规则序列化；或者字段带长度/NULL 标记的结构化编码），对其 UTF-8 原始字节作 SHA-256 存 32 字节。默认与显式提供相同有效值应生成**相同**指纹；无关 JSON 对象键排序和时间字符串 `Z/+00:00` 的差异不影响指纹。以**实际存储字段的类型化有效值**为准，避免 `request_id` 首次/重试因 server now() 等不确定默认变指纹。
+**并发处理**：先校验 JWT+`aal2`+当前 admin、产品/套餐资格、L0/L3/L4 锁及真实 config；`UNIQUE(created_by,request_id)` 竞争的重试者读取**首次持久化字段**逐项比较。相同语义返回 `created=false` + 安全批次信息，**不回显首次明文**、不新增审计/码；异参 `STATE_CONFLICT`。超时结果 UNKNOWN 时先查原状态，不能通过换 ID 和重放猜测原码。已发行历史 v1 指纹不可擅自删除；迁移必须用真实旧数据验证规则及版本差异。真实 F05-C01～12 未运行。
 
-**批次执行事务**：校验管理员 `aal2`/当前资格 → F02 L0 产品 L3 套餐 L4 → 对 `(created_by,request_id)` 唯一键锁/插入竞争处理 → 首次创建批次及代码哈希、同事务审计 → 返回明文仅当 `created=true` 且本次事务是实际首次创建者；冲突重试再次读取首行并核对 v1 digest（数据不变）。相同指纹：返回 `created=false,batch_id,quantity` 和非秘密字段，**绝不返回历史码明文**。指纹不同：`STATE_CONFLICT`，无新码或审计。网络请求提交后响应丢失：重试与非秘密批次检索只能确认状态，撤销旧批/换新 request_id 重发，不能通过“重放修复”展示旧明文。
+### 2.3 管理员直授两种互斥模式与首次时段证据（DEC-05 A）
 
-**历史迁移**：不允许悄悄改变已发行批次的 digest 算法/默认逻辑；如果以后出现 canonical v2，需要新增明确的版本识别和双读逻辑/迁移策略，历史码与旧请求仍遵循首次明文不可恢复。若将 `config_fingerprint` 只存 32-byte hash，必须依版本约定解释，并在实际迁移设计审查何处存/如何推断算法版本；**首版只有 v1 不必为未决定的版本写业务政策**。
-
-**非秘密响应候选**：
-```json
-{"ok":true,"created":false,"batch_id":"00000000-0000-4000-8000-000000000001","quantity":20,"plaintext_codes":null}
-```
-此示例是**重放**且不得含任何真正码、hash、secret 或 token。首次成功响应才可含明文码数组；两种分支必须由 UI 以 `created` 明确区分，不使用 200 与否猜测是否首次。
-
-### 2.3 管理员直接授权：actor 命名空间 + 可持久校验的请求指纹
-
-D1 既有 `entitlement_grants.UNIQUE(source_type,source_ref)` 是所有产品/用户共享的全局唯一约束，**只存裸 request_id 会让两个不同管理员恰巧相同 UUID 时错误互撞**。设计采用：
-
-- `source_type='admin'`；`source_ref` 的内部持久化形态为 **`admin:<actor_uuid>:<request_uuid>`**，以当前经可信 JWT 确认的 actor 与真实请求 UUID 构造。兑换仍使用原来的 `redeem_code` 来源，避免干扰赎回幂等。
-- 为了区分“同键同参数重放”和“同键改变目标用户/产品/计划/时间/原因”，在 D1 现有 grant 行**建议新增仅管理来源使用的技术辅助列** `admin_request_fingerprint bytea NULL`（管理员来源必须为 32 字节，兑码来源应 NULL），与授权/审计同事务落账；**不新建第二套授权事实表，也不改变已有 12 张表数量**。这仍是**未执行的物理 DDL 候选**，正式变更需在 D1 迁移审查时验证。
-- canonical grant v1 字段：`actor_user_id`、`request_id`、`target_user_id`、`product_id`、`plan_id`、`starts_at`（UTC 微秒）、`ends_at`（UTC 微秒或明确 NULL 永久）、`reason`（trim 后有效文本）及 `canonical_version=1`。服务端只对**规范化后的实际入库参数** hash。对不同但等价的时区表示视为同一次请求；同键但不同时间、受益人、reason 或 plan 返回 `STATE_CONFLICT`。
-- 请求首先取 F02 L0/L1/L3/L4/L7，查询 `source_ref` 是否已存在并核对 digest；完全一致返回最初 `grant_id/starts_at/ends_at`，**不生成第二条授权、审计或叠加时间**；不同则冲突。因 source_ref 全局唯一，跨管理员的 UUID 相同也不会碰撞。技术异常事务回滚。
-- 如果第一次由于网络超时无法确认：**先查该管理员在当前来源下的只读授权/审计状态**或原 request_id 可安全返回的非秘密结果，不发明“必然失败”。未被读到且资格允许时才按原 UUID 幂等重试，并对并发进行唯一冲突后读取结果。
-- **重要：不改变已定授权时间规则**。本文固定“显式 starts_at/ends_at 输入被纳入指纹”，并未替用户批准某种默认试用期、自动延长机制；是否应由服务器接管时段计算及其业务语义若与已确定领域文档冲突，必须在 D1/D2 最终编码前对现行权威复核。
+- `source_type=admin` 时以 `admin:<actor_uuid>:<request_uuid>` 唯一标识，actor 永远来自服务端当前 JWT；相同 request_id 的不同管理员各在自己的命名空间。
+- **`mode=duration`**：仅提交正整数 `duration_days`，不能同时携带显式时间窗；服务端在统一 L7 同用户+同套餐锁中，可信计算首次 `starts_at/ends_at` 并持久化。重复请求读取原计算结果，不随当前时间漂移再顺延。
+- **`mode=explicit_window`**：必须同时显式提交 `starts_at` 与 `ends_at`，其中**明确的 SQL/JSON null** 才是永久，省略结束键不允许隐式产生永久；非空时间比较和 UTC 精度由可信内核校验，未来授权不能提前启用。
+- 首次请求将 user/product/plan、mode、每个实际有效输入（包括 reason 规范化、参数是否存在）、可信时钟与已计算时段存于受控列或 private 幂等行；只有证明现有强类型列**能完整还原**时才能删除旧技术指纹。合法本人/Admin 读取安全投影不能获取 hash、请求技术元数据或他人 grant。
+- 请求重试**同 actor/request_id 同语义**返回原 grant 非秘密摘要、没有新授权/审计；同键异参 `STATE_CONFLICT`。原先纯显式签名需按升级方案安全迁移，不默许省略结束日期变成永久；真实 SQL/PostgREST/RLS/并发/NULL/时间精度均 NOT RUN。
 
 ### 2.4 重试、错误与角色对应
 
@@ -88,10 +76,10 @@ D1 既有 `entitlement_grants.UNIQUE(source_type,source_ref)` 是所有产品/�
 | --- | --- | --- | --- |
 | **U04** Free/Pro 功能、数值上限、试用及备份归属 | **已确认** Free 本地基础、Pro AI 分析/无水印导出/云备份、30/365/永久、首版不自动试用；**仍缺** feature key、价格和数值额度 | CheckAccess 根据真实权益计算功能/上限、R2 权威元数据使用 `ready+reserved` 原子预留 | 按 [当前用户记录](./aisencore-u03-u11-user-decisions-2026-10-22.md) 完成剩余字段与配额确认 |
 | **U09** 允许云备份的配置/模板字段 | **严格白名单的非敏感平台配置参数及允许的模板文本已确认**；实际 JSON 键集合/版本待 Aisenlens 实现明确 | 用户主动触发、默认拒绝未列字段；不得备份视频/完整项目/AI 输出/API Key；可信服务端 final 内容校验 | 精确字段 schema、升级兼容与错误字段策略 |
-| **U10** 恢复/版本/多设备冲突/保留 | **手动选择版本、差异预览、确认后替换所选类别已确认**；版本数量、保留期仍待定 | 只列本人已 ready final；损坏/不兼容不能静默覆盖；staging 不可下载 | 确切字段/版本清理与备份恢复 E2E |
+| **U10** 恢复/版本/多设备冲突/保留 | **手动选择版本、差异预览、确认后替换所选类别已确认**；版本数量、保留期仍待定 | 只列本人已 ready final；损坏/不兼容不能静默覆盖；非 ready 对象不可下载 | 确切字段/版本清理与备份恢复 E2E |
 | **U11** Pro 运行期间复核与断网体验 | **启动/关键操作复核、已启动纯本地任务断网可完成已确认**；15 分钟缓存只供运行验证，设备限制仍待定 | 本地匿名 Free 不受网络影响；**新受保护云操作/R2 签名**无法验证则拒绝 | 15 分钟重验实际性能与撤权窗口取证 |
 
-**F06 结论（后续用户答复）**：U04/U09/U10/U11 的上述**产品方向部分已批准**，具体 feature keys/容量/schema/版本时限/缓存阈值仍待确定或真实验证，不能再笼统称“这四项全部待定”。不能把 R2 1～5 分钟 TTL 候选或“同 Project 单独 schema”当作用户已批准的商业或存储政策；F03 CopyObject 尚未运行。
+**F06 结论（后续用户答复）**：U04/U09/U10/U11 的上述**产品方向部分已批准**，具体 feature keys/容量/schema/版本时限/缓存阈值仍待确定或真实验证，不能再笼统称“这四项全部待定”。不能把 R2 短期 GET TTL 候选或“同 Project 单独 schema”当作用户已批准的商业或存储政策；F03 Edge/R2 final 条件写尚未运行，旧 CopyObject 非当前路线。
 
 ## 4. F07｜生产环境/账号恢复/发码运营分段准入
 
@@ -127,7 +115,7 @@ D1 既有 `entitlement_grants.UNIQUE(source_type,source_ref)` 是所有产品/�
 | Supabase JS/Auth/MFA | `@supabase/supabase-js` 与 `@supabase/server` 所选精确版、JWT signing mode、JWKS/刷新 | `getClaims`、TOTP `aal2`、signOut scope、JWT 撤销/会话新鲜度 | 包锁文件、验证 JWT/MFA 真实 E2E、未授权负向记录 |
 | Edge Functions | runtime/Deno/SDK、`verify_jwt`、secret key 注入和授权头 | 公共密钥不等于用户 JWT、Edge 查询 Auth Admin 前先校验资格 | 实际 isolate 测试、401/403/503、secret 脱敏扫描 |
 | React-admin/Vite | React-admin/MUI/Vite/Node 精确版本、Provider 接口 | resource list/count、authProvider API、构建公开环境变量、Node 20 退场 | package lockfile、类型检查/preview E2E/构建制品 secret 扫描 |
-| Cloudflare R2 / SDK / Worker | R2 S3 feature matrix 日期、AWS SDK v3、Worker runtime、CopyObject 条件、private bucket+CORS | 预签 URL 有效期/头签名、重放、CopyObject 条件、最终不可覆盖 | **隔离桶真实 PUT→HEAD→Copy→GET→replay**、内容 SHA-256/HEAD 与对象元数据差异 |
+| Cloudflare R2 / Edge SDK | R2 S3 实际兼容版本、Edge Runtime、AWS SDK v3、**唯一 final 条件创建**、私有 Bucket 和 CORS | Edge JSON 内容校验、不可覆盖条件写、受控 GET URL 有效期/撤权时间窗、DB/R2 补偿；Worker/CopyObject 仅属未采用备选 | **隔离桶真实 PUT→HEAD→Copy→GET→replay**、内容 SHA-256/HEAD 与对象元数据差异 |
 | Cloudflare Pages / CI | Pages builder Node/runtime、环境变量 scopes、域名/回滚机制 | preview/prod secret 误注入、SPA 刷新、不能回滚 DB migration | CI 安全日志、staging preview/rollback 与 DB 恢复演练 |
 
 此时**不得填写任何假定的实际版本号**，也不能将“某版本官方已支持该命令”记为“本项目已执行成功”。每次选定版本后在 repo 固定 lockfile/服务版本记录，升级同样要重跑对应风险的反例。
@@ -137,11 +125,11 @@ D1 既有 `entitlement_grants.UNIQUE(source_type,source_ref)` 是所有产品/�
 | 顺序/验证包 | 操作范围和必要断言 | 出口证据 |
 | --- | --- | --- |
 | **V00** 基线与环境 | 检查无生产密钥、测试身份隔离、版本/CLI help、变更审批；拒绝把本地端口暴露公网 | OS/CLI/SDK/PG/PostgREST/R2 环境指纹、测试项目/桶明确隔离 |
-| **V01** DDL + F01 | 在**空测试库**应用版本化迁移，检验 12 张表 + 技术 `admin_request_fingerprint` 列、schema、默认 EXECUTE、invoker/definer owner、RLS/GRANT、失去权限后的报错 | migrations list、pg_catalog 快照、anon/用户A/B/aal1/aal2 SQL/HTTP 负向与 P0 审查 |
+| **V01** DDL + F01 | 在空隔离库应用版本化迁移，验证 Free 当前版本指针、真实隐含外键、**按 DEC-05 保存首次规范输入/时段的私有幂等元数据**，而非必建旧 admin_request_fingerprint 列；核验 EXECUTE/owner/RLS/GRANT | 迁移快照、anon/用户 A/B/aal1/aal2 越权 SQL/HTTP 负向和安全投影 |
 | **V02** F05 批次/授权幂等 | F05-C01～C12：默认/NULL/canonical 时间/同键配置差异/跨管理员、响应丢失、grant 指纹/冻结计划；不允许明文重放 | 实际请求/JSON、批次/授权计数与 digest、HTTP 409/200、无审计重复 |
 | **V03** F02 与 M1～M5 | LCK-01～07 真双事务屏障，并发发码与修改计划、码锁/账号限流/授权续期、审计故障注入 | 锁等待/超时/SQLSTATE、事务回滚快照、重复请求无第二 grant |
 | **V04** D2/Auth/API/F04 + MVP 性能 | JWT 签名/issuer/audience/aal2、**真实 Admin TOTP enroll/challenge/verify、刷新/降级、会话恢复**、Admin 普通读写不逐操作请求 MFA/Auth、Edge/Auth Admin 当前资格、M5 可信拒绝 200/401/503、PostgREST schema cache | HTTP+JSON、Edge 请求日志（脱敏）、Auth/MFA 计数与 P50/P95、未授权 Auth Admin 查询次数 0，AUTH-P01～P12 |
-| **V05** R2/F03 | staging 重放、HEAD 条件 CopyObject、final 只读、final digest、额外字段禁备、两设备配额/元数据补偿 | 对象 ETag/sha256、元数据 ready+reserved、错误与孤儿清理回证 |
+| **V05** R2/F03 | DEC-02 A：受保护 Edge 非敏感 JSON 白名单/限体、真实 R2 final 条件写、不可覆盖、摘要、超额/越权、断线/DB 失败/删除失败双端对账 | 对象 bytes/sha256、DB ready+reserved、错误及孤儿清理实测 |
 | **V06** Admin/Aisenlens/F06/F07 | React-admin Provider/首次发码明文、Aisenlens 匿名 Free、本地 Pro 权限；U04/U09/U10/U11 确认后才运行其精确产品断言 | E2E 截图/网络/日志脱敏、只读/写隔离、已确认用户政策 |
 | **V07** 灾备/上线门槛 | 迁移新空库 + 有旧数据、DB/R2 **配对恢复**、MFA 第二管理员恢复、Secret/TLS/SMTP/回调、Pages staging smoke/rollback | 审批单、恢复点/耗时、权限清单、数据/文件清单一致性与回滚结果 |
 

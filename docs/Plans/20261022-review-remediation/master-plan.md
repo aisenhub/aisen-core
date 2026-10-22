@@ -43,7 +43,7 @@
 
 ## 2. 阶段顺序与依赖关系
 
-> **本轮设计阶段交付**：[S0 问题事实台账](./s0-evidence-and-design-decisions.md) · [候选架构与故障/验收矩阵](./candidate-architecture-and-acceptance-matrices.md) · [文档设计闭环与静态证据](./document-design-closeout-evidence.md) · [项目所有者统一决策包](./owner-batch-decisions.md)。已经确认的长期规则已内联回 spec/architecture，**DEC-01～06 的 A 方案现已按用户明确确认写入现行 spec/architecture**；业务代码与 SQL/R2/Auth/UI 未执行。
+> **整改设计已归并**：最初的 S0 事实、候选故障矩阵和静态闭环台账是历史一次性施工材料，当前入口统一为**本 ACTIVE 总计划**、[D4 运行验收](../aisencore-mvp/aisencore-mvp-d4-test-and-readiness-review.md)、[唯一用户决策批准记录](./owner-batch-decisions.md)和长期 spec/architecture；原独立文件已在提炼后清理。DEC-01～06 全 A 已批准，业务代码与 SQL/Auth/Edge/R2/UI 均未运行。
 
 | 阶段 | 执行顺序与范围 | 关键交付 | 阻塞/先决 |
 | --- | --- | --- | --- |
@@ -57,9 +57,11 @@
 
 **关键依赖**：B-01 ↔ X-01（错误/成员优先级）、B-01 ↔ B-02（redeem 锁序）；B-03 ↔ M-02（服务器续期计算/幂等）；G-03 ↔ M-03 ↔ X-02（R2 路线及补偿）；A-02 ↔ A-03（用户虚拟 Resource）；A-01 的正式主题/业务页面开发仍受已批准 UI-G0 阻断。G-04 可并行，但换行符规范化必须独立提交。
 
+**过期独立工作单清理归并（2026-10-22）**：原 S0 事实表、候选矩阵和文档静态闭环台账均是一次性阶段交付，不应与本 ACTIVE 总计划并行维护另一套整改状态；已提炼的长期业务/错误与对象安全合同在 spec/architecture，DEC-01～06 的唯一批准证据在[统一决策记录](./owner-batch-decisions.md)，运行负向测试在[API 验收权威](../../architecture/backend/api-contract-and-mvp-acceptance.md)、[D4](../aisencore-mvp/aisencore-mvp-d4-test-and-readiness-review.md)与本计划。**18 项（14 业务 + 4 横切）仍需逐项真实取证**，文档完成不等于任何 SQL/Edge/R2/MFA/browser 通过。原基线为 main/f2d1f90、起始工作树干净，.gitattributes 当时尚不存在；这些是历史观测，不是当前仓库状态。
+
 ## 3. S0 基线校验
 
-> **2026-10-22 已启动事实核验**：基线 main/f2d1f90、初始工作树干净、缺少 .gitattributes、G-02 需求矛盾均已实际观察；18 项分类、证据和 DEC 阻塞见 [S0 事实与设计优化台账](./s0-evidence-and-design-decisions.md)。已进行的仅为文档设计整改，S1～S5 所需运行测试仍全部 NOT RUN。
+> **S0 历史基线事实（已完成）**：2026-10-22 起始 main/f2d1f90、起始工作区干净，当时缺少 .gitattributes；G-02 需求冲突后来已修改、DEC-01～06 全 A 已批准。原始审查见[20261022 报告](../../review/20261022.md)，18 项实施与验证仍由本计划/TODO 追踪，**不是当前分支/仓库状态或已运行结论**。
 
 ### BASE-01｜建立事实、风险类型与证据索引
 
@@ -153,7 +155,7 @@
 
 ### M-01｜U03～U11 已确认状态同步（P1）
 
-**相关文件**：docs/Plans/aisencore-mvp/aisencore-u03-u11-user-decisions-2026-10-22.md、aisencore-mvp-d0-scope-and-baseline.md、D1/D2/D3/F01/F05、TODO.md；docs/spec/requirements.md。
+**相关文件**：docs/Plans/aisencore-mvp/aisencore-u03-u11-user-decisions-2026-10-22.md、已归并 D0 基线、D1/D2/D3/F01/F05、TODO.md；docs/spec/requirements.md。
 
 - [ ] U03 公众注册、U05 单人运营且 Admin MFA 必做为已确认事项；U04/U06～U11 按“行为已确认/具体参数待定/运行待验收”拆分。
 - [ ] D0 标注为历史基线；D1/D2/D3/F01/F05 开头和结尾过期“U03～U11 均未确认”等声明删除，改为链接唯一的最新决议与 TODO。
@@ -221,7 +223,7 @@
 - [ ] ready 用量 + 未过期 pending/verifying 预留才参与当前可用额度；expired reservation 在查询逻辑中即时失效，避免断网导致永久配额占用。
 - [ ] 针对两设备同传、重放 request_id、URL 仍有效时重复 PUT、R2 成功 DB 失败、DB 成功响应丢失、重复 complete/删除、孤儿 final、定时清理不可用等写失败矩阵。
 - [ ] 逻辑预留过期**不代表 R2 实际对象已删**；仍要有清理执行者、过期策略、可重试对账及空间成本监控。
-- [ ] 对 R2 ETag 与条件写/条件 CopyObject 的 SDK 当前能力实际测试；不能把 HEAD/ETag 当可信 JSON 校验或强原子跨系统事务。
+- [ ] 对 **DEC-02 A 的 Edge 可信 JSON 验证与 R2 final 条件创建**进行真实 SDK 验收；HEAD/ETag 不能替代 schema/摘要，不能将 R2/DB 当作原子事务。旧 CopyObject 属未采用的 B 路线，非本次 JSON 前置测试。
 - [ ] 坚持 U09/U10 现行产品边界：非敏感字段明确白名单、用户手动选版本、预览差异、确认后替换选定类别；版本上限/保留期还待用户决定。
 
 **验收 REV-M03-01～08**：断网 pending 不永久锁住额度；失败后不会产生可公开下载的未 ready 数据；旧签名不覆盖 final；重试不双计费、不丢属主、不泄露他人备份；孤儿对象能定位/安全清理。
@@ -315,7 +317,7 @@
 
 ## 9. 六项独立架构决策（全部推荐 A 已批准；保留原备选评审）
 
-> 六项候选的**接口输入/状态矩阵、幂等与时间语义、R2/DB 故障补偿、Admin 查询/DataProvider 资源映射和验收标准**详见 [候选架构与验收矩阵](./candidate-architecture-and-acceptance-matrices.md)。该附件 A 路线**已获批准但仅为实施与测试细化**，权威以已同步的 spec/architecture 为准。
+> **已批准方案的验收与失败矩阵**：六项 A 的合法/非法接口、时段、幂等、R2/DB 单侧失败和 Admin 查询合同已归入[长期 API/安全规则](../../architecture/backend/api-contract-and-mvp-acceptance.md)与[当前 D4 测试](../aisencore-mvp/aisencore-mvp-d4-test-and-readiness-review.md)，不再另存平行候选矩阵。
 
 | ID | 已批准设计决议（均为 A） | 设计内容 | 开发与运行前约束 |
 | --- | --- | --- | --- |

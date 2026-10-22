@@ -4,7 +4,7 @@
 
 ## 本轮审查整改（DEC-01～06 已批准，运行整改未完成）
 
-- [ ] 按[整改总计划](./20261022-review-remediation/master-plan.md)、[S0 事实](./20261022-review-remediation/s0-evidence-and-design-decisions.md)、[设计闭环证据](./20261022-review-remediation/document-design-closeout-evidence.md)逐项关闭 G-01～04、B-01～03、M-01～03、A-01～04 与 X-01～04。**本轮不依赖新用户决策的文档设计已收敛；代码、SQL、云端、Auth/MFA、R2、Admin UI 运行验收全部 NOT RUN**，不得将静态交付写成系统 READY。
+- [ ] 按[审查整改总计划](./20261022-review-remediation/master-plan.md)与[最新审查处置状态](../review/architecture-remediation-status.md)逐项关闭 G-01～04、B-01～03、M-01～03、A-01～04 和 X-01～04。**设计决定已批准、文档收敛不等于执行通过**；SQL/云服务/Auth/MFA/R2/Admin UI 的运行验收仍 NOT RUN。
 - [x] 2026-10-22 项目所有者已批准[DEC-01～06 推荐 A 的统一决策](./20261022-review-remediation/owner-batch-decisions.md)，已写入当前 spec/architecture：兑换显式 product_key、限定小 JSON Edge→R2、G0A/B/G3、Free 当前版本指针、双模式直授与强类型幂等、Auth 限权 SQL RPC 优先/不安全则回退 Edge。**审批不是代码/迁移/上线许可；U04～U11 的真实字段、责任和运营参数仍在本 TODO 后续任务中。**
 
 ## UI-G0（阻断 Admin 正式前端编码）
@@ -23,8 +23,8 @@
 
 - [ ] 依 [F01～F04 安全收敛](aisencore-mvp/aisencore-f01-f04-security-convergence-design.md) 与 [D1 物理/可信事务](aisencore-mvp/aisencore-mvp-d1-database-implementation-design.md) 在隔离环境实际运行 RLS/GRANT/RPC/owner/`SECURITY DEFINER` 搜索路径与权限拒绝、L0～L8 锁顺序/并发；验证 M1～M5，禁止将文档设计状态误记为安全 PASS。
 - [ ] 依据 [F05～F08 接口与版本验收](aisencore-mvp/aisencore-f05-f08-contract-compatibility-readiness-design.md) 锁定并核验真实 SDK、CLI、PostgreSQL/PostgREST、Auth、Edge、Cloudflare R2 版本，执行 F05-C01～C12 及 V00～V07；查验暴露 schema 的显式 GRANT、请求指纹/字段 NULL 语义、并发幂等与对象最终一致性。
-- [ ] 验证 R2 私有备份 staging→final/条件复制、quota `ready+reserved` 事务与失败补偿、签名/上传/恢复/过期对象清理以及真实资源开销；依 [D2](aisencore-mvp/aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3](aisencore-mvp/aisencore-mvp-d3-admin-infrastructure-design.md) 取得可复核证据。
-- [ ] [D4 55 项 I/R/A](aisencore-mvp/aisencore-mvp-d4-test-and-readiness-review.md)、[AUTH-P01～P12](aisencore-mvp/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)、[BAAS-Q01～Q10](aisencore-mvp/aisencore-mvp-baas-quota-security-lessons.md) 仍全部 **NOT RUN**；BAAS 的消费型 RPC 只在未来确有此业务时触发，不新增本轮积分/平台 AI 扣费功能。
+- [ ] 按**DEC-02 A** 在隔离环境验证 Aisenlens **受保护 Edge 接收非敏感 JSON→可信校验/条件创建 R2 final**、`ready + 有效 pending` 原子配额、DB/R2 单边故障/物理对象清理/短 GET/手动类别恢复和实际费用；**不再验证作为首发 JSON 前置条件的 staging PUT/CopyObject/Worker**。施工参考[D2](aisencore-mvp/aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3](aisencore-mvp/aisencore-mvp-d3-admin-infrastructure-design.md)。
+- [ ] [D4 55 项 I/R/A](aisencore-mvp/aisencore-mvp-d4-test-and-readiness-review.md)、[AUTH-P01～P12](aisencore-mvp/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)、[BAAS-Q01～Q10 安全测试指南](../development/testing/README.md) 仍全部 **NOT RUN**；BAAS 的消费型 RPC 只在未来确有此业务时触发，不新增本轮积分/平台 AI 扣费功能。
 
 ## U03～U11 剩余产品与运营决定（不将候选参数写成确认）
 

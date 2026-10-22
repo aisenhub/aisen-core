@@ -5,9 +5,8 @@
 ## 当前待办与唯一实施导航
 
 - [MVP 实施设计总计划（ACTIVE）](aisencore-mvp/aisencore-mvp-implementation-design-master-plan.md)：阶段依赖、实际开发准入、U03～U11/安全/视觉阻塞；**计划仍未结束**。
-- [2026-10-22 审查整改专项总计划（DRAFT）](./20261022-review-remediation/master-plan.md)：14 项审查问题、4 项跨模块任务与 MCP 延期评估；按阶段列出修复步骤、决策和验收。
+- [2026-10-22 审查整改专项总计划（ACTIVE / RUNTIME NOT RUN）](./20261022-review-remediation/master-plan.md)：14 项审查问题和 4 项横切任务的真实实施/验收；DEC-01～06 全 A 已批准但运行整改尚未验收。
 - [MVP 当前待办（TODO）](./TODO.md)：真实运行/用户确认/上线前检查；不把已完成的文档型任务长期作为新计划。
-- [D0 需求范围与阶段基线](aisencore-mvp/aisencore-mvp-d0-scope-and-baseline.md)：**保留的阶段结果基线**，含 U01/U02 初始决定及 D1 输入；最新 U03～U11 决定看下方专文。
 - [D1 数据库实施设计](aisencore-mvp/aisencore-mvp-d1-database-implementation-design.md)：PostgreSQL/RLS/GRANT/锁序与 M1～M5，SQL/事务尚未运行。
 - [D2 API/Auth/Aisenlens 实施设计](aisencore-mvp/aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)：RPC、JWT、产品边界与 R2 恢复/授权，**未实现**。
 - [D3 Admin/环境实施设计](aisencore-mvp/aisencore-mvp-d3-admin-infrastructure-design.md)：React-admin Resource/Provider/环境/密钥/部署与 MFA，**未创建前端/云环境**。
@@ -16,12 +15,11 @@
 - [Admin 前端设计与规则入口](../development/frontend/README.md)：唯一开发目录内维护视觉基础、共享组件、62 条 UX 原则与后续 UI-G3 审查。
 - [D4 测试与就绪评审](aisencore-mvp/aisencore-mvp-d4-test-and-readiness-review.md)：原 55 项 I/R/A 用例和增量风险，均未真实运行。
 - [F01～F04 安全收敛设计](aisencore-mvp/aisencore-f01-f04-security-convergence-design.md)：Design Resolved / Runtime Not Verified。
-- [F05～F08 契约与兼容测试准备](aisencore-mvp/aisencore-f05-f08-contract-compatibility-readiness-design.md)：F05 合同、F06/F07 待决、F08 V00～V07 待运行。
+- [F05～F08 契约与兼容测试准备](aisencore-mvp/aisencore-f05-f08-contract-compatibility-readiness-design.md)：DEC-05 双模式直授/强类型幂等合同，F06/F07 仅剩具体产品/运营参数，F08 V00～V07 未运行。
 - [U03～U11 用户确认及待定子项](aisencore-mvp/aisencore-u03-u11-user-decisions-2026-10-22.md)：已确认行为、仍需明确参数和公开运营门槛。
 - [Auth/Pro 与 Admin MFA 低请求量设计](aisencore-mvp/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)：AUTH-P01～P12 待运行。
-- [BaaS/RPC 配额与 JWT/Redis 技术评审](aisencore-mvp/aisencore-mvp-baas-quota-security-lessons.md)：BAAS-Q01～Q10 待运行，条件性积分功能不纳 MVP。
 
-**清理说明（2026-10-22）**：13 份已完成且只用于指导当次文档修改的独立 `*-plan.md` 执行清单已按规则清理；关键业务决定/风险/验收仍由上列权威文档和 TODO 承接。D0 阶段基线有独立决策参照价值，因此保留；不是将所有 `COMPLETED` 文档无差别删除。
+**清理说明（2026-10-22，更新）**：此前 13 份仅执行阶段任务的独立清单已删；本次继续清理**已完成 D0 详细执行记录、S0/候选/静态闭环一次性工作单、BaaS 外部建议评审和前端迁移流水（6 份）**。D0 U01/U02/公共职责基线、DEC 安全边界、BAAS-Q01～Q10 测试、设计规则来源与失败补偿分别已归入[现行需求](../spec/requirements.md)、[MVP 总计划](aisencore-mvp/aisencore-mvp-implementation-design-master-plan.md)、[整改总计划](./20261022-review-remediation/master-plan.md)、[测试指南](../development/testing/README.md)及[前端规则](../development/frontend/admin-design-rules.md)。未实测或未实施的 D1/D2/D3/D4/F/Auth 专项仍保留可执行设计与验收输入，历史复审文档仅作原始证据，不承担现行业务权威。
 
 ## 何时建立计划
 

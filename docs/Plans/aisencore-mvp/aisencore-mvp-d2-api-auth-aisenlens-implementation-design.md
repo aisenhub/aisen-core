@@ -4,13 +4,13 @@
 
 > **成熟度：D2 文档型实施设计（实施候选）**。以下 SQL 签名、路由、JSON 示例、对象路径和服务器内部状态用于指导下一步实现，**不是已经创建或真实测通的接口**。本文件不得重定义已有业务不变量；冲突时以 [现行唯一 API 逻辑权威](../../architecture/backend/api-contract-and-mvp-acceptance.md)、[业务领域规则](../../architecture/domains/README.md) 与 [D1 物理/事务设计](./aisencore-mvp-d1-database-implementation-design.md) 为准。
 >
-> **2026-10-22 安全设计收敛（F01～F04）**：对外 SQL 签名/JSON/HTTP 业务契约不变，但其实现层采用 [私有最小扩权 RPC、L0～L8 锁序、R2 staging→final 校验和管理员 MFA/Auth Admin 链路](./aisencore-f01-f04-security-convergence-design.md)，优先于本文旧的单对象确认/锁定示例。真实环境尚未验证。
+> **2026-10-22 后续批准合同覆盖**：DEC-01 新兑换双参数/成员先验、DEC-05 强类型请求幂等与双模式直授、DEC-02 Aisenlens 小型白名单 JSON Edge→R2 final 已纳入本设计；公开 INVOKER/private 最小 DEFINER、L0～L8 和 Admin MFA/Auth Admin 继续沿用[F01～F04 当前安全实施约束](./aisencore-f01-f04-security-convergence-design.md)。旧签名与 staging 示例不应再直接施工，SQL/SDK 运行 NOT RUN。
 >
 > **F05～F08 合同与验证补订（2026-10-22）**：[F05 精确参数/default/NULL/幂等 v1、F06/F07 用户准入与 F08 版本验证手册](./aisencore-f05-f08-contract-compatibility-readiness-design.md) 取代下方任何尚未固定的 PATCH/重试/指纹候选；未执行 SQL、HTTP、SDK 或 R2 测试。
 >
 > **MVP 低请求量 Auth/Pro/Admin MFA 补订（2026-10-22）**：[独立实施设计](./aisencore-mvp-auth-entitlement-mfa-efficiency-design.md) 对 SDK 调用预算、Pro 按需复核/15 分钟候选、Admin 会话内无重复 MFA 挑战作更具体的**实施约束**。用户已明确把**Admin TOTP MFA 列为 MVP 必需**；不增加普通用户强制 MFA，也不修改既定公共 API 错误语义。
 >
-> **BaaS/原子计量设计评审（2026-10-22）**：[技术建议适用性与拒绝反例](./aisencore-mvp-baas-quota-security-lessons.md) 确认 **无需为 MVP 增加 Redis、独立公共 API 服务器、VIP JWT Hook 作为动态授权、通用消费 RPC/余额表或 AI 代理 Edge**。客户端缓存只节流 Pro UI、R2 权威签发/确认/下载继续实时核查；产品 `ready+reserved` 必须在产品元数据事务中可信预留、最终对象核验后结算，重试幂等和 R2/DB 补偿不变。示例 SQL 和“节省 85%”不可当实际验收。
+> **BaaS/原子计量设计评审（2026-10-22）**：[BAAS-Q01～Q10 安全测试指南](../../development/testing/README.md) 确认 **无需为 MVP 增加 Redis、独立公共 API 服务器、VIP JWT Hook 作为动态授权、通用消费 RPC/余额表或 AI 代理 Edge**。客户端缓存只节流 Pro UI、R2 权威签发/确认/下载继续实时核查；产品 `ready+reserved` 必须在产品元数据事务中可信预留、最终对象核验后结算，重试幂等和 R2/DB 补偿不变。示例 SQL 和“节省 85%”不可当实际验收。
 >
 > 先行计划：[D2 实施设计](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)；已确认 U01 = **Aisenlens，本地优先**，U02 = **首批必须支持 R2 私有文件/配置备份**；U03 公开注册、U05 Admin TOTP MFA 与单人运营已确认，其余具体参数按[用户决议](./aisencore-u03-u11-user-decisions-2026-10-22.md)待定。本轮不执行代码、SQL、API 调用、云配置、部署或 Git 提交。
 
@@ -47,7 +47,7 @@
 | `ensure_membership(product_key text)` → jsonb | 本人；平台未禁、产品 active，首次无记录原子建 `active` + 一条 `join`；已有 active 无写入 | `product_key,membership_status,created`；left/suspended 不能隐式恢复 |
 | `leave_product(product_key text)` → jsonb | 本人；仅 active→left + `leave` 事件；重复退出不得再写事件 | `product_key,membership_status`；不删除备份、授权或本地文件 |
 | `rejoin_product(product_key text)` → jsonb | 本人明确动作；仅 left→active + `rejoin`；产品/全局限制另行检查 | `product_key,membership_status`；不允许 suspended 通过此操作解封 |
-| `redeem_code(code text)` → jsonb | 本人；有效码可首次入会；成功在单事务生成成员（如需要）、grant、redemption、码次数，失败限流另记 | 成功 `ok,product_key,plan_key,starts_at,ends_at,membership_created`；预期拒绝 `ok=false,code,retry_after_seconds?` |
+| `redeem_code(product_key text, code text)` → jsonb | 本人；先校验声明产品及其现有 left/suspended 成员状态，**无论输入有效/无效码先一致拒绝**，之后才定位码及重验其真实 product_id 与声明一致；成功仅在单事务新增必要成员/grant/redemption/次数，失败按本人窗口计数 | 成功 `ok,product_key,plan_key,starts_at,ends_at,membership_created`；预期拒绝 `ok=false,code,retry_after_seconds?` |
 
 **典型 CheckAccess 真正的可信业务拒绝（HTTP 200）**：
 
@@ -82,7 +82,7 @@
 {"ok": false, "code": "REDEEM_CODE_INVALID"}
 ```
 
-账户 blocked 拒绝也属于兑换的可信业务拒绝（按 I-18：`{"ok":false,"code":"ACCOUNT_RESTRICTED"}`）；`REDEEM_ALREADY_USED` 必须先于已兑用户的码用尽/过期/撤销分支；`RATE_LIMITED` 返回可选 `retry_after_seconds`。限流由 DB 在每用户 15 分钟失败 10 次的既定策略控制，不把这些正常业务结果抛成导致计数回滚的 SQL 例外。
+账户 blocked、left/suspended 的失败优先级须按[API 长期错误合同](../../architecture/backend/api-contract-and-mvp-acceptance.md)执行：在声明产品成员被限制时不查码，已兑本人优先于码后续失效仅在成员准入通过后成立。限流由 DB 每用户 15 分钟 10 次失败记账；不得将预期业务拒绝抛为回滚计数的 SQL 例外。
 
 ### 2.3 管理 RPC 清单与具体输入
 
@@ -95,11 +95,11 @@
 | `admin_set_product_status(product_id uuid,status text,reason text)` → jsonb | `draft/active/suspended` 受控状态；与新 ensure/兑换并发按 D1 产品锁序串行 |
 | `admin_suspend_membership(membership_id uuid,reason_code text)` → jsonb | 保存原 active/left，设置 suspended，**只写成员事件**，重复暂停不覆盖原状态 |
 | `admin_restore_membership(membership_id uuid,reason_code text)` → jsonb | 按 `pre_suspend_status` 恢复原 active/left 并写事件，不自动恢复 Pro |
-| `admin_upsert_plan(product_id uuid,plan_id uuid,plan_key text,name text,features jsonb,limits jsonb,default_duration_days integer,is_active boolean)` → jsonb | **全字段提交、不隐式 PATCH**；八个键都出现，`plan_id=NULL` 创建、`default_duration_days=NULL` 有明确空值语义；更新只更名/停用也必须带齐已冻结字段原值，服务端检查历史引用并拒绝修改 `product_id,plan_key,features,limits`；返回 `plan_id,plan_key,is_active` |
-| `admin_create_codes(product_id uuid,plan_id uuid,config jsonb,quantity integer,request_id uuid)` → jsonb | config 的缺省/NULL/类型先按 [F05 canonical v1](./aisencore-f05-f08-contract-compatibility-readiness-design.md#22-发行批次-v1-规范化有效配置与指纹) 形成实际字段和指纹；`(created_by,request_id)` 原子唯一，同配置重放非秘密，不同配置 STATE_CONFLICT；仅 active 套餐新发、首次响应含明文；U08 未定不能作为正式运营上限 |
+| `admin_upsert_plan(product_id uuid,plan_id uuid,plan_key text,name text,features jsonb,limits jsonb,default_duration_days integer,is_active boolean)` → jsonb | 全字段提交；**Free 家族版本即使未引用也不得就地修改权益字段**，需新建 `free_v2` 并经独立受保护命令切换 `products.current_free_plan_id`；非 Free 已引用任何 code/grant 也不可修改权益；不得静默 PATCH，写审计 |
+| `admin_create_codes(product_id uuid,plan_id uuid,config jsonb,quantity integer,request_id uuid)` → jsonb | config 的缺省/NULL/类型先按 [F05 首次有效字段语义](./aisencore-f05-f08-contract-compatibility-readiness-design.md) 形成首次有效强类型字段并比较；`(created_by,request_id)` 原子唯一，同配置重放非秘密，不同配置 STATE_CONFLICT；仅 active 套餐新发、首次响应含明文；U08 未定不能作为正式运营上限 |
 | `admin_revoke_code(code_id uuid,reason text)` → jsonb | 只撤销未来兑换，不追溯 grant；原子审计 |
 | `admin_revoke_code_batch(batch_id uuid,reason text)` → jsonb | 候选最小批次撤销入口：对批次码逐行受控撤销、写精简审计；非新业务权限，只支撑明文丢失后的撤销重发 |
-| `admin_grant_entitlement(target_user_id uuid,product_id uuid,plan_id uuid,starts_at timestamptz,ends_at timestamptz,reason text,request_id uuid)` → jsonb | 除明确可为 NULL 的 `ends_at` 外其它键必须有值，时间以 UTC 瞬时规范；幂等存储 `source_ref=admin:<actor_uuid>:<request_uuid>` + 管理请求摘要，相同重试只回原 grant、参数变更 STATE_CONFLICT；**不创建或恢复成员**；不擅定免费试用/续期政策 |
+| `admin_grant_entitlement(target_user_id uuid,product_id uuid,plan_id uuid,mode text,duration_days integer,starts_at timestamptz,ends_at timestamptz,reason text,request_id uuid)` → jsonb | **DEC-05 A**：`duration` 使用正整数天数可信顺延且不带时间字段；`explicit_window` 必须提交完整 starts_at 和 ends_at（显式 NULL 永久）；服务端保留首次数值/时段与 actor-scoped request_id，同参重试返回原 grant、异参冲突，不变成员状态。实际 PostgREST 参数缺省/字段存在性须经编译验证 |
 | `admin_revoke_grant(grant_id uuid,reason text)` → jsonb | 只设置撤销信息并审计，不删除历史 |
 | `admin_grant_admin(target_user_id uuid,reason text)` → jsonb | 管理员名册受控授予，审计；引导首个管理员不靠前端公开 API |
 | `admin_revoke_admin(target_user_id uuid,reason text)` → jsonb | M1 共用管理员保护事务锁，拒绝使合格管理员清零 |
@@ -108,7 +108,7 @@
 
 **设计约束**：这里的 SQL 参数名是客户端生成的**候选接口名**；在 [F05 详规](./aisencore-f05-f08-contract-compatibility-readiness-design.md#2-f05公共-rpc-精确参数和错误幂等语义) 中已把全字段提交、NULL/default、批次及 admin grant 幂等定为**实现候选基线**，不再提供模糊的“可以直接做 PATCH”选项。仍须真实 SQL 编译、PostgREST schema cache/签名、D1 L0～L8 与领域授权时间一致性核验；不得以候选改变历史权益。
 
-**发码 `config` v1 白名单**：`grant_duration_days`（缺省/NULL = 永久、非空须正整数）、`max_redemptions`（**缺省=1、JSON null 无效**、非空须正整数）、`expires_at`（缺省/NULL = 无截止；带时区有效时间规范到 UTC 微秒）；其余字段拒绝。服务端计算包含当前 actor、产品/计划、数量和有效配置的 SHA-256 指纹，绝不对原始 JSON 直接求哈希或接受前端 `config_fingerprint`。`quantity` 由独立参数约束，U08 决定真实运营上限；不接受 `code_hash`、随机种子、`created_by` 或码明文。
+**发码 `config` 有效字段（DEC-05 A）**：`grant_duration_days` 缺省/NULL 的永久语义、`max_redemptions` 缺省=1/显式 NULL 无效、`expires_at` 缺省/NULL=无截止及 UTC 微秒精度均由可信服务验证。优先存首次规范强类型字段并以 NULL-safe 等价值比较，只有缺省含义无法从持久字段还原才可保留私有指纹；绝不能仅凭 request_id 判同参；所有非法字段、客户端 hash/created_by 均拒绝。U08 的批量上限待确认。
 
 **发码首次响应与重放**（建议结构，精确 `status` 字段实现时固定）：
 
@@ -178,8 +178,8 @@
 | `ensure_membership` | `UNIQUE(user_id,product_id)` + 原子写事件；active 重复返回 created=false；left/suspended 拒绝隐式复活 |
 | `leave_product/rejoin_product` | 同一成员行条件更新且操作人/目标基于当前状态；超时后先 `get_my_products` 或本人表读，再决定是否重复 |
 | `redeem_code` | 输入码相同重复提交仅一次 grant；先查本人 `redemptions`（在身份、blocked、限流通过之后），已兑换过优先 `REDEEM_ALREADY_USED`；未知/过期/用尽/撤销对其他人统一失败 |
-| `admin_create_codes` | `(created_by,request_id)` + 有效输入 canonical v1 指纹；同键参数变化 STATE_CONFLICT，同键相同重放不生成码且永不再回显明文；响应丢失可查非秘密批次，确需明文只允许撤批/新 request_id 重发 |
-| `admin_grant_entitlement` | `source_ref=admin:<actor_uuid>:<request_uuid>` + `admin_request_fingerprint` 对所有有效参数做同键一致性比较；重复同请求只读原授权，不重复授权/审计，改目标/时间/reason 冲突；F02 L0～L8 与时段锁、技术失败整体回滚 |
+| `admin_create_codes` | `(created_by,request_id)` + 有效输入 首次持久化规范字段比较；同键参数变化 STATE_CONFLICT，同键相同重放不生成码且永不再回显明文；响应丢失可查非秘密批次，确需明文只允许撤批/新 request_id 重发 |
+| `admin_grant_entitlement` | `source_ref=admin:<actor_uuid>:<request_uuid>` + 首次受限元数据比较规范输入和可信计算结果（duration/explicit_window 两模式）；同参返回原 grant，异参冲突，不重复授权/审计；L7 串行化顺延，不把服务时钟变化当不同请求 |
 | 用户/管理员撤权 | 当前资格读与状态锁在同一可信 PostgreSQL 函数内；M1 最后管理员统一串行；客户端请求超时后只能查询当前权威状态 |
 | 备份开始/确认/删除（产品候选） | 各阶段用 `request_id` 或 upload intent ID 去重；分清已签发、已上传、已**验证并提交**，不能靠收到 PUT 200 就认为用户真实已用配额已落账 |
 
@@ -242,9 +242,9 @@
                 │                 left：需本人明确 rejoin
            私有备份请求             suspended：无法自助恢复
                 │                 503/断网：新云备份签发拒绝
-        经验证的短期 R2 签名
+         受保护 Edge 接收白名单 JSON / 创建唯一 R2 final
                 │
-          客户端直传/直读私有对象
+           本人恢复时短期 GET、客户端直接下载
        （元数据、实际计量由 Aisenlens 持有）
 ```
 
@@ -266,56 +266,25 @@
 
 **仍需用户确定的真实产品行为**：Aisenlens 哪些本地操作触发再次在线复核、断网后已开始的 Pro 操作是否允许完结/是否保留短暂宽限、多设备配置冲突策略、以及备份功能归属 Free/Pro/具体额度。D2 仅提供安全上限和候选 UX，不把它们写成既定业务规则。
 
-## 6. R2 私有备份：候选可实现 HTTP 契约
+## 6. R2 JSON 私有备份：已批准的 Edge 可信上传候选（DEC-02 A）
 
-**此节是首批必须实现的产品集成实施设计，不代表 AisenCore 新增公共通用文件业务。** 备份仅限经用户主动选择的 Aisenlens 设置与拉片模板；按照现行本地优先架构**不备份视频、完整项目/时间轴、AI 结果、AI Key**；现行架构已确认不要求客户端 E2EE，运营方可读配置明文，仍必须用 HTTPS、私有 Bucket、最少元数据和可信属主限制。
+**首发限定**：Aisenlens 用户主动选择的非敏感、小体积、字段白名单 JSON 由受保护 Supabase Edge 校验并以服务器受限凭据条件创建 R2 final；**不采用客户端 staging PUT → Worker/CopyObject → complete 旧备选**。普通其它私有大文件仍可按客户端 R2 直传架构另行设计。唯一长期权威为[产品文件架构](../../architecture/database/product-data-and-files.md)。
 
-### 6.1 最小服务职责与候选路由
+### 6.1 最小候选 Edge API（名称未部署）
 
-选定**一个**逻辑可信入口负责 R2 Access Key（候选为 Supabase Edge Function，产品元数据存于 Aisenlens 自己持有的业务层）。下面五个 HTTP endpoint 只是产品实施候选路由，函数名与 HTTP 路由需在实际框架/运行时验证后冻结：
+| 候选受保护路由 | 用户输入与最小响应 | 服务端边界 |
+| --- | --- | --- |
+| `POST /functions/v1/aisenlens-backup-upload` | 本人 JWT、稳定 `request_id` 和有硬性正文上限的 JSON；成功只返回 `backup_id/status/size_bytes/version` | 验本人 JWT/产品/成员/blocked/权益/属主、schema/大小/可信 SHA-256；产品 DB `pending` 原子预留，R2 唯一 final 条件写、DB `ready`/审计；失败对账 |
+| `GET /functions/v1/aisenlens-backups` | 本人 JWT + 限量分页；只返回本人的 ready 安全摘要 | 不接受浏览器自定 user_id/object_key，不开放 bucket ListObjects |
+| `POST /functions/v1/aisenlens-backup-download` | 本人 JWT + `backup_id`；受限单对象短期 GET | 每次重新检查当前身份/属主/产品/成员/权益/ready，客户端可直读 R2 |
+| `POST /functions/v1/aisenlens-backup-delete` | 本人 JWT + `backup_id,request_id` | 原子删除意向、幂等 R2 物理清理/版本回收与故障对账 |
+| 可选 `GET /functions/v1/aisenlens-backup-status` | 本人 JWT + 已创建 `request_id` | HTTP 响应丢失时只确认原请求的持久状态，不重写对象 |
 
-| 候选 Edge 路由（仅示意） | 请求（用户 JWT 必需） | 受控成功响应 | 必须执行的服务端检查 |
-| --- | --- | --- | --- |
-| `POST /functions/v1/aisenlens-backup-intent` | `{request_id,expected_bytes,format_version,content_type}` | `{backup_id,upload_url,expires_at,required_headers}` | 本人 JWT、平台/产品/成员和所需备份 capability、产品元数据容量**原子预留**、服务端生成随机对象 Key |
-| `POST /functions/v1/aisenlens-backup-complete` | `{backup_id,request_id}` | `{backup_id,status:'ready',size_bytes,version}` | 本人属主+状态、R2 HEAD/所需校验；读取**实际对象大小**，只把成功核验的对象转 ready 并结算配额 |
-| `GET /functions/v1/aisenlens-backups` | 分页参数（如 cursor,limit），不接受别人的 `user_id` | `{items:[...],next_cursor}`，仅本人已确认备份 | 当前授权；只返回安全的备份 ID、版本、时间、大小；不显示可公开猜测的 bucket key |
-| `POST /functions/v1/aisenlens-backup-download` | `{backup_id}` | `{download_url,expires_at}` | 当前登录/限制/成员/能力 + 备份属主+ready 状态，签发指定对象 GET |
-| `POST /functions/v1/aisenlens-backup-delete` | `{backup_id,request_id}` | `{backup_id,status:'deleting'|'deleted'}` | 本人明确删除/独立数据删除例外按产品政策；按属主做元数据状态和对象清理，幂等且可恢复执行 |
+### 6.2 元数据、幂等与恢复
 
-R2 **预签名 URL 必须由服务器生成**并限制 method（单对象 PUT/GET）、bucket/key 与到期时间，且不能直接接受客户端传入原始 `object_key` 替代服务端所有权映射；示例建议**短 TTL（候选约 1～5 分钟）**，最终数字要按实际网络与风险验证确定，不是用户已批准的永久策略。签名权限只对所选对象/操作有效，**不能**给客户端整个 bucket 列表/删除权限；必要删除用可信服务端处理。R2 URL 在到期前**可被重复使用**，因此 URL 本身是 bearer credential，任何截图/日志/分析或浏览器 URL 同步都不得泄露。
+Aisenlens 的产品私有元数据需有 `backup_id,owner_user_id,product_id,request_id,status,final_key,reserved_bytes,actual_bytes,sha256,format_version,created_at,ready_at,deleted_at` 等必要字段。不要求首发 JSON 有 `staging_key/source_etag` 或必须的 `verifying` 状态。受保护 DB RPC 只在单数据库事务内更改预留/ready/审计；R2 条件创建后发生数据库/网络故障仍必须以 `request_id`、实际 hash/owner/bytes 可恢复对账；**不得宣称跨 DB/R2 事务原子**。
 
-### 6.2 备份上传三阶段（必须考虑跨系统非原子）
-
-1. **本地准备**：Aisenlens 只从 U09 待批准的非敏感配置字段白名单组装版本化内容（排除视频、项目/时间轴、AI 结果、API Key）。本地校验不能取代可信产品侧对文件结构的真实验证。
-2. **签发 intent**：Edge 验真实 JWT、当前公共成员/权益与 Aisenlens 属主/配额，在产品业务元数据事务里按 `ready+reserved` **原子预留**并登记 `pending`、随机 `staging_key` 与独占 `final_key`；只给客户端 **staging PUT URL**，绝不签发 final PUT。
-3. **客户端直传暂存**：用户客户端按 URL 直接 PUT 私有 R2 staging 对象（Edge/PostgREST 不中转字节）；**同一 URL 在到期前可重放/覆盖 staging**，这是必须隔离而非可假设禁止的风险。
-4. **可信完成确认**：`backup-complete` 在产品元数据锁内 `pending→verifying`，可信产品验证层对 staging HEAD/源 ETag 进行有条件 `CopyObject` 到**从未对客户端开放 PUT** 的唯一 final 对象，并对 **final 实际内容**做允许字段、格式、大小及摘要校验，完成配额结算，最后才提交 `ready`。建议窄范围 R2 产品校验组件而非公共文件网关；必要时使用经评审的 Cloudflare Worker/R2 内部调用保持文件字节不经公共 Supabase。**HEAD/ETag 不能代替内容语义和密码学摘要验证**，R2 CopyObject 条件操作需要实际隔离桶实测。
-5. **失败修复和幂等**：重放/重复 complete 不能覆盖或重复计费已 `ready` 的 final；失败停在非 ready，释放预留、清理 staging 和未提交 final 孤儿。没有 R2 与 PostgreSQL 跨系统事务；真实断网和 race 必须由幂等、对账、补偿处理。
-
-**F03 已收敛的设计取舍**：**必须分离 staging/final** 而不是把“不允许多次 PUT”当作已获得的 R2 能力；final 必须拥有服务端唯一且不向客户端签 PUT 的对象 key，元数据保留 digest/bytes/版本并限制 trusted final 写权限。具体隔离桶 CopyObject 条件竞态、校验和、对象大小与 Worker/SDK 限制仍是 P0 真正运行验收门槛，详见 [F03 方案与 R2-01～06](./aisencore-f01-f04-security-convergence-design.md#4-f03r2-备份对象不可被旧-put-重放改写)。
-
-### 6.3 私有列举、下载恢复与生命周期
-
-- 客户端“我的备份”列表**只查可信产品元数据**而非开放 R2 ListObjects。客户端选择本人的 `backup_id`，Edge 再根据当前身份+授权、文件属主与 `ready` 状态签发单对象短期 GET；其他用户即使知道 UUID/Key 也不得拿到下载 URL。
-- 下载文件字节客户端直读 R2，恢复前按格式版本/Schema 安全解析，先让用户确认恢复目标；**覆盖还是合并、历史版本数量、时间/冲突策略目前未获用户确认**，默认不能静默覆盖本地工作数据。
-- 原有备份**退出或会员到期时不立即删除**；但成员 left、suspended、blocked 或公共权限不可验证时不再签发新的受保护备份 URL。账户注销与清理走 U07 将来批准的独立数据处理流程，不能因退出触发自动清空历史备份。
-- 额度由 `plans.limits` 返回数值**上限**，实际使用由 Aisenlens 元数据的 committed/reserved 状态计算；内容大小/数量、配额单位、超额处理、删除后的额度回收、过期文件保留时长均待 U04/U07/产品专项决定，不填默认数值。
-- R2 预签名 URL 属于有限时间的 bearer 凭证，**先前已签发的 URL 通常持续到其到期**，后续 `blocked`/退出/撤销权益只能阻止**新签发**；若要求近实时撤权，须限制 TTL/改用可在每次访问时再次授权的可信代理，但会改变“客户端直读 R2”的架构取舍，需权衡与用户确认，不能声称已立即撤销。
-- R2 真实文件存储与产品数据库**不共享 PostgreSQL 事务**；短期签发、R2 PUT/GET、元数据 commit、删除清理必须分别幂等并能审计/补偿，不能用多次 SDK 调用假装强原子。
-
-### 6.4 Aisenlens 备份元数据最小候选（不是新公共表）
-
-| 字段/状态 | 目的 |
-| --- | --- |
-| `backup_id uuid` | 不可猜测的产品备份 ID；API 由此检索、由服务端核实属主 |
-| `owner_user_id uuid,product_id uuid` | 必须映射公共 Auth 用户与 Aisenlens 产品，非客户端指定 |
-| `staging_key text, final_key text` | **分别**是预签 PUT 临时对象与仅服务端可写的永久对象；final 唯一且只能给客户端签 GET，非客户端请求 key |
-| `intent_request_id uuid,status text` | 候选 `pending/verifying/ready/failed/deleting/deleted` 状态与幂等；final 准确校验并提交后才成为 ready |
-| `reserved_bytes,actual_bytes bigint` | 前者允许临时预留，后者 HEAD 实际大小；不能只信客户端 declared size |
-| `format_version,logical_version,created_at,completed_at` | 本地配置格式与产品恢复冲突；具体保留几份/覆盖与合并待用户确定 |
-| `final_content_digest,source_etag,expires_at,deleted_at` | 源 ETag 用于条件复制；**final 实际内容**摘要/大小必须关联 ready，不以 ETag 冒充密码学校验；清理/超时按产品生命周期处理 |
-
-**归属选择尚未由用户批准**：可以在同一 Supabase Project 内用产品单独 Schema + 私有函数/RLS 管元数据，或采用 Aisenlens 自己的业务数据库；**两者都不是**新增公共 `product_files` 权威。最终落点应在 D3 技术部署方案中明确；若选择异库，必须考虑公共授权查询与产品记录之间的跨系统失败及 fail-closed。
+恢复前版本兼容性检查、按类别展示差异并由用户确认后替换**已按 U10 确认**；字段白名单、字节限额、版本数、留存期限和失败回滚产品细则仍需 U09/U10 真正定值。旧 R2 GET 短凭据未到期前可能继续有效，撤销只能即时阻止新签发。未来实施必须验证 JWT/RLS/HTTP/SDK/条件写、网络断线、重复请求与删除单边失败（见[F03 实测要求](./aisencore-f01-f04-security-convergence-design.md)），目前全为 NOT RUN。
 
 ## 7. 追踪测试矩阵与 D1/M1～M5 回归
 

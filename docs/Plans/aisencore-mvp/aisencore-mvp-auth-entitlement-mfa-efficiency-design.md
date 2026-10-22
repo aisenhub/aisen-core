@@ -31,7 +31,7 @@
 
 **计量不变量**：Supabase MAU 是当期不同活跃用户概念，**不随同一已计数用户的每次 Pro 权益查询再次新增独立 MAU**；但认证刷新、数据库请求与结果传输会消耗 Auth/DB CPU、连接、数据库/网络流量，Edge 与 R2 各有自己的指标。免费配额、价格、暂停与数据保护规则会变化，不能把某个历史数字编码成业务决定；应以**实际 Project 当前 Usage/Billing 和官方当期计划**为准。AisenCore 公共 DB 的兑换/永久授权事实必须有真实备份与恢复演练，R2 不是公共 DB 的备份替代品。
 
-**外部 BaaS 技术建议安全筛选（2026-10-22）**：Supabase Free 的 Unlimited API Requests 仅指**无固定 Data API 调用次数配额**，不能推论 DB CPU/内存/连接、出站流量及 Edge/R2 免费资源无限；以当前 [官方定价](https://supabase.com/pricing)和真实 Usage 观察。客户端缓存继续**按需 TTL 与 single-flight**，不能因切前台就必发 HTTP，也不能把 `is_pro`/`vip_until` 放进 Custom Access Token Hook 作为**实时权益权威**：JWT 不会随管理员撤权实时更新。对平台动态权益继续调用可信 DB；Admin JWT `aal2` 只证明 MFA 等级、管理名册仍实时校验。详见[原子配额与 JWT/Redis 评审](./aisencore-mvp-baas-quota-security-lessons.md)；其声称“固定节省 80%～85%”未经本项目真实负载验证。
+**外部 BaaS 技术建议安全筛选（2026-10-22）**：Supabase Free 的 Unlimited API Requests 仅指**无固定 Data API 调用次数配额**，不能推论 DB CPU/内存/连接、出站流量及 Edge/R2 免费资源无限；以当前 [官方定价](https://supabase.com/pricing)和真实 Usage 观察。客户端缓存继续**按需 TTL 与 single-flight**，不能因切前台就必发 HTTP，也不能把 `is_pro`/`vip_until` 放进 Custom Access Token Hook 作为**实时权益权威**：JWT 不会随管理员撤权实时更新。对平台动态权益继续调用可信 DB；Admin JWT `aal2` 只证明 MFA 等级、管理名册仍实时校验。详见[BAAS-Q01～Q10 安全测试指南](../../development/testing/README.md)；其声称“固定节省 80%～85%”未经本项目真实负载验证。
 
 ## 3. Aisenlens 权益复核：事件驱动 + 短期快照候选
 
@@ -134,7 +134,7 @@
 - **不能被此性能设计修改的业务**：M1 最后管理员、M2 套餐冻结、M3 一次性码明文、M4 兑换优先、M5 `check_access` 200/401/503；F01 public INVOKER/private definer，F02 全事务锁序，F03 R2 final 私有对象，F04 Auth Admin 双层授权；普通用户不强制 TOTP。
 - **用户仍待决**：U05 管理员账户恢复责任/第二主体、U04 具体 features/limits、U09 白名单 schema、U10 版本留存、U11 **缓存仍新鲜但离线时新本地 Pro 启动策略**，真实公开域名/SMTP 等。
 - **后续执行**：MVP 编码阶段加入 AUTH-P01～P12 回归与真实 P50/P95/请求计数、MFA 设备恢复演练；先有用户独立开发授权、真实 SDK/pg/PostgREST/Edge/R2 版本锁与测试环境，再运行取证。没有运行前应保持 **NOT RUN**。
-- **性能审查补充**：真正高负载风险优先通过 PostgreSQL 执行计划、过滤索引、RLS 行扫描与当前账户/产品/成员查找优化解决；按需 Pro 快照不能代替服务端现行授权，Redis 不作为 MVP 先决依赖。**未来**如新增可扣次数，必须在可信端验证正数成本、属主、额度预留、请求幂等和回滚，避免直接复制公开 `SECURITY DEFINER` 负数扣余额示例；参见[BAAS-Q01～Q10 专项评审](./aisencore-mvp-baas-quota-security-lessons.md)。
+- **性能审查补充**：真正高负载风险优先通过 PostgreSQL 执行计划、过滤索引、RLS 行扫描与当前账户/产品/成员查找优化解决；按需 Pro 快照不能代替服务端现行授权，Redis 不作为 MVP 先决依赖。**未来**如新增可扣次数，必须在可信端验证正数成本、属主、额度预留、请求幂等和回滚，避免直接复制公开 `SECURITY DEFINER` 负数扣余额示例；参见[BAAS-Q01～Q10 安全测试指南](../../development/testing/README.md)。
 
 ## 6. 官方依据（2026-10-22 公开资料检查，未访问实际项目）
 

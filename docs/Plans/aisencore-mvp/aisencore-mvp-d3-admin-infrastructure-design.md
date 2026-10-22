@@ -10,11 +10,11 @@
 >
 > **MVP MFA/性能新增决定（2026-10-22）**：用户明确把 **Admin TOTP MFA 纳入首版必须交付**，但要求有效管理会话期间**不逐次输入 TOTP、也不为普通管理查询额外串行发送 MFA/Auth HTTP 请求**。按 [低请求量 Auth/Pro/Admin 实施设计](./aisencore-mvp-auth-entitlement-mfa-efficiency-design.md) 调整 Provider，并将 AUTH-P01～P12 纳入 D4/F08 真实验收。U05 备用恢复实际身份仍未落实，其他政策具体值仍待批准。
 >
-> **BaaS 成本与部署边界补订（2026-10-22）**：按 [Supabase/原子配额评审](./aisencore-mvp-baas-quota-security-lessons.md) 保持 **Cloudflare Pages 静态 Admin + Supabase Auth/PostgREST/RLS/受保护 RPC + 极少量必要 Edge + 直连私有 R2**，MVP 不额外部署 Redis、独立 Node/API 服务器或为用户自带 API Key 的 AI 模型服务搭公共代理。Supabase Data API 标称 Unlimited Requests **不是免费无限 DB CPU/带宽/Edge**；D3 监控须分别量测 Auth/DB/Edge/R2 与配对恢复。真实配额以当前服务计划为准。
+> **BaaS 成本与部署边界补订（2026-10-22）**：按 [BAAS-Q01～Q10 安全测试指南](../../development/testing/README.md) 保持 **Cloudflare Pages 静态 Admin + Supabase Auth/PostgREST/RLS/受保护 RPC + 极少量必要 Edge + 直连私有 R2**，MVP 不额外部署 Redis、独立 Node/API 服务器或为用户自带 API Key 的 AI 模型服务搭公共代理。Supabase Data API 标称 Unlimited Requests **不是免费无限 DB CPU/带宽/Edge**；D3 监控须分别量测 Auth/DB/Edge/R2 与配对恢复。真实配额以当前服务计划为准。
 >
 > **新增 D3-UI 详细页面阶段（2026-10-22）**：本 D3 的 Resource/Provider/认证/基础设施属于**技术实施设计**，不是页面线框与视觉规范完成的证明。用户已要求补入独立 [D3-UI 实施设计](./aisencore-mvp-d3-ui-admin-uiux-design.md)与[逐页面 UI/UX 实施设计](./aisencore-mvp-d3-ui-admin-uiux-design.md)：工作台/运营页面导航、宽窄屏线框、发码明文仅一次、TOTP MFA、全字段套餐与受保护操作，以及 D3-UI-X01～X18 **待执行**验收。**未创建实际 Admin 工程、原型或线上管理后台**。
 >
-> **UI-G0 强制视觉基线关口（2026-10-22 最新用户决定）**：按 [Admin 全局 UI 规范](../../architecture/applications/admin-ui-design-system.md)，先统一 MUI 字体/字号/间距/组件与布局，并准备**四类可见高保真参考 + 多宽度变体 + 用户明确视觉批准记录**，只有 `UI-G0 APPROVED` 后才能启动正式 `apps/admin` Theme/Layout/页面编码。**当前只是规范候选，UI-G0 = BLOCKED**；D3 Resource/Provider 映射与 D3-UI 文字线框不能替代这个门槛。不为本次 UI 方案增加任何服务器或绕过 `aal2`/RPC 安全逻辑。
+> **UI-G0 强制视觉基线关口（2026-10-22 最新用户决定）**：按 [Admin 全局 UI 规范](../../architecture/applications/admin-ui-design-system.md)，先统一 MUI 字体/字号/间距/组件与布局，并准备**四类可见高保真参考 + 多宽度变体 + 用户明确视觉批准记录**，只有 `UI-G0A APPROVED` 后才能启动正式 `apps/admin` Theme/Layout/页面编码。**当前只是规范候选，UI-G0A = BLOCKED**；D3 Resource/Provider 映射与 D3-UI 文字线框不能替代这个门槛。不为本次 UI 方案增加任何服务器或绕过 `aal2`/RPC 安全逻辑。
 
 ## 1. 前置事实、范围及推荐架构
 
@@ -91,7 +91,7 @@
 | `VITE_SUPABASE_URL`、`VITE_SUPABASE_PUBLISHABLE_KEY` | Admin 静态产物（**公开**） | 必须指向对应环境；publishable key 并非 user JWT，不能替代 RLS |
 | Supabase 用户 access/refresh token | 用户 Auth SDK 会话 | 不在源码/日志/浏览器调试平台上传；需 MFA 检查与真实 JWT |
 | Supabase `service_role` 或 secret key | 限定 Edge Function/必要部署后台 | 绝不写 Vite `VITE_*`、前端、Aisenlens 客户端；最小权限、权限使用日志与轮换 |
-| R2 access key/secret、bucket 权限 | **仅可信 Edge/产品签发服务** | 签发单对象短期 GET/PUT；dev/test/prod 密钥分离，客户端只持临时 URL |
+| R2 access key/secret、bucket 权限 | **仅可信 Edge/产品服务** | Aisenlens 小 JSON 条件创建唯一 final、恢复签单对象短期 GET；普通文件直传例外另行限制短 PUT；dev/test/prod 密钥分离，客户端不得得到 R2 长期 secret |
 | DB migration 凭据、管理员初始化秘密 | CI 或受控人工运维秘密库 | 只在发布/引导步骤按需注入，不能与普通 Admin 登录身份共用 |
 | SMTP/API 邮件凭据、Auth 回调白名单 | Supabase Auth 的服务端配置 | U06 确认邮件品牌/域名/发信后设置、验证确认邮件及密码找回 |
 | Cloudflare Pages deploy token/GitHub CI token | CI/托管密钥库 | 最小仓库/项目范围、受保护正式环境、审批和轮换 |
@@ -99,19 +99,13 @@
 
 生产上线前安全检查：搜索版本库/构建产物/Source Maps 中不应有任何秘密，验证 Pages 构建中的 `VITE_*` **均可被公众看到**。数据库迁移必须验证**public RPC 不存在扩权 SECURITY DEFINER**、所有私有 definer 内核和 RLS 辅助函数的最小 owner/USAGE/EXECUTE/固定 search_path、默认 PUBLIC EXECUTE 撤销与真实 SQL 权限矩阵，以及所有表 RLS/列级 GRANT；额外要求全管理写 L0、用户敏感路径 L1 统一锁序。R2 bucket 私有，不设置公开自定义域；CORS 白名单只解决浏览器跨域，不负责鉴权。
 
-### 4.3 Aisenlens R2 备份服务部署方案
+### 4.3 Aisenlens 非敏感小 JSON 的 Edge/R2 部署路线（DEC-02 A）
 
-**物理落点候选**：AisenCore Supabase Edge Function 保存 R2 访问秘密并处理请求验签；Aisenlens 自有备份元数据可部署在同一 Supabase Project 的**受保护产品 Schema**（技术复杂度较小，但必须证明 Data API 暴露/角色边界），或一个独立的产品库（更加独立，需可信产品服务验证公共 JWT 与跨库失败处理）。**D3 推荐先对同 Project 隔离 Schema 做安全/维护评估**，并在实际部署前通过威胁模型和真实版本实验确认；此处不是给 AisenCore 核心库新增通用文件中心。实际元数据物理位置不得在未经核实的情况下设为已确认事实。
+项目所有者已经批准 **Supabase Edge Function** 接收用户主动提交的、白名单和体积上限保护的 Aisenlens 非敏感 JSON，执行真实 JWT/本人/blocked/产品/成员/备份权益与 schema/大小/可信 SHA-256 校验。由受保护产品元数据 RPC 同事务执行 `pending`/配额预留，Edge 使用服务器受限 R2 凭据对唯一 `final_key` 条件创建，受保护 RPC 再核对当前授权并提交 `ready`/审计。**本首发 JSON 功能不使用客户端 staging PUT、CopyObject 或额外 Cloudflare Worker**。普通其它文件的 R2 客户端直传原则仍有效；视频、项目/时间轴、AI 结果和 AI Key/Token 不能借此扩大备份范围。
 
-**最小服务职责**（据 [D2](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)）：
-1. `backup-intent` JWT 验证 + 当前公共资格/备份功能与上限核对 + 产品备份元数据原子预留，产生服务端生成的单对象 key、短期 PUT URL。
-2. **客户端只直传 staging key**：签发单 staging PUT URL，在过期前可能被重放/覆写；仅持 R2 可信服务端权限的 Aisenlens 校验组件可以把暂存对象晋升到唯一 final key，**final 绝不向客户端签 PUT**。不把长期 R2 密钥交给客户端。
-3. `backup-complete` 对产品元数据 `pending→verifying` 加事务锁：HEAD 获取真实大小与源 ETag → 经真实兼容验证的条件 CopyObject 到 final → 可信产品组件读取**final 内容**校验字段白名单/大小/摘要 → 原子结算配额并置 ready。客户端自报长度与 HEAD 不能证明配置无禁止字段。**客户端文件字节仍直传直读 R2，不经公共 Supabase API 转发**；内部校验可选窄范围可信 Cloudflare Worker/R2 组件，须在隔离环境验证 SDK/运行成本。
-4. `backups` 只列本人 ready **final** 元数据；`backup-download` 每次重查当前权限及属主，仅签 final GET；`backup-delete` 幂等地组织元数据删标、R2 对象清理与重试，不能用 staging 当 ready。
-5. upload 未完成的预留到期清理；对象已存在但 DB 失败时的**孤儿清理和补偿**；定期 reconcile R2 实际大小与元数据、持有状态及配额。
-6. 恢复前客户端版本校验和需用户确认的覆盖/合并策略；Aisenlens 当前业务禁区**视频、项目时间轴、AI 结果、AI Key**不能以“首批 R2 必须支持”为由默认加入备份。
+产品元数据可以采用经真实权限核验的同 Supabase Project 私有产品 Schema 或 Aisenlens 自有库，不能未经验证建 AisenCore 通用文件中心。实际 R2 SDK 条件创建、密钥最小范围、隔离桶/迁移与 RLS/EXECUTE 必须实测。任何 R2 已写/DB 未 ready、DB ready/HTTP 断线、物理删除失败、过期 pending 留物理对象，都依稳定请求 ID、有限预留、不可下载的非 ready 状态及异步对账清理。**没有跨 PostgreSQL/R2 的 ACID**。
 
-**重要授权/失效**：新签名发放及服务器 complete 都必须重新核验身份与受保护能力；签发后的 bearer URL 在 TTL 内仍可能被持有者使用，staging PUT 只能改暂存对象而不能改最终 ready 内容。短 TTL（D2 候选 1～5 分钟，须实际性能/网络实验）不等于已发 URL 立即撤销。部署/告警需对源条件复制失败、已 ready 内容变化、过期/403、重复 PUT、孤儿对象、超额预留和元数据 DB 故障分级。U04/U07/U09/U10 未确定，不写死产品行为。
+恢复仅列本人 `ready` 并在当前权益/属主验证后签短期 R2 GET，客户端下载直读；已签 URL 的 TTL 残余访问时间必须真实测试。U09/U10 的字段、容量、版本/保留策略仍待定，不能拿 256 KiB/10 版本候选或产品部署建议冒充确认。详细候选 API 和验收见[D2](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)和[长期文件规则](../../architecture/database/product-data-and-files.md)。
 
 ## 5. 迁移、构建与 CI/CD
 

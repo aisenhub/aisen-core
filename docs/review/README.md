@@ -1,6 +1,6 @@
 # 审查工作区
 
-本目录保存审查发现、整改核对和验证证据。当前审查原始依据见[架构审查报告](./architecture-review.md)；按[测试规范](../development/testing/README.md)区分静态文档检查与实施后的运行验证，不假定不存在的审查手册/模板已经创建。
+本目录**保留原始审查材料作为其编制时点的历史证据**（尤其 2026-10-21 的[架构独立复审](./aisencore-architecture-audit-2026-10-21.md)及[2026-10-22 后续审查](./20261022.md)）；**旧报告的待决事项、旧签名、R2 直传/延期结论不再是当前架构**。最新执行入口为[整改总计划](../Plans/20261022-review-remediation/master-plan.md)与[TODO](../Plans/TODO.md)，唯一业务权威见[需求](../spec/requirements.md)/[架构](../architecture/README.md)。
 
 专项审查覆盖与对象有关的维度，不机械检查全部系统。只审查的任务不同时修改生产代码；用户授权整改后按问题范围实施。
 

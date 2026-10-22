@@ -8,7 +8,7 @@
 >
 > **用途**：把 D3 的“有哪些 Resource/能做哪些操作”延伸为“在哪里、如何填写、如何知道完成/失败”，供未来 `apps/admin` React-admin / MUI 开发和逐页验收直接使用。尺寸/配色/中文文案/路径均标明为 **UI 实施默认候选**，用户尚未正式确认品牌视觉。本文不更改 API 或增加公共权限实体。
 >
-> **UI-G0 新增强制前置关口（2026-10-22）**：字体/字号/语义颜色/8px spacing、全局 AppBar/Sidebar/Content、断点、共享表格/表单/按钮与视觉变更治理，现以 [Admin 全局 UI 设计系统唯一规范](../../architecture/applications/admin-ui-design-system.md) 为权威。本 D3-UI 负责**业务页面内容与交互**，不能自己为每个页面定义另一套主题。**必须先完成可见的四类高保真基准页和用户明确视觉签收，UI-G0 才能 APPROVED；当前 UI-G0 = BLOCKED，不得开始 Admin 正式前端编码。**
+> **UI-G0 新增强制前置关口（2026-10-22）**：字体/字号/语义颜色/8px spacing、全局 AppBar/Sidebar/Content、断点、共享表格/表单/按钮与视觉变更治理，现以 [Admin 全局 UI 设计系统唯一规范](../../architecture/applications/admin-ui-design-system.md) 为权威。本 D3-UI 负责**业务页面内容与交互**，不能自己为每个页面定义另一套主题。**必须先完成可见的四类高保真基准页和用户明确视觉签收，UI-G0 才能 APPROVED；当前 UI-G0A = BLOCKED，不得开始 Admin 正式前端编码。**
 >
 > **Admin 开发规范迁入（2026-10-22）**：[开发设计入口](../../development/frontend/admin-design-guide.md)和[规则/页面验证矩阵](../../development/frontend/admin-design-verification.md)对本文件中的列表/详情、MFA、发行表单/一次性结果、套餐与成员查询新增可逐项核对的视觉/交互原则，机器目录保留 62 个 `UX-*` 参考编号。**具体业务字段、M1～M5/F05、页面路由/流转仍以本文件和 D3 权威为准**，62 项并非新功能或 62 项已运行测试，也不解除 UI-G0 阻断。
 

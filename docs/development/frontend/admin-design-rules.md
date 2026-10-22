@@ -1,6 +1,6 @@
 # Admin 设计原则目录｜结构化规则唯一来源
 
-> **唯一机器可读正文**：[admin-design-rules.json](./admin-design-rules.json)，本入口仅分类路由与适配说明，不复制规则正文或旧项目脚本。当前 **62 个来源 ID 已逐条迁入**，标注 Admin 适用范围和 `active/conditional` 状态；**规则本身没有通过浏览器测试，实际自动化门禁 `NOT_IMPLEMENTED`**。`UI-G0 = NOT APPROVED / BLOCKED`。
+> **唯一机器可读正文**：[admin-design-rules.json](./admin-design-rules.json)，本入口仅分类路由与适配说明，不复制规则正文或旧项目脚本。当前 **62 个来源 ID 已逐条迁入**，标注 Admin 适用范围和 `active/conditional` 状态；**规则本身没有通过浏览器测试，实际自动化门禁 `NOT_IMPLEMENTED`**。`UI-G0A = NOT APPROVED / BLOCKED`。
 
 ## 选择性阅读/按任务检索
 
@@ -45,3 +45,7 @@
 2. 再从 `admin-design-rules.json` 按 `category` / `id` 筛选与页面相关的原则，记录适用/例外/验证方法；结合 [组件与页面模式](./admin-design-components-and-patterns.md) 选择 React-admin/MUI。
 3. 依据 [页面与验证映射](./admin-design-verification.md) 生成测试任务，真实浏览器/安全 RPC 验证后按用例保存证据；**不能用规则数、文档检查、截图单帧证明全部功能通过**。
 4. 若规则需要修订，维护本 JSON 的唯一正文、更新相应迁移/规则索引与验证说明，不复制另一份 `MANUAL.md` 平行来源。
+
+## 规则来源、取舍与当前状态
+
+62 条唯一 ID 来自 2026-10-22 经用户授权从临时通用设计规则中选择性整理的十类规则；**长期可执行的结构化结果只有**[admin-design-rules.json](./admin-design-rules.json)，原源文件的 SHA-256 追溯见 JSON 中 `sourceRuleFiles`，不需要另存已完成迁移日志或复制已删除的参考目录。Aisenlens 自身深色方案、Tailwind/shadcn/Base UI 组件、视频工作流、旧仓库测试结论、生成/安装工具、原 PNG **均未被批准用作 AisenCore Admin UI**；三条 conditional 原则不构成新增功能。全局视觉 Token/真实画板仍由[UI 设计系统](../../architecture/applications/admin-ui-design-system.md)唯一治理；**G0A 当前未签收，浏览器 UI-G3 未运行**。

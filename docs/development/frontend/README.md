@@ -14,7 +14,6 @@
 | [UX 设计原则与适用性](./admin-design-rules.md) | 十类规则的检索与适用范围 |
 | [62 条结构化规则 JSON](./admin-design-rules.json) | **机器可读的唯一规则数据**，59 条直接适用、3 条条件适用；无已实现的自动化 gate |
 | [UI-G0/UI-G3 验证矩阵](./admin-design-verification.md) | 四类高保真基准页审批与开发后浏览器/键盘/权限实测 |
-| [来源与迁移取舍](./admin-design-migration-record.md) | 原始参考材料、排除项、规则核对结果及从旧 `admindesign` 目录收敛的记录 |
 
 **阅读顺序**：先读本页的开发硬约束和 [UI-G0](../../architecture/applications/admin-ui-design-system.md) 当前状态，再结合 [D3-UI 页面设计](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md) 按任务查对应基础/组件/UX 规则，最后依据验证矩阵提交真实证据。不要为了单页任务加载整个长规则库。
 
@@ -24,7 +23,7 @@
 - 优先复用 React-admin 的页面组件、资源和 Data Provider / Auth Provider 机制，不同时叠加另一套完整 UI、路由、表单、请求缓存或状态管理框架。
 - Admin 前端托管于 **Cloudflare Pages**，高权限管理动作必须通过可信服务端授权 API，而非在浏览器直接操作高权限凭据。
 - 用户与产品级权益、登录、订单和后台管理需求以[现行需求](../../spec/requirements.md)为准；Admin 页面/资源、数据接入与安全交互以[Admin 管理前端架构](../../architecture/applications/admin-console.md)为准，框架选型以[技术栈专项](../../architecture/infrastructure/tech-stack.md)为准。
-- **UI-G0 前置准入（必须检查，不能省略）**：先按 [Admin 全局设计系统权威](../../architecture/applications/admin-ui-design-system.md) 完成字体/字号、MUI 单一 Theme、语义色、8px 间距、断点/全局 Layout、共享列表/表单/详情/弹窗组件模板，产生**登录/MFA、发码、套餐、用户/成员四类高保真视觉参考与宽窄屏状态**，取得用户明确签收、版本和日期并标记 `UI-G0 APPROVED`；**否则不能新建正式 Admin 主题、布局或任何业务页面源代码**。D3-UI 文字线框或 UI-G0 文档完成不算批准。
+- **UI-G0 前置准入（必须检查，不能省略）**：先按 [Admin 全局设计系统权威](../../architecture/applications/admin-ui-design-system.md) 完成字体/字号、MUI 单一 Theme、语义色、8px 间距、断点/全局 Layout、共享列表/表单/详情/弹窗组件模板，产生**登录/MFA、发码、套餐、用户/成员四类高保真视觉参考与宽窄屏状态**，取得用户明确签收、版本和日期并标记 `UI-G0A APPROVED`；**否则不能新建正式 Admin 主题、布局或任何业务页面源代码**。D3-UI 文字线框或 UI-G0 文档完成不算批准。
 - **页面开发时的规则路由**：优先按本目录上方索引查业务/页面 → UI-G0 Token → React-admin/MUI 标准组件与页面模式 → 实际有关的 UX 规则 → 逐屏核验；严禁引用另项目 Tailwind/Base UI、主题或旧测试命令。**规则已整理不等于 UI-G0 批准或已建立自动化门禁**。
 
 ## Admin 未来编码时的统一视觉约束（本轮未实现代码）
