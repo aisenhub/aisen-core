@@ -1,0 +1,2123 @@
+{
+  "schemaVersion": 1,
+  "product": "AisenCore Admin",
+  "status": "DESIGN_RULES_ONLY_NOT_RUNTIME_VERIFIED",
+  "visualApproval": "UI-G0 NOT APPROVED / BLOCKED",
+  "source": "Temporary copied design/rules, user provided 2026-10-22, adapted",
+  "migrationPolicy": "Preserve IDs/summary/review checks, drop original adaptation, snippets and local gate. Conditional means no new MVP feature.",
+  "sourceRuleFiles": [
+    {
+      "file": "a11y.ts",
+      "sha256": "455cb100ce78b56d24f022d51112ea3392da69229755e0a3840d78b1280b1471"
+    },
+    {
+      "file": "content.ts",
+      "sha256": "5ea98a03722e9b249f7b80704dcf310f605dcfa47cf88969a6e0b083233115f7"
+    },
+    {
+      "file": "feedback.ts",
+      "sha256": "c2df5cb73e2205ab44183880971ba36c2342c8cfa8fef0f1b7513e20982f1de8"
+    },
+    {
+      "file": "forms.ts",
+      "sha256": "6587585755abd7e22a5551c25ece07f6dc86dac69eacfc08a332a4eb165ee451"
+    },
+    {
+      "file": "layout.ts",
+      "sha256": "2f69c53a758b54c2ef704f543835359b73a9688cdc8edcbe4eebebfad7294c27"
+    },
+    {
+      "file": "motion.ts",
+      "sha256": "8eb1c40aaae2703e96a06b73e2a869fd46de0ce3c10e433a10137aeb10b0f09a"
+    },
+    {
+      "file": "navigation.ts",
+      "sha256": "2483a2f4051b5eeed3ba8360e940bfaa7f2250610314c438aa153fc74e137c35"
+    },
+    {
+      "file": "performance.ts",
+      "sha256": "2ebf6454dd8e22792c2340f766cc1f93403ef96765bf80fb88b2e1ddc02318a4"
+    },
+    {
+      "file": "visual.ts",
+      "sha256": "fb67df6b4de6804b7b8fcb57ab5d8019382e01f5175827d1b169c0a7688a2649"
+    },
+    {
+      "file": "workflow.ts",
+      "sha256": "0bd8253dd8bd7a305fc1559c23ba5b99e1415be174824aeab94f5e34e1f4ef2a"
+    }
+  ],
+  "totalSourceRules": 62,
+  "rewordedForOtherProjectBindings": [],
+  "rules": [
+    {
+      "id": "UX-A11Y-FOCUS-VISIBLE",
+      "title": "键盘焦点清晰可见且不被完全遮挡",
+      "summary": "可操作控件具有可见焦点，固定头栏、底栏或浮层不能完全遮住当前焦点。",
+      "category": "a11y",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Keyboard",
+          "Dark",
+          "Light",
+          "Overlay"
+        ],
+        "checklistQuestions": [
+          "键盘路径中的每个焦点是否清楚可见且未被完全遮挡？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "复用有焦点样式的控件，按实际背景验证。可替换 outline，但不能移除全部可见指示。2 CSS px 周边面积及 3:1 状态对比属于 WCAG AAA Focus Appearance；项目可采用更高目标，不能误称 AA。",
+      "sourceCategoryFile": "a11y.ts"
+    },
+    {
+      "id": "UX-A11Y-KEYBOARD-ESCAPE",
+      "title": "弹窗与浮层正确管理进入、退出和焦点",
+      "summary": "打开模态弹窗时焦点进入且留在其中；按当前层级处理 Escape，关闭后恢复到合理工作流位置。",
+      "category": "a11y",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Open",
+          "NestedOverlay",
+          "Close",
+          "Keyboard"
+        ],
+        "checklistQuestions": [
+          "Tab/Shift+Tab 是否符合控件模型？",
+          "嵌套关闭与触发元素消失后焦点是否仍合理？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "优先现有弹窗原语；模态背景不可操作，普通非模态 Popover 不统一套焦点陷阱。嵌套浮层 Escape 关闭顶层；触发元素被删除时恢复到后续合理位置，保留输入草稿。",
+      "sourceCategoryFile": "a11y.ts"
+    },
+    {
+      "id": "UX-A11Y-KEYBOARD-SHORTCUTS",
+      "title": "高频快捷键通常尊重编辑和输入法状态",
+      "summary": "快捷键按焦点、控件模型与输入法组合状态处理，不抢走文字编辑、浏览器及辅助技术操作。",
+      "category": "a11y",
+      "level": "should",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "workbench",
+          "forms"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Editing",
+          "Composing",
+          "Keyboard"
+        ],
+        "checklistQuestions": [
+          "输入中文、空格及 Ctrl/Cmd+Z 时是否保留原生编辑行为？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "处理 isComposing、defaultPrevented 和文本编辑目标；不要把所有 Cmd/Ctrl 组合键无条件放行到全局。单字符快捷键可关闭、重映射或仅在相关控件聚焦时激活。媒体快捷键不打断输入。",
+      "sourceCategoryFile": "a11y.ts"
+    },
+    {
+      "id": "UX-A11Y-TOUCH-TARGET-SIZE",
+      "title": "指针目标尺寸与间距按平台和场景验证",
+      "summary": "Web AA 使用至少 24×24 CSS px 或适用例外；触控可采用 44 CSS px 舒适目标，不混用原生 pt/dp。",
+      "category": "a11y",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Pointer",
+          "Touch",
+          "DenseControls"
+        ],
+        "checklistQuestions": [
+          "密集相邻控件是否满足尺寸或间距例外？",
+          "扩展热区是否没有遮住相邻动作？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "区分 WCAG 2.2 AA 条款与 44px 项目舒适目标",
+      "sourceCategoryFile": "a11y.ts"
+    },
+    {
+      "id": "UX-A11Y-SEMANTICS-NAMES",
+      "title": "结构、控件和图像有正确语义与名称",
+      "summary": "原生语义、页面区域、标题层级、表头关系和可访问名称匹配实际用途。",
+      "category": "a11y",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "ScreenReader",
+          "Selected",
+          "Images",
+          "DataView"
+        ],
+        "checklistQuestions": [
+          "读屏是否能理解结构、字段、图标动作及选中状态？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "优先 button、a、label、table、nav/main 等原生结构。图标按钮有名称，装饰图形隐藏，有意义图片按用途给 alt；Tabs、菜单、组合框与可编辑网格沿各自组件模型，不能只给 clickable div 加 role 就算完成。",
+      "sourceCategoryFile": "a11y.ts"
+    },
+    {
+      "id": "UX-A11Y-COMPLETE-KEYBOARD",
+      "title": "核心任务可按正确键盘模型完成",
+      "summary": "键盘可以访问并操作核心功能；Tab 顺序合理，适当复合控件使用方向键，不用正 tabindex 强排。",
+      "category": "a11y",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Keyboard",
+          "Virtualized",
+          "Overlay"
+        ],
+        "checklistQuestions": [
+          "无需指针能否完成核心任务并离开每个控件？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "导航密集页面按需提供跳过重复区域的方式。可滚动区域和虚拟化内容保持可达；焦点不跑到隐藏或失效元素。通过完整任务验证，而不是只检查按钮能获得焦点。",
+      "sourceCategoryFile": "a11y.ts"
+    },
+    {
+      "id": "UX-A11Y-TEXT-REFLOW-SPACING",
+      "title": "缩放、文字重排和用户间距不丢失内容",
+      "summary": "正文、操作和错误在文字放大、窄视口与适用的用户间距覆盖下保持完整可访问。",
+      "category": "a11y",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Text200Percent",
+          "Reflow320",
+          "UserSpacing",
+          "LongContent"
+        ],
+        "checklistQuestions": [
+          "缩放与用户间距覆盖后，是否仍能阅读文字和执行动作？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "分别测试 200% 文字缩放、相当于 320 CSS px 的重排以及适用文字间距覆盖：行高1.5、段后2、字距0.12、词距0.16倍字号。不能阻止页面缩放或固定高度裁切；真正二维内容可局部双向滚动，周围操作仍须可用。按语言适用范围判断间距项。",
+      "sourceCategoryFile": "a11y.ts"
+    },
+    {
+      "id": "UX-A11Y-DRAG-ALTERNATIVES",
+      "title": "作者控制的拖拽操作有单指针替代",
+      "summary": "重排、移动、调整大小等拖拽功能提供不依赖持续拖动的单指针途径，并保留键盘操作。",
+      "category": "a11y",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ],
+        "conditions": [
+          "存在作者实现的拖拽操作"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Pointer",
+          "Keyboard",
+          "Drag"
+        ],
+        "checklistQuestions": [
+          "不用拖动及只用键盘是否都能完成对应任务？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "conditional",
+      "adminGuidance": "沿已有菜单、移动按钮、数值输入或点击选择再定位等方式；键盘替代不能单独证明满足单指针替代要求。仅本质拖拽或用户代理未修改行为可按适用例外判断。",
+      "sourceCategoryFile": "a11y.ts",
+      "activationCondition": "仅未来实际引入拖拽才适用"
+    },
+    {
+      "id": "UX-A11Y-CONTEXTUAL-STATUS",
+      "title": "重要动态状态按上下文播报且不抢焦点",
+      "summary": "任务、错误与计数变化的播报有意义且适度，不让多个徽章同时宣读裸数字。",
+      "category": "a11y",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "ScreenReader",
+          "AsyncError",
+          "Updating"
+        ],
+        "checklistQuestions": [
+          "读屏用户是否理解重要变化而不会被重复播报打断？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "使用适当 role=status/aria-live 和必要 aria-atomic；紧急错误与普通状态分开。整段流式文本、播放时钟或每个计数不统一 live；播报不额外增加可见说明，不用焦点跳转替代状态消息。",
+      "sourceCategoryFile": "a11y.ts"
+    },
+    {
+      "id": "UX-CONTENT-READABLE-FONT-SCALE",
+      "title": "排版层级统一且按阅读任务验证",
+      "summary": "标题、正文、标签和时间码使用已确认的语义排版；具体字号不是跨产品或 WCAG 的统一阈值。",
+      "category": "content",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Dark",
+          "Light",
+          "Zoom",
+          "LongContent"
+        ],
+        "checklistQuestions": [
+          "同用途文本是否一致且在放大和窄视口下可读？"
+        ]
+      },
+      "reviewMethodSuggestion": "manual-audit",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "沿现有字体和排版 Token，避免每个组件自选字号。长文按语言、字体、行高与缩放验证；紧凑元数据不机械套正文尺寸。若需要改设计值，在真实页面确认后同步调用。",
+      "sourceCategoryFile": "content.ts"
+    },
+    {
+      "id": "UX-CONTENT-TRUNCATION-EXPAND",
+      "title": "必要文本完整可访问",
+      "summary": "标题、操作、错误、安全信息和区分对象的名称不因整齐而丢失含义；必要截断有实际全文途径。",
+      "category": "content",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "LongContent",
+          "Narrow",
+          "Keyboard",
+          "Touch"
+        ],
+        "checklistQuestions": [
+          "键盘与触控用户能否取得区分对象所需的完整文字？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "优先换行、堆叠或调整布局。长标识使用可收缩容器及 overflow-wrap:anywhere，不统一强制 nowrap。展开、详情或复制入口兼顾键盘和触控；title 或只悬停的 Tooltip 不能是唯一途径。",
+      "sourceCategoryFile": "content.ts"
+    },
+    {
+      "id": "UX-CONTENT-FORMATTING-LOCALE",
+      "title": "日期、度量和时间码通常采用明确格式",
+      "summary": "普通日期和数字按区域与用途格式化；精确时间码与帧编号保持所需精度和单位，不误用相对时间或缩写。",
+      "category": "content",
+      "level": "should",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Locale",
+          "Updating"
+        ],
+        "checklistQuestions": [
+          "时间码、日期与单位是否无歧义？",
+          "变化的数字是否不引起位置跳动？"
+        ]
+      },
+      "reviewMethodSuggestion": "manual-audit",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "计数和时间码可用 tabular-nums 或等宽字体保持稳定。数值缩写仅用于不影响判断的概要；导出及精确编辑保留完整值。避免将所有数字或正文统一换成等宽字体。",
+      "sourceCategoryFile": "content.ts"
+    },
+    {
+      "id": "UX-CONTENT-TEXT-SELECTION",
+      "title": "操作控件通常防误选，正文保持可复制",
+      "summary": "操作控件可防止意外文本选中，报告、提示词、错误详情与有用途的标识保留原生选择和复制。",
+      "category": "content",
+      "level": "should",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Selection"
+        ],
+        "checklistQuestions": [
+          "报告正文和必要标识能否直接选择、复制？"
+        ]
+      },
+      "reviewMethodSuggestion": "manual-audit",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "select-none 限于操作控件及确需拖拽的区域，不放整个工作台或内容面板。交互混合区域逐项判断，不因追求桌面质感剥夺内容访问。",
+      "sourceCategoryFile": "content.ts"
+    },
+    {
+      "id": "UX-CONTENT-READING-MEASURE",
+      "title": "长文阅读通常采用适合语言的行长与行高",
+      "summary": "报告和说明正文按字体、语言及阅读距离设置行长与无单位行高；表格和时间码不机械套长文参数。",
+      "category": "content",
+      "level": "should",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "reading",
+          "marketing",
+          "data-views"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "LongContent",
+          "Zoom",
+          "Locale"
+        ],
+        "checklistQuestions": [
+          "长报告在宽屏与放大后是否仍便于逐行阅读？"
+        ]
+      },
+      "reviewMethodSuggestion": "manual-audit",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "65–75ch 与 1.5–1.75 行高是拉丁正文的起始参考，不是中文或所有控件的硬门。真实长内容、文字缩放及用户字距覆盖后仍可阅读，不固定高度裁切。",
+      "sourceCategoryFile": "content.ts"
+    },
+    {
+      "id": "UX-CONTENT-COMPACT-LABELS",
+      "title": "紧凑标签的含义、操作与全文途径一致",
+      "summary": "状态徽章、值标签和可操作筛选分别采用相应语义，紧凑标签优先完整呈现。",
+      "category": "content",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "LongContent",
+          "Selected",
+          "Keyboard",
+          "Touch"
+        ],
+        "checklistQuestions": [
+          "标签能否清楚区分状态、值和操作？",
+          "截断值是否可完整访问？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "不要让每个 pill 都可点击。动态长值可限制宽度，但不可避免截断时提供触控及键盘全文入口；交互标签沿按钮/选项组件，pressed/selected 与实际状态一致。集合折行沿布局规则。",
+      "sourceCategoryFile": "content.ts"
+    },
+    {
+      "id": "UX-FEEDBACK-ASYNC-LOADING",
+      "title": "等待反馈适应实际等待并保持界面稳定",
+      "summary": "长等待有可理解反馈，近乎即时操作避免闪烁；骨架、进度和忙碌状态按任务选择。",
+      "category": "feedback",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Fast",
+          "Slow",
+          "Busy"
+        ],
+        "checklistQuestions": [
+          "慢操作是否能理解状态？",
+          "快操作是否没有闪烁、焦点丢失或明显布局跳动？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "保留已有内容与焦点。预留合理空间，不要求未知内容的骨架严格 1:1。真实可测进度才显示百分比；未知阶段不假造进度，不禁用无冲突操作。按需要提供 aria-busy。",
+      "sourceCategoryFile": "feedback.ts"
+    },
+    {
+      "id": "UX-FEEDBACK-EMPTY-STATES",
+      "title": "空状态提供必要原因或可执行下一步",
+      "summary": "无数据、尚未配置及筛选无结果分别表达；只显示帮助用户判断或继续任务的内容。",
+      "category": "feedback",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Empty",
+          "Unconfigured",
+          "NoResults"
+        ],
+        "checklistQuestions": [
+          "用户是否知道当前为何为空及适用的下一步？",
+          "显示的入口是否真实可执行？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "按情境使用一句原因、清除筛选或真实创建/导入入口。无下一步时不硬加按钮；不统一要求图标、标题、描述和 CTA 四件套，避免重复现有页面标题。",
+      "sourceCategoryFile": "feedback.ts"
+    },
+    {
+      "id": "UX-FEEDBACK-CONFIRMATION",
+      "title": "不可逆或高风险操作明确确认范围",
+      "summary": "删除、覆写或其他高风险动作说明实际对象和后果；低风险且可撤销操作不统一增加确认。",
+      "category": "feedback",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ],
+        "conditions": [
+          "不可逆或有实质风险的动作"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Confirm",
+          "Cancel",
+          "Keyboard"
+        ],
+        "checklistQuestions": [
+          "取消、Escape 或关闭是否不执行危险动作？",
+          "确认内容是否与实际影响范围一致？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "使用现有确认原语，危险确认默认避免误触。长内容可先聚焦标题；必要时聚焦取消。明确保留或删除哪些数据，不泛称所有动作不可撤销。",
+      "sourceCategoryFile": "feedback.ts"
+    },
+    {
+      "id": "UX-FEEDBACK-ERROR-RECOVERY",
+      "title": "失败后保留工作并提供适用恢复途径",
+      "summary": "错误说明当前动作为何未完成及可执行的下一步，不只显示失败字样或开发堆栈。",
+      "category": "feedback",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Error",
+          "Retry",
+          "Offline",
+          "PartialSuccess"
+        ],
+        "checklistQuestions": [
+          "失败后能否继续当前任务而无需重做已完成工作？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "保留合法草稿与已有结果；按错误提供重试、重新关联素材、解锁或重新保存等现有入口。费用不明或非幂等动作不自动重试。可执行恢复留在界面，细节可按需展开。",
+      "sourceCategoryFile": "feedback.ts"
+    },
+    {
+      "id": "UX-FEEDBACK-TASK-STATUS",
+      "title": "任务状态、进度与取消基于真实事实",
+      "summary": "等待、执行、取消请求、失败、部分成功及完成如实表达；百分比仅用于有可靠分母的工作。",
+      "category": "feedback",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "workbench",
+          "data-views"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Queued",
+          "Running",
+          "Cancelling",
+          "Cancelled",
+          "Error",
+          "PartialSuccess"
+        ],
+        "checklistQuestions": [
+          "取消、失败和部分完成的显示是否与实际任务及结果一致？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "消费现有任务状态，不新建 UI 真值。区分取消已请求与取消已完成；阶段未知时不用假进度或假 ETA。结果与保存状态分开，必要时展示保留的已完成部分。",
+      "sourceCategoryFile": "feedback.ts"
+    },
+    {
+      "id": "UX-FEEDBACK-NECESSARY-COMPLETION",
+      "title": "重要动作完成可理解且普通成功不过度打扰",
+      "summary": "重要保存、导出或任务结果有明确完成依据；可直接观察的普通更新不要求重复 Toast。",
+      "category": "feedback",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Success",
+          "Saving",
+          "Exported"
+        ],
+        "checklistQuestions": [
+          "用户能否确认重要动作结果且不被重复通知打断？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "通过内容更新、文件结果或现有状态表达完成。短消息不承载唯一恢复操作或重要风险；播报适当合并，避免每次自动保存都通知或移动焦点。",
+      "sourceCategoryFile": "feedback.ts"
+    },
+    {
+      "id": "UX-FORM-CREDENTIAL-REUSE",
+      "title": "安全复用已输入的参数与凭据",
+      "summary": "同一流程避免无意义重复录入；已存凭据的复用受用户选择、解锁和权限范围约束。",
+      "category": "forms",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "forms",
+          "workbench"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Configured",
+          "Locked",
+          "Unavailable"
+        ],
+        "checklistQuestions": [
+          "已确认参数能否复用？",
+          "锁定凭据时是否仍要求合法解锁而没有泄露原文？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "按官方 Auth/浏览器能力安全复用登录；禁止把 TOTP/refresh token 等秘密写入普通缓存",
+      "sourceCategoryFile": "forms.ts"
+    },
+    {
+      "id": "UX-FORM-INPUT-LABELS",
+      "title": "字段有可见标签及正确绑定",
+      "summary": "字段用途有持续可见的表达，并提供关联名称；placeholder 仅作必要示例。",
+      "category": "forms",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "forms"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Default",
+          "Keyboard"
+        ],
+        "checklistQuestions": [
+          "删除占位符后字段用途是否仍清楚？",
+          "点击标签或读屏聚焦时是否定位到正确字段？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "优先现有表单组件。独立标签用 htmlFor/id；分组可用 fieldset/legend 或已有组合控件的关联标签。避免重复写标签，不以 aria-label 代替本来需要的可见字段说明。",
+      "sourceCategoryFile": "forms.ts"
+    },
+    {
+      "id": "UX-FORM-REQUIRED-INDICATORS",
+      "title": "必填与可选状态清楚且语义一致",
+      "summary": "用户能在提交前判断字段要求，视觉标识与 required 或组件语义一致，不只靠红色星号。",
+      "category": "forms",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "forms"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Default",
+          "Invalid"
+        ],
+        "checklistQuestions": [
+          "必填与可选是否能在输入前识别？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "使用已有统一标记方式。全部字段必填时可以在表单层简洁说明；混合字段明确区分。自定义控件使用正确 aria-required 与业务校验，不只加一个装饰符号。",
+      "sourceCategoryFile": "forms.ts"
+    },
+    {
+      "id": "UX-FORM-PASSWORD-VISIBILITY",
+      "title": "敏感输入通常提供受控的显隐切换",
+      "summary": "编辑密码或密钥时默认隐藏，适用时允许用户主动查看；显示动作不绕过保险库权限。",
+      "category": "forms",
+      "level": "should",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "forms"
+        ],
+        "conditions": [
+          "仅有可编辑且获授权的敏感输入"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Masked",
+          "Visible",
+          "Locked"
+        ],
+        "checklistQuestions": [
+          "显隐切换是否不提交表单、不丢光标且不泄露已锁定凭据？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "复用密码输入控件，切换按钮 type='button' 并有明确可访问名称。设置光标与焦点连续性；不为仅引用已存凭据的字段重新读取原始密钥。",
+      "sourceCategoryFile": "forms.ts"
+    },
+    {
+      "id": "UX-FORM-SUBMIT-FEEDBACK",
+      "title": "提交防重复并呈现必要结果",
+      "summary": "异步提交防止重复执行，并让用户理解等待、失败或重要完成；不强制所有按钮旋转或改字。",
+      "category": "forms",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "forms"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Busy",
+          "Success",
+          "Error"
+        ],
+        "checklistQuestions": [
+          "连续点击是否只执行一次？",
+          "失败后输入、错误定位与重试是否可用？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "按钮禁用与任务入口防重同时处理。快操作避免加载闪烁；长操作使用现有 busy/progress。失败保留输入，完成可通过内容更新体现，按需播报而非每次 Toast。",
+      "sourceCategoryFile": "forms.ts"
+    },
+    {
+      "id": "UX-FORM-INLINE-VALIDATION",
+      "title": "字段错误可定位、可理解并正确播报",
+      "summary": "字段错误指出实际原因与修复方式，通过 aria-invalid 和关联说明表达；复杂表单汇总不替代行内错误。",
+      "category": "forms",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "forms"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Invalid",
+          "Submitting",
+          "AsyncError"
+        ],
+        "checklistQuestions": [
+          "错误是否关联到正确字段？",
+          "键盘用户能否从提交失败找到并修复每个错误？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "校验时机适应输入类型，避免输入未完成就报错。提交失败定位首个错误或可聚焦的汇总；汇总链接到字段，不在每次 blur 抢焦点。异步错误使用适当状态播报。",
+      "sourceCategoryFile": "forms.ts"
+    },
+    {
+      "id": "UX-FORM-INPUT-METHODS",
+      "title": "输入类型与校验方式支持真实输入任务",
+      "summary": "字段使用合适的类型、输入模式、自动填充及校验时机，支持粘贴和输入法。",
+      "category": "forms",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "forms"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Editing",
+          "Composing",
+          "Paste",
+          "Invalid"
+        ],
+        "checklistQuestions": [
+          "前导零、粘贴、中文组合输入及合适键盘是否正常？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "标识和可能带前导零的字符串不机械使用 number；inputmode 只提示键盘，不替代校验。允许合适的密码管理器与粘贴，不在每个字符输入时阻断尚未完成的值。原生认证属性仅用于真实认证流程。",
+      "sourceCategoryFile": "forms.ts"
+    },
+    {
+      "id": "UX-FORM-CONTROL-STATES",
+      "title": "控件状态与操作能力一致",
+      "summary": "默认、按下、选中、禁用、忙碌和错误按控件职责区分，显示状态与实际可执行能力一致。",
+      "category": "forms",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Pressed",
+          "Selected",
+          "Disabled",
+          "Busy",
+          "Invalid"
+        ],
+        "checklistQuestions": [
+          "按下、选中和禁用是否可识别且与实际行为一致？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "复用组件变体与原生 disabled/aria 属性；链接与按钮用途不同。忙碌时保留必要的取消和恢复动作，避免全部变灰；仅需描述状态的徽章不伪装可点击控件。",
+      "sourceCategoryFile": "forms.ts"
+    },
+    {
+      "id": "UX-LAYOUT-DYNAMIC-VIEWPORT",
+      "title": "全屏布局适应动态视口与输入环境",
+      "summary": "全屏工作区通常考虑动态浏览器工具栏、方向变化与虚拟键盘，不能仅依赖 100vh。",
+      "category": "layout",
+      "level": "should",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "workbench",
+          "forms"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Narrow",
+          "KeyboardOpen",
+          "OrientationChange"
+        ],
+        "checklistQuestions": [
+          "浏览器工具栏和键盘变化后，当前输入与必要操作是否可达？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "dvh 可用于跟随可见视口；需要稳定布局时按实际行为选择合适单位。弹窗使用有界高度和可访问滚动；验证键盘出现后输入及确认控件可达，不承诺 dvh 自动解决所有遮挡。",
+      "sourceCategoryFile": "layout.ts"
+    },
+    {
+      "id": "UX-LAYOUT-HORIZONTAL-SCROLL-CONTAINMENT",
+      "title": "超宽内容局部滚动且不隐藏必要信息",
+      "summary": "先修复容器收缩、长文本换行和尺寸约束；表格、时间轴等必要二维内容可在局部滚动。",
+      "category": "layout",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Narrow",
+          "Zoom",
+          "LongContent"
+        ],
+        "checklistQuestions": [
+          "窄视口与文字放大时是否仍能访问所有操作？",
+          "必要横向内容能否用键盘滚动？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "使用 min-width:0、minmax(0,1fr) 和合适换行；局部容器用 overflow-x:auto 并支持键盘访问。不以根 overflow-x:hidden 掩盖缺陷，也不把局部裁切当作内容可访问。",
+      "sourceCategoryFile": "layout.ts"
+    },
+    {
+      "id": "UX-LAYOUT-ZINDEX-SYSTEM",
+      "title": "浮层遵循已有语义层级与堆叠上下文",
+      "summary": "复用现有层级 Token 与浮层原语，验证实际遮挡关系；不另建任意数字阶梯。",
+      "category": "layout",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Overlay",
+          "NestedOverlay"
+        ],
+        "checklistQuestions": [
+          "菜单、弹窗及必要通知的相对层级是否正确？"
+        ]
+      },
+      "reviewMethodSuggestion": "static-check",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "优先公共 Dialog、Popover、Tooltip 等组件，沿 --z-* Token。Portal 不自动解决全部层级与焦点问题；检查父级 transform/opacity 等堆叠上下文及多层浮层。",
+      "sourceCategoryFile": "layout.ts"
+    },
+    {
+      "id": "UX-LAYOUT-CHIP-REFLOW",
+      "title": "标签集合保留可访问的全部值",
+      "summary": "标签集合随容器和文字尺寸折行，或通过可操作的 +n 展开隐藏项。",
+      "category": "layout",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "LongContent",
+          "Zoom",
+          "Narrow"
+        ],
+        "checklistQuestions": [
+          "增加标签和放大文字后，隐藏项能否找到并访问？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "集合折行与单个紧凑标签的排版分开处理。不可用固定高度隐藏超出项；动态长值不可避免截断时沿内容规则提供键盘、指针和触控都可用的全文入口。",
+      "sourceCategoryFile": "layout.ts"
+    },
+    {
+      "id": "UX-LAYOUT-DENSITY",
+      "title": "信息密度适应任务、文字与输入方式",
+      "summary": "桌面工作台可紧凑，阅读和表单保留所需空间；不能让密度压缩破坏文字和操作访问。",
+      "category": "layout",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Compact",
+          "Comfortable",
+          "Touch",
+          "Zoom"
+        ],
+        "checklistQuestions": [
+          "紧凑状态下文字、焦点和点击目标是否仍清楚？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "Admin MVP 仅一档标准密度候选，不引入用户密度切换",
+      "sourceCategoryFile": "layout.ts"
+    },
+    {
+      "id": "UX-LAYOUT-SAFE-AREAS",
+      "title": "固定区域与虚拟键盘不阻断内容和焦点",
+      "summary": "固定头栏、底栏、抽屉及输入环境保留必要内容与操作的可达空间。",
+      "category": "layout",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Narrow",
+          "KeyboardOpen",
+          "Overlay",
+          "Keyboard"
+        ],
+        "checklistQuestions": [
+          "聚焦底部字段或展开浮层后，重要操作是否仍可达？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "按实际固定区域使用 scroll-padding/scroll-margin 与 safe-area inset。避免多个固定层互相遮挡；键盘打开时聚焦字段和提交/取消仍可访问，不能仅依靠缩短视口或隐藏滚动。",
+      "sourceCategoryFile": "layout.ts"
+    },
+    {
+      "id": "UX-LAYOUT-STABLE-UPDATES",
+      "title": "媒体和异步内容更新不引发无必要跳动",
+      "summary": "图片、计数、错误和加载替换有合适的空间策略，同时允许长文本按内容增长。",
+      "category": "layout",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Loading",
+          "Updating",
+          "Error",
+          "Zoom"
+        ],
+        "checklistQuestions": [
+          "慢加载、数字变化及错误出现时，当前操作是否没有被突然移走？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "媒体声明宽高或比例；动态区域采用稳定但可增长的容器。避免用固定高度截断错误或放大文字，也不为可能永远不出现的说明预留大块空白。",
+      "sourceCategoryFile": "layout.ts"
+    },
+    {
+      "id": "UX-MOTION-PERFORMANCE",
+      "title": "动效属性明确并按实际成本验证",
+      "summary": "高频位移动效优先 transform/opacity；颜色反馈可用颜色过渡，布局动画按用途和测量评估。",
+      "category": "motion",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Animating",
+          "RapidInput"
+        ],
+        "checklistQuestions": [
+          "动画是否没有造成明显重排、掉帧或多余合成层？"
+        ]
+      },
+      "reviewMethodSuggestion": "static-check",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "列明实际过渡属性，避免 transition-all。transform 不保证没有开销，勿给所有元素永久 will-change；必要的布局过渡限于受控范围并测量，不能为动画改变必需的语义状态。",
+      "sourceCategoryFile": "motion.ts"
+    },
+    {
+      "id": "UX-MOTION-PURPOSE-TIMING",
+      "title": "动效通常表达关系并适应操作节奏",
+      "summary": "动效服务反馈、层级或连续性；时长与缓动按距离、复杂度、平台及偏好确定。",
+      "category": "motion",
+      "level": "should",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Enter",
+          "Exit",
+          "RapidInput"
+        ],
+        "checklistQuestions": [
+          "连续操作是否及时且能理解对象关系？"
+        ]
+      },
+      "reviewMethodSuggestion": "manual-audit",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "沿已有共享 motion Token。进场、离场和连续进度按用途选择缓动，旋转或匀速进度可以 linear。不固定统一 150–300ms，也不把紧凑工作台全部装饰性动画化。",
+      "sourceCategoryFile": "motion.ts"
+    },
+    {
+      "id": "UX-MOTION-REDUCED-PREFERENCE",
+      "title": "减少动效偏好下保持可读的最终状态",
+      "summary": "尊重 prefers-reduced-motion，取消非必要位移、视差和滚动劫持，必要状态仍可理解。",
+      "category": "motion",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "ReducedMotion",
+          "Busy"
+        ],
+        "checklistQuestions": [
+          "减少动效后是否仍可完成操作且内容不依赖动画可见？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "CSS 与 JavaScript 动画都处理偏好，缩短或移除非必要过渡。忙碌状态可通过静态内容表达；不要让动画关闭后信息消失或流程停住。",
+      "sourceCategoryFile": "motion.ts"
+    },
+    {
+      "id": "UX-MOTION-CANCELLABLE-TRANSITIONS",
+      "title": "连续切换不依赖动画完成才能正确更新",
+      "summary": "新操作可取消或替换旧动画，选中、展开、焦点与内容语义立即按实际动作更新。",
+      "category": "motion",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "RapidInput",
+          "CancelledAnimation",
+          "Unmount",
+          "ReducedMotion"
+        ],
+        "checklistQuestions": [
+          "快速开关、切换与卸载后是否只保留最后有效状态？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "状态更新独立于 animationend/transitionend。取消旧动画后清理计时器、监听和迟到回调；组件卸载或减少动效同样能到达正确最终状态。",
+      "sourceCategoryFile": "motion.ts"
+    },
+    {
+      "id": "UX-MOTION-USER-CONTROL",
+      "title": "持续运动内容提供适用控制",
+      "summary": "自动轮播、装饰性循环和自动播放媒体不强制占据注意力，按用途允许暂停或停止。",
+      "category": "motion",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ],
+        "conditions": [
+          "仅存在自动运动、持续循环或媒体播放的界面"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Playing",
+          "Paused",
+          "ReducedMotion"
+        ],
+        "checklistQuestions": [
+          "持续运动是否能控制且不阻断阅读或任务？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "conditional",
+      "adminGuidance": "默认优先用户主动播放；有自动运动时提供适当控制并尊重偏好。编辑器中用户启动的播放属于核心任务，不机械在每次焦点变化时停播。存在有声或教学媒体时按内容提供适用替代材料。",
+      "sourceCategoryFile": "motion.ts",
+      "activationCondition": "仅未来存在持续运动内容才适用"
+    },
+    {
+      "id": "UX-NAV-ACTIVE-STATE",
+      "title": "当前位置与活动视图有可辨识的状态",
+      "summary": "当前页面、活动标签及选中对象应可辨识；视觉样式与可访问状态一致。",
+      "category": "navigation",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Default",
+          "Selected",
+          "Dark",
+          "Light"
+        ],
+        "checklistQuestions": [
+          "导航位置与实际页面是否一致？",
+          "键盘和读屏是否能识别当前页面或活动标签？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "页面链接使用 aria-current='page'；Tabs 使用现有组件的选中语义，不用 data-state 单独代替语义状态。深浅主题都验证，不只靠颜色。",
+      "sourceCategoryFile": "navigation.ts"
+    },
+    {
+      "id": "UX-NAV-HISTORY-PREDICTABLE",
+      "title": "返回与历史遵循清楚的工作流",
+      "summary": "导航、子视图和返回不意外丢失上下文；是否进入历史由任务语义决定。",
+      "category": "navigation",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "workbench",
+          "forms",
+          "data-views",
+          "marketing"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Navigation",
+          "Refresh",
+          "DirectLink"
+        ],
+        "checklistQuestions": [
+          "多次前进/后退及直达链接是否回到合理位置并保留项目？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "沿现有路由与 Return Context。普通页面跳转保留历史；重定向、规范化 URL 或替换同一状态可以 replace。直达链接的返回目标按现有入口处理，不机械调用 navigate(-1)。",
+      "sourceCategoryFile": "navigation.ts"
+    },
+    {
+      "id": "UX-NAV-DEEP-LINKING",
+      "title": "适合恢复的关键状态反映在 URL",
+      "summary": "可分享或恢复的对象、视图和筛选通常同步 URL；临时状态、凭据与私密正文不写入 URL。",
+      "category": "navigation",
+      "level": "should",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "workbench",
+          "data-views",
+          "marketing"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Refresh",
+          "DirectLink"
+        ],
+        "checklistQuestions": [
+          "刷新和打开链接是否恢复约定的对象与视图？",
+          "URL 是否没有密钥和私密分析正文？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "仅公开安全的筛选/分页状态可入 URL；JWT、TOTP、码明文和危险请求不得入 URL",
+      "sourceCategoryFile": "navigation.ts"
+    },
+    {
+      "id": "UX-NAV-CLICK-OVER-HOVER",
+      "title": "核心入口可由点击、触控和键盘激活",
+      "summary": "不能把核心任务唯一入口藏在悬停状态；辅助悬停内容不替代可操作控件。",
+      "category": "navigation",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Keyboard",
+          "Touch",
+          "Hover"
+        ],
+        "checklistQuestions": [
+          "不用鼠标悬停能否完成核心操作？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "复用 Button、菜单、Popover 等原语。可保留 hover 反馈，但键盘聚焦与触控也能发现并激活操作。工具提示不是按钮的唯一可访问名称。",
+      "sourceCategoryFile": "navigation.ts"
+    },
+    {
+      "id": "UX-PERF-MEDIA-LAZY-VIRTUALIZATION",
+      "title": "非关键媒体按需加载，长列表按规模虚拟化",
+      "summary": "延迟加载非首屏关键图片；虚拟化依据实际规模和测量，不能固定按几十项认定。",
+      "category": "performance",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "FirstView",
+          "LargeList",
+          "Keyboard"
+        ],
+        "checklistQuestions": [
+          "首屏关键内容是否及时加载？",
+          "大列表中当前焦点、选择和内容访问是否稳定？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "Admin 关注长表分页/适用时虚拟化与焦点保持，不额外引入媒体业务",
+      "sourceCategoryFile": "performance.ts"
+    },
+    {
+      "id": "UX-PERF-CLEANUP-LISTENERS",
+      "title": "资源由明确所有者在失效时收尾",
+      "summary": "监听、定时器、观察器、连接与媒体句柄在责任结束时正确释放；组件卸载不一定是唯一边界。",
+      "category": "performance",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Unmount",
+          "Cancel",
+          "RepeatedUse"
+        ],
+        "checklistQuestions": [
+          "反复进入退出和取消后，是否没有残留回调或持续资源增长？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "useEffect 对自己创建的监听匹配清理；任务服务管理自己的 Worker、AudioContext、ObjectURL 与流。迟到回调检查有效性，不关闭仍由其他任务使用的共享资源。exhaustive-deps 不能证明清理完整。",
+      "sourceCategoryFile": "performance.ts"
+    },
+    {
+      "id": "UX-PERF-RESOURCE-LOADING",
+      "title": "关键资源及时加载，非关键资源按需准备",
+      "summary": "图片、字体、Worker/WASM 与低频功能按实际任务加载，不让非关键资源阻塞首屏与操作。",
+      "category": "performance",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "ColdLoad",
+          "FirstTask",
+          "LargeMedia"
+        ],
+        "checklistQuestions": [
+          "首屏和首次任务是否没有无用途的大资源等待或字体跳动？"
+        ]
+      },
+      "reviewMethodSuggestion": "manual-audit",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "图片分辨率和格式匹配显示用途；字体加载策略兼顾及时显示与替换稳定，按任务预热必要资源。真实路由/功能边界才能拆包；被静态导入的模块不会因另一处动态导入自动拆出。",
+      "sourceCategoryFile": "performance.ts"
+    },
+    {
+      "id": "UX-PERF-MEASURED-BUDGET",
+      "title": "性能通常依据冻结场景与实测比较",
+      "summary": "包体积、交互延迟、长任务、资源占用与持续运行用真实设备和输入测量，不能固定一个阈值覆盖所有任务。",
+      "category": "performance",
+      "level": "should",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "ColdLoad",
+          "WarmLoad",
+          "Pressure",
+          "RepeatedUse"
+        ],
+        "checklistQuestions": [
+          "性能结论是否有可复现输入、设备及测量，而不是只有构建成功？"
+        ]
+      },
+      "reviewMethodSuggestion": "manual-audit",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "记录素材规模、冷/热启动、设备与浏览器，再比较相同任务。构建 chunk 警告不等同任务不可用，合成滚动通过不等同长片通过；不能仅因规范列了60fps就宣称已经测试。",
+      "sourceCategoryFile": "performance.ts"
+    },
+    {
+      "id": "UX-PERF-CACHE-OWNERSHIP",
+      "title": "缓存有明确所有权和失效条件",
+      "summary": "缓存加速读取但不代替正式数据，身份、版本、权限或用途变化时按实际契约失效。",
+      "category": "performance",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "workbench",
+          "data-views"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "WarmLoad",
+          "IdentityChanged",
+          "VersionChanged"
+        ],
+        "checklistQuestions": [
+          "更换素材、项目或版本后是否不会展示错误缓存？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "沿现有资源服务与缓存入口，避免跨项目或跨凭据范围误复用。缓存错误不通过清空用户数据库恢复；HTTP 公开资源缓存与本地私密项目缓存分开评估。",
+      "sourceCategoryFile": "performance.ts"
+    },
+    {
+      "id": "UX-VISUAL-SURFACE-MATERIALS",
+      "title": "材质服务可读性、层级与资源成本",
+      "summary": "表面材质须保证内容可读和层级清楚，透明效果在真实背景、主题及设备上验证。",
+      "category": "visual",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Dark",
+          "Light",
+          "MediaBackground"
+        ],
+        "checklistQuestions": [
+          "实际内容背景与深浅主题下是否仍可读？",
+          "低性能设备上是否没有不必要的持续模糊开销？"
+        ]
+      },
+      "reviewMethodSuggestion": "manual-audit",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "沿现有语义表面和浮层组件，不根据 fixed/absolute 就自动添加玻璃效果。避免透明材质破坏文字对比度或大量长期模糊层。",
+      "sourceCategoryFile": "visual.ts"
+    },
+    {
+      "id": "UX-VISUAL-SEMANTIC-TOKENS",
+      "title": "视觉值与组件变体遵循单一维护入口",
+      "summary": "颜色、排版、间距、圆角和状态样式沿实际语义 Token 与公共组件，不复制第二套值。",
+      "category": "visual",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Dark",
+          "Light",
+          "Variants"
+        ],
+        "checklistQuestions": [
+          "同用途控件是否沿同一 Token 与组件变体？"
+        ]
+      },
+      "reviewMethodSuggestion": "manual-audit",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "统一以 architecture/applications/admin-ui-design-system.md 为唯一视觉权威，使用 React-admin/MUI Theme",
+      "sourceCategoryFile": "visual.ts"
+    },
+    {
+      "id": "UX-VISUAL-CONTRAST",
+      "title": "必要文字与控件在实际背景上满足对比度",
+      "summary": "普通文字至少 4.5:1，大字至少 3:1；识别操作或状态所需的非文字信息按适用条款至少 3:1。",
+      "category": "visual",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Dark",
+          "Light",
+          "Selected",
+          "Error",
+          "MediaBackground"
+        ],
+        "checklistQuestions": [
+          "真实背景及支持主题中，必要信息是否满足适用对比度？"
+        ]
+      },
+      "reviewMethodSuggestion": "manual-audit",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "按 WCAG 的文字大小/粗细定义判断大字，不能把所有标题当大字。分别测试深浅主题、透明背景、hover/selected/error 等状态；禁用和装饰内容等例外须明确，不仅测试静态色板。",
+      "sourceCategoryFile": "visual.ts"
+    },
+    {
+      "id": "UX-VISUAL-STATUS-MEANING",
+      "title": "状态含义不只依赖颜色或形状",
+      "summary": "错误、选中、来源与重要状态通过文字、可识别图形或其他线索传达，不只用红绿区分。",
+      "category": "visual",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Selected",
+          "Error",
+          "Success"
+        ],
+        "checklistQuestions": [
+          "去掉颜色后，用户能否辨别影响任务的状态？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "复用同一语义状态样式。增加信息仅为帮助判断，不为每个对象增加徽章。可访问状态由语义属性表达，不能认为加了一个图标就完成读屏支持。",
+      "sourceCategoryFile": "visual.ts"
+    },
+    {
+      "id": "UX-VISUAL-THEME-CONSISTENCY",
+      "title": "主题切换保持组件语义与用户选择",
+      "summary": "支持主题使用同一组件与交互规则，主题所有者统一，刷新与系统变化按现有偏好运行。",
+      "category": "visual",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "global"
+        ],
+        "conditions": [
+          "应用已经支持主题切换"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Dark",
+          "Light",
+          "SystemChange",
+          "Refresh"
+        ],
+        "checklistQuestions": [
+          "刷新及切换主题后，偏好、控件状态与可读性是否一致？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "Admin 浅色默认仍为候选，不增加未经批准的暗色切换",
+      "sourceCategoryFile": "visual.ts"
+    },
+    {
+      "id": "UX-WORKFLOW-BATCH-OPERATIONS",
+      "title": "重复操作通常支持批量选择与执行",
+      "summary": "有真实批量任务时提供选择范围和批量动作，明确当前选择及影响范围。",
+      "category": "workflow",
+      "level": "should",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "workbench",
+          "data-views"
+        ],
+        "conditions": [
+          "仅存在重复多项操作的列表或集合"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Selected",
+          "Filtered",
+          "Busy"
+        ],
+        "checklistQuestions": [
+          "筛选、全选、范围选择及批量动作的实际对象是否一致？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "MVP 明确批量发码，不由规则推导批量改用户与记录",
+      "sourceCategoryFile": "workflow.ts"
+    },
+    {
+      "id": "UX-WORKFLOW-ACTION-FIRST",
+      "title": "核心行动可发现且便于持续操作",
+      "summary": "主要任务和高频操作优先可达，不用固定三次点击或唯一 CTA 衡量所有工作台。",
+      "category": "workflow",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "workbench",
+          "data-views"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Default",
+          "Narrow",
+          "Keyboard"
+        ],
+        "checklistQuestions": [
+          "用户是否能发现并持续执行主要任务而无需反复查找入口？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "沿真实使用频次组织现有工具栏、快捷键和按需菜单。位置适应任务与输入方式，不统一要求窄屏全部底栏或常驻所有动作。",
+      "sourceCategoryFile": "workflow.ts"
+    },
+    {
+      "id": "UX-WORKFLOW-CONTEXT-PRESERVATION",
+      "title": "切换和异步更新保留相关操作上下文",
+      "summary": "选中对象、滚动、展开状态和有效草稿随任务保留；目标被删或失效时转到合理位置并反馈。",
+      "category": "workflow",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "workbench",
+          "forms",
+          "data-views"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Resize",
+          "Navigation",
+          "AsyncUpdate",
+          "DeletedTarget"
+        ],
+        "checklistQuestions": [
+          "调整窗口、切换视图及结果返回后是否保留当前任务？",
+          "目标被删除后是否仍有合理可操作状态？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "沿现有 session 与状态所有者局部更新，不强制整页 reload 或无条件回到顶部；需要重读时恢复相关上下文，不禁止一切重新查询。临时上下文不复制到正式领域数据。",
+      "sourceCategoryFile": "workflow.ts"
+    },
+    {
+      "id": "UX-WORKFLOW-DATA-PERSISTENCE",
+      "title": "合法结果沿现有契约保存并保护人工修改",
+      "summary": "自动保存遵循验证、来源、版本与事务边界；失败不能假装已保存，系统不静默覆盖人工修改。",
+      "category": "workflow",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "workbench",
+          "forms",
+          "data-views"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Saving",
+          "Error",
+          "ConcurrentEdit"
+        ],
+        "checklistQuestions": [
+          "并发、保存失败和重新分析是否保留人工修改与已有正式结果？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "Admin 正式写入仅以受保护 RPC/Edge 为事实；草稿/保存失败/冲突重试遵守现有幂等合同，不引入其他产品的自动保存假设",
+      "sourceCategoryFile": "workflow.ts"
+    },
+    {
+      "id": "UX-WORKFLOW-CANCEL-STALE-RESULTS",
+      "title": "取消及目标变化不抹掉已完成工作",
+      "summary": "取消、切项目或重选目标保留已成功结果；迟到完成不改变当前目标或把未知远端状态当成功。",
+      "category": "workflow",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "workbench",
+          "data-views"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Cancel",
+          "ProjectChanged",
+          "LateResult",
+          "PartialSuccess"
+        ],
+        "checklistQuestions": [
+          "取消和切项目后，已完成结果是否保留且迟到回调不覆盖当前工作？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "消费既有任务、generation 和版本校验，不在 UI 另做结果提交。取消后的可恢复范围由服务提供；收费动作未知状态不得自动重复执行。",
+      "sourceCategoryFile": "workflow.ts"
+    },
+    {
+      "id": "UX-WORKFLOW-SAVE-EXPORT-RESULT",
+      "title": "保存与导出以实际可用结果判断完成",
+      "summary": "任务计算完成、文件生成及保存完成是不同状态；进度100%不能替代可打开的成品。",
+      "category": "workflow",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "workbench",
+          "data-views",
+          "reading"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Exporting",
+          "Saving",
+          "Cancelled",
+          "WriteError",
+          "Saved"
+        ],
+        "checklistQuestions": [
+          "取消及写入失败后是否仍保护原文件和用户工作？",
+          "声称完成的文件是否实际可用？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "active",
+      "adminGuidance": "只处理已批准合法导出；M3 首次发行可主动保存当次明文，历史不可补发或下载",
+      "sourceCategoryFile": "workflow.ts"
+    },
+    {
+      "id": "UX-WORKFLOW-AI-SOURCE-COST-EGRESS",
+      "title": "AI 来源、费用与外发在决策处清楚表达",
+      "summary": "有用途时区分人工与AI结果、估计与实际费用、材料与外发范围；不把未知值当零或伪造人工确认。",
+      "category": "workflow",
+      "level": "must",
+      "scope": {
+        "platforms": [
+          "web-browser",
+          "desktop-app",
+          "mobile-web"
+        ],
+        "surfaces": [
+          "workbench",
+          "forms",
+          "data-views",
+          "reading"
+        ],
+        "conditions": [
+          "仅存在模型调用或AI结果的功能"
+        ]
+      },
+      "review": {
+        "requiredStates": [
+          "Preview",
+          "UnknownPrice",
+          "PartialSuccess",
+          "ManualCorrection"
+        ],
+        "checklistQuestions": [
+          "用户是否能在执行前理解必要的费用与外发范围，并识别影响判断的结果来源？"
+        ]
+      },
+      "reviewMethodSuggestion": "browser-test",
+      "actualAisenCoreAutomatedGate": "NOT_IMPLEMENTED",
+      "applicability": "conditional",
+      "adminGuidance": "沿现有分析来源、价格及外发契约，不为所有内容增加重复AI徽章。只有任务需要决策时呈现实际范围与必要确认；结构化分析不强制逐字流式输出，不将质量校验等同语义正确。",
+      "sourceCategoryFile": "workflow.ts",
+      "activationCondition": "Admin MVP 无 AI 供应商操作，仅保留编号供未来另行评估"
+    }
+  ]
+}

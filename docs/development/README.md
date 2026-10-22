@@ -8,6 +8,7 @@
 | --- | --- | --- |
 | [`../spec/requirements.md`](../spec/requirements.md) | **唯一当前有效的、已经确定的需求**；另标明尚待确认的需求细节 | 历史需求、修改日志、某第三方 API 的操作教程 |
 | [`../architecture/`](../architecture/current-main-architecture.md) | **已确定的总体及专项架构**：模块关系、边界、数据流、关键技术决策；可按领域增加子文件夹 | SDK 调用示例、操作指南、第三方参考链接合集、可复用模板 |
+| [`../Plans/`](../Plans/README.md) | **尚未实施的阶段计划与执行记录**：设计工作顺序、用户待确认事项、设计评审与交付门槛 | 唯一正式需求、当前业务规则权威、已运行的实现事实 |
 | `../development/` | **开发指南**：开发约束与步骤、官方文档和开源参考、测试规范、模板/资产 | 未经确认的架构选型、产品需求决定、项目变更日志 |
 
 如发现新业务需求，先确认并修改 `spec/requirements.md`；若改变已确定的系统设计，先同步对应 `architecture/`；再更新 `development/` 下的操作指南，避免由一份参考文档反过来决定架构。
@@ -16,7 +17,7 @@
 
 | 专题 | 内容 |
 | --- | --- |
-| [前端开发](./frontend/README.md) | React-admin 默认体系下的页面开发约束、官方文档入口 |
+| [前端开发与 Admin UI/UX 设计规范](./frontend/README.md) | **统一入口**：React-admin 技术与开发约束、62 条 UX 规则、字体/布局方法、组件准入、页面模式和真实验收；不另设独立 `admindesign` 目录，全局 Token 仍以 architecture UI-G0 为准 |
 | [测试规范](./testing/README.md) | 测试范围和验收原则，具体工具随实施阶段选择 |
 | [会员、兑换码与支付订阅](./billing-subscriptions/README.md) | 兑换码优先、爱发电初期暂定；参考资料、对接指南与模板 |
 

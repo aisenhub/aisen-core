@@ -21,6 +21,7 @@
 - **登录与重置密码**：各应用直接用 Supabase Auth SDK；不新建登录、刷新、确认邮件或 SSO 接口。
 - **只读**：`get_my_products`、`check_access` 由调用方携带有效用户 JWT 访问公共 RPC；前者查看本人产品概览，后者无副作用地检查指定产品/能力。已认证且可可信计算时，`check_access` 的准入拒绝返回 **HTTP 200 + `allowed=false/reason`**，认证失败为 401、可信计算故障为 503/5xx；不在只读路径隐式加入。管理列表则由 React-admin 复用 Data API 的筛选、排序和分页，依靠管理员 RLS；Auth 用户的邮箱/ID 查找通过只读 Edge Function。
 - **状态变更**：`ensure_membership`、`leave_product`、`rejoin_product`、`redeem_code` 和管理函数均是单次受保护 PostgreSQL RPC；函数内按当前状态执行锁定、写入、审计。Edge Function 的多个独立 Supabase SDK 调用不是事务，不能代替此路径。
+- **未来消费型功能的安全门槛，而非新增当前接口**：如果产品确实需要按次扣减/容量预留，应由产品可信端计算有效费用/字节数并经受保护事务完成 actor/资源属主/当前权益核验、正数/边界条件、行锁与幂等，不能让浏览器传任意 `cost_amount` 后直接 UPDATE；同请求重复提交不能二次扣费。Aisenlens R2 现有 `ready+reserved` 预留、final 校验与补偿必须遵守该原则。详见 [BaaS/RPC 评审](../../Plans/aisencore-mvp-baas-quota-security-lessons.md)；**不在本轮新增 `consume_quota`、公共积分账本或 Edge AI 代理**。
 - **权益与额度**：公共 `check_access` 返回允许性及所需功能/上限，不扣减、预留产品用量；产品对自己的数据拥有计数和执行职责，见[权益专项](../domains/billing-and-entitlements.md#3-mvp-权益逻辑模型)。
 
 ## 3. 首次合法接入时序
@@ -49,11 +50,12 @@
 - 单次 SaaS 可信请求可以复用新鲜的公共授权判断；不可跨多个关键请求长期以客户端展示缓存或嵌入 JWT 的“Pro/成员”声明为权威。SaaS 在数据库写入或资源访问前自行核验其资源所有权与实际用量。
 - 已提交的退出、封禁和产品暂停在**下一次可信检查**时被反映；已执行中的长任务按产品确定检查点，先前签发的 R2 预签名 URL 可持续至到期。无法取得可信公共授权时，不为新的云端受保护操作放行，也不将网络故障表述为“被封禁”。
 - 结果不明时先读取当前可信记录再安全重试；兑换码、发码批次和管理授权的幂等规则见[API 契约](./api-contract-and-mvp-acceptance.md)，不能因为客户端超时就假定失败。
+- **MVP 调用量优化**：Aisenlens 客户端的本地 Free 不发公共 Auth/权益请求；Pro 只在进入/启动及关键操作前按需复核，同一用户产品并发查询去重，**不启动全局固定 15 分钟轮询**。15 分钟仅候选客户端快照新鲜度，并不改变 `check_access` 已确定的 200/401/503 语义、不授权任何需要服务器实时检验的 R2 操作；可评估**另建只读聚合能力快照**减少逐 feature 读，但未批准新的 RPC 名和 JSON 字段，不应绕过 API 权威。参见[详细性能方案](../../Plans/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)。
 
 ## 5. 跨产品隔离与延后事项
 
 - 各 SaaS 以公共不可变 `user_id` 关联自己的项目/文件；业务库可以共用或独立。若业务数据库在**另一个 Supabase Project**，其 RLS 不自动接受 AisenCore JWT；默认由该 SaaS 自己的后端验证公共 JWT，再按自己可信的业务数据库凭据访问并执行资源授权。另一个选择是在 AisenCore Project 内使用独立的产品 Schema，必须验证 Schema 暴露与 RLS 边界。不可把两个项目的 Auth/RLS 当作天然互认。
-- 机器调用、邀请审批/私有产品、公共计量账本、跨域无感 SSO、长任务强制即时撤销、R2 文件签名与自动支付回调，分别在真实需求进入相应阶段时设计；不因为本接入时序而预先建设。
+- 机器调用、邀请审批/私有产品、公共计量账本、跨域无感 SSO、长任务强制即时撤销与自动支付回调，仍在真实需求进入相应阶段时设计；**R2 文件签名已因首发 Aisenlens 的必需私有备份进入 D2 实施设计**（[D2 接入方案](../../Plans/aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)），不代表相关 Edge Function 或 Bucket 已部署。
 - 本文描述的是**待实施的架构**，不代表 PostgreSQL 函数、RLS、Edge Function、环境或 SaaS 客户端已经存在。
 
 相关：[API 契约](./api-contract-and-mvp-acceptance.md) · [数据库事务与权限](../database/database-access-and-transactions.md) · [管理员控制台](../applications/admin-console.md) · [统一会话](../applications/auth-and-multi-saas-sessions.md)。
