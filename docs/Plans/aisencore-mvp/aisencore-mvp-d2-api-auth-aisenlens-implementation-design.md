@@ -1,6 +1,6 @@
 # D2｜公共 API、Supabase Auth 与 Aisenlens/R2 接入实施设计
 
-> **D2 接口/备份已批准覆盖项（DEC-01～06 A）**：公开 `redeem_code(product_key, code)` 先核验声明产品的 left/suspended 成员状态，旧单参 RPC 不可继续作为公开可探测旁路；Admin 直授采用 duration 与 explicit_window 互斥模式，Free 默认版本指针属服务器事实。**Aisenlens 受限非敏感小型 JSON 备份已批准经 Supabase Edge 校验、使用可信凭据条件创建 R2 final；不再要求该 JSON 客户端 staging PUT/Worker 提升**，但其他普通文件直传 R2 维持。以下 D2 旧 `staging→PUT→complete`、CopyObject、旧码签名和旧指纹例子只保留为**历史施工草图，不是可直接实施的当前合同**。实施需重拟 Edge JSON 上传、DB pending/ready/补偿，验收见[API 长期权威](../../architecture/backend/api-contract-and-mvp-acceptance.md)及[文件架构](../../architecture/database/product-data-and-files.md)；所有云端 SDK/真实测试 NOT RUN。
+> **2026-10-23 会员认证边界修订**：AisenCore `check_access(product_key)` 仅认证账号、产品/成员与 Pro 当前资格及授权时段；去除 capability、Free/Pro 功能规则/额度键、plans 功能表和功能版本克隆。现有 DEC-01 自有码双参/防枚举、DEC-05 直授时段/幂等、MFA 安全与 AisenLens 已批准的受限 R2 JSON 备份 Edge 工作流保留；R2 的业务容量/文件策略归 AisenLens 专项模块，不属于通用 Core Pro 功能权限。UI-G0A 仍未批准，RPC 尚未落库。
 
 > **成熟度：D2 文档型实施设计（实施候选）**。以下 SQL 签名、路由、JSON 示例、对象路径和服务器内部状态用于指导下一步实现，**不是已经创建或真实测通的接口**。本文件不得重定义已有业务不变量；冲突时以 [现行唯一 API 逻辑权威](../../architecture/backend/api-contract-and-mvp-acceptance.md)、[业务领域规则](../../architecture/domains/README.md) 与 [D1 物理/事务设计](./aisencore-mvp-d1-database-implementation-design.md) 为准。
 >
@@ -25,7 +25,7 @@
 | Aisenlens 本地客户端 | 匿名 Free、需登录的 Pro 校验及用户主动备份/恢复 | 仅保存本机产品数据，必要时持本人 Auth 会话；配置备份字节直传/直读 R2 | 不上传本地视频、完整项目数据、AI 分析结果或 API Key，不将管理员身份默认变成产品文件访问权 |
 | Aisenlens 产品持有的备份元数据存储 | 文件属主、对象指针、版本、已用与保留状态 | **可信服务端**按用户/产品隔离，所需状态写入原子化；具体物理数据库位置 D3 定 | 不在 AisenCore 公共 products/memberships/grants 表追加通用文件字段，不使用客户端自报 used bytes |
 
-**固定检查顺序（复用逻辑权威）**：有效本人 JWT → 当前平台 blocked → 产品存在且 active → 成员 active（需登录场景）→ Free + 仍有效且未撤销的按产品权益（可选 capability）→ Aisenlens 自有文件属主/签名操作权限 → Aisenlens 所持元数据的已用/预留额度。没有 capability 时 `CheckAccess` 只判成员准入；有数值能力时 `allowed` 只代表**当前上限大于零**，实际余量必须由拥有元数据的产品重新计算。用户兑换码有独立的未入会创建例外；管理员人工授权绝不能隐式建成员。
+**固定检查顺序（公共会员资格）**：本人有效 JWT → blocked → 产品 active → 当前产品成员 active → 当前有效 Pro Grant 的时间与撤销状态 → 返回 `allowed/reason/tier/pro_active/period/evaluated_at`。**随后** AisenLens 自己的 Edge/可信业务端验证文件所有权、备份/导出功能策略、实际已用/预留与额度；不再由公共 check_access 传入 capability 或返回 limit。兑换首次建成员和 Admin 直授继续按其专属流程处理。
 
 ## 2. 公共 PostgreSQL RPC 的实施候选签名
 
@@ -43,11 +43,11 @@
 | --- | --- | --- |
 | `get_my_products()` → jsonb | 本人只读，**绝不创建成员** | `products[]`：`product_key,product_status,membership_status,entitlement_summary`；成员历史如 `left` 仍可查看 |
 | `admin_check_access()` → jsonb | 仅在完成 `aal2` 后按当前管理员名册及 blocked 校验的受保护**只读**资格 RPC；供 Admin 界面和 Auth Admin Edge 复核使用 | `is_admin:boolean`，不给别人的管理员名单/封禁理由；仅认证+MFA 已满足也不能代替当前数据库名册判定 |
-| `check_access(product_key text, capability text DEFAULT NULL)` → jsonb | 本人只读，**无写入、无入会、无计量扣减** | `allowed,reason,product_status,membership_status,evaluated_at`；可选 `limit` 与 `entitlement`，缺席成员用 `none`（仅响应值，不是 DB 状态） |
+| `check_access(product_key text)` → jsonb | 本人只读、无副作用、不计量 | `allowed,reason,product_status,membership_status,tier,pro_active,current_period_ends_at,effective_ends_at,is_lifetime,evaluated_at`；不返回 Features/Limits、capability 或额度 |
 | `ensure_membership(product_key text)` → jsonb | 本人；平台未禁、产品 active，首次无记录原子建 `active` + 一条 `join`；已有 active 无写入 | `product_key,membership_status,created`；left/suspended 不能隐式恢复 |
 | `leave_product(product_key text)` → jsonb | 本人；仅 active→left + `leave` 事件；重复退出不得再写事件 | `product_key,membership_status`；不删除备份、授权或本地文件 |
 | `rejoin_product(product_key text)` → jsonb | 本人明确动作；仅 left→active + `rejoin`；产品/全局限制另行检查 | `product_key,membership_status`；不允许 suspended 通过此操作解封 |
-| `redeem_code(product_key text, code text)` → jsonb | 本人；先校验声明产品及其现有 left/suspended 成员状态，**无论输入有效/无效码先一致拒绝**，之后才定位码及重验其真实 product_id 与声明一致；成功仅在单事务新增必要成员/grant/redemption/次数，失败按本人窗口计数 | 成功 `ok,product_key,plan_key,starts_at,ends_at,membership_created`；预期拒绝 `ok=false,code,retry_after_seconds?` |
+| `redeem_code(product_key text, code text)` → jsonb | 本人/声明产品 left/suspended 先拒绝、本人限流后查码；码的可信 `product_id/tier=pro/grant_duration_days` 必须和声明产品一致；成功同事务写成员（如 none）、Grant/Redemption/次数，拒绝按已批准优先级及失败计数处理 | 返回 `ok,product_key,tier=pro,starts_at,ends_at,membership_created`；不返回 `plan_key` 或产品功能数据 |
 
 **典型 CheckAccess 真正的可信业务拒绝（HTTP 200）**：
 
@@ -61,7 +61,7 @@
 }
 ```
 
-仅作为结构样例，示例时间不代表实际测试；不存在/不可读的内部原因可省略或用非泄露枚举。**未登录 401、可信计算故障 503/5xx 不返回此对象作为伪造的可信拒绝**。合法业务通过并检查 `limits` 额度键时，返回 `limit` 代表最大值；不能把它解释为“尚余次数”，Aisenlens 必须由自己的可信数据计数。
+仅作为结构样例，示例时间不代表实际测试；JWT 401 与可信计算故障 503 不得伪造成 `tier=free` 或业务拒绝。公共资格响应绝不返回 `features/limits`、capability、余额或备份配额；额度、归属和用量由 AisenLens 可信业务端管理。
 
 **典型成功兑换（HTTP 200）**：
 
@@ -69,7 +69,7 @@
 {
   "ok": true,
   "product_key": "example_product_key",
-  "plan_key": "example_plan_key",
+  "tier": "pro",
   "starts_at": "2026-10-21T00:00:00Z",
   "ends_at": null,
   "membership_created": true
@@ -95,16 +95,20 @@
 | `admin_set_product_status(product_id uuid,status text,reason text)` → jsonb | `draft/active/suspended` 受控状态；与新 ensure/兑换并发按 D1 产品锁序串行 |
 | `admin_suspend_membership(membership_id uuid,reason_code text)` → jsonb | 保存原 active/left，设置 suspended，**只写成员事件**，重复暂停不覆盖原状态 |
 | `admin_restore_membership(membership_id uuid,reason_code text)` → jsonb | 按 `pre_suspend_status` 恢复原 active/left 并写事件，不自动恢复 Pro |
-| `admin_upsert_plan(product_id uuid,plan_id uuid,plan_key text,name text,features jsonb,limits jsonb,default_duration_days integer,is_active boolean)` → jsonb | 全字段提交；**Free 家族版本即使未引用也不得就地修改权益字段**，需新建 `free_v2` 并经独立受保护命令切换 `products.current_free_plan_id`；非 Free 已引用任何 code/grant 也不可修改权益；不得静默 PATCH，写审计 |
-| `admin_create_codes(product_id uuid,plan_id uuid,config jsonb,quantity integer,request_id uuid)` → jsonb | config 的缺省/NULL/类型先按 [F05 首次有效字段语义](./aisencore-f05-f08-contract-compatibility-readiness-design.md) 形成首次有效强类型字段并比较；`(created_by,request_id)` 原子唯一，同配置重放非秘密，不同配置 STATE_CONFLICT；仅 active 套餐新发、首次响应含明文；U08 未定不能作为正式运营上限 |
+| **不提供 admin_upsert_plan** | 30/365/永久是 Pro 发行期限预设，不存在 Pro 功能套餐版本表、Features/Limits 编辑器或相关版本克隆/冻结 RPC |
+| `admin_create_codes(product_id uuid,tier text,grant_duration_days integer,config jsonb,quantity integer,request_id uuid)` → jsonb | 仅启用产品的 `tier=pro` 与正授权天数；沿用 M3/F05 actor-scoped request_id、首次强类型输入/NULL 规范、同参重放不返回明文、异参冲突、UNKNOWN 按原请求查旧批次的安全规则；不接受 Free/任何产品功能策略 |
 | `admin_revoke_code(code_id uuid,reason text)` → jsonb | 只撤销未来兑换，不追溯 grant；原子审计 |
 | `admin_revoke_code_batch(batch_id uuid,reason text)` → jsonb | 候选最小批次撤销入口：对批次码逐行受控撤销、写精简审计；非新业务权限，只支撑明文丢失后的撤销重发 |
-| `admin_grant_entitlement(target_user_id uuid,product_id uuid,plan_id uuid,mode text,duration_days integer,starts_at timestamptz,ends_at timestamptz,reason text,request_id uuid)` → jsonb | **DEC-05 A**：`duration` 使用正整数天数可信顺延且不带时间字段；`explicit_window` 必须提交完整 starts_at 和 ends_at（显式 NULL 永久）；服务端保留首次数值/时段与 actor-scoped request_id，同参重试返回原 grant、异参冲突，不变成员状态。实际 PostgREST 参数缺省/字段存在性须经编译验证 |
+| `admin_grant_entitlement(target_user_id uuid,product_id uuid,tier text,mode text,duration_days integer,starts_at timestamptz,ends_at timestamptz,reason text,request_id uuid)` → jsonb | 仅本产品 `tier=pro`；DEC-05 互斥 duration 正天数可信顺延、explicit_window 完整时间或显式永久、同 actor 请求幂等与跨产品隔离；不产生 Free Grant、不修改用户 is_pro |
 | `admin_revoke_grant(grant_id uuid,reason text)` → jsonb | 只设置撤销信息并审计，不删除历史 |
 | `admin_grant_admin(target_user_id uuid,reason text)` → jsonb | 管理员名册受控授予，审计；引导首个管理员不靠前端公开 API |
 | `admin_revoke_admin(target_user_id uuid,reason text)` → jsonb | M1 共用管理员保护事务锁，拒绝使合格管理员清零 |
 | `admin_block_account(target_user_id uuid,reason_code text)` → jsonb | 全局 blocked；M1 共用保护锁，不能绕过最后合格管理员；审计 |
 | `admin_unblock_account(target_user_id uuid,reason text)` → jsonb | 删除限制行但留下管理审计，成员/权益不自动恢复 |
+
+**Admin UI 与真实 RPC 的模式映射（避免永久授错）**：原型里的 `mode='window'` 和 `mode='lifetime'` 是互斥 **UI 选项标识**，**绝不是服务端另外两个签名**。正式调用时：按天选项 → `mode='duration'`、正整数 `duration_days`、时间窗字段不可混入；指定起止 → `mode='explicit_window'`、必须明确提供完整 `starts_at/ends_at`；永久选项 → 用户勾选二次确认后发送 `mode='explicit_window'`、明确的 `starts_at` 和**显式携带字段** `ends_at:null`，不得遗漏属性、错误地以 `mode='lifetime'` 调用，也不得暗中降成周期授权。授权的可信起止计算/首次语义由 RPC 保存，UI 预览不作为账本权威。
+
+**Pro 到期/撤销投影**：公共 Core 以可信时间读取同产品有效 Pro Grant，最后一份 Pro 失效后只返回 `tier=free/pro_active=false`（表示无有效 Pro），不创建降级事务；仍有其他 Pro 有效则继续 Pro，未来 Pro 不提前生效。受保护在线业务先检查账号/产品/成员，匿名本地 Free 不依赖此接口；具体 Free/Pro 功能策略完全属于 AisenLens。
 
 **设计约束**：这里的 SQL 参数名是客户端生成的**候选接口名**；在 [F05 详规](./aisencore-f05-f08-contract-compatibility-readiness-design.md#2-f05公共-rpc-精确参数和错误幂等语义) 中已把全字段提交、NULL/default、批次及 admin grant 幂等定为**实现候选基线**，不再提供模糊的“可以直接做 PATCH”选项。仍须真实 SQL 编译、PostgREST schema cache/签名、D1 L0～L8 与领域授权时间一致性核验；不得以候选改变历史权益。
 
@@ -238,7 +242,7 @@
                     │
            public.ensure_membership('aisenlens' 的实际 product_key 待产品注册确认)
                     │
-         公共 check_access(product_key, capability?)
+         公共 check_access(product_key)
                 ┌───┴──────────────────────┐
       可信准入/有效权益                 业务拒绝/不可验证
                 │                        │
@@ -330,7 +334,7 @@ Aisenlens 的产品私有元数据需有 `backup_id,owner_user_id,product_id,req
 | U01 | **首个产品 Aisenlens，本地优先** | **已确认** | 不再询问 |
 | U02 | **Aisenlens 首批 R2 文件/配置备份必须支持** | **已确认** | 不再询问 |
 | U03 | 公众开放注册目标 | **已确认方向；未获生产部署批准** | 公众发布前完成邮件/隐私/反滥用实测 |
-| U04 | Aisenlens 功能键、Free/Pro 能力、备份配额单位/大小、试用策略 | **待用户**；本文件所有 capability/额度均为候选 | 实际产品套餐配置与备份权限测试前 |
+| U04 | AisenLens 自己的 Free/Pro 具体功能、备份单位/容量和本地限制 | **属于产品实施，不是 AisenCore 会员功能配置待办**；AisenLens 根据可信 Pro 资格决定和强制执行，公共 API 无 capability/limit |
 | U05 | 初始管理员人选/第二管理员与受控 MFA 恢复责任 | **待用户** | D3 初始化前 |
 | U06 | 生产域名、邮件品牌、SMTP 与回调清单 | **待用户** | D3 域名/邮件配置前 |
 | U07 | 人工注销、备份保留/删除、通知时限 | **待用户** | 真实对外开放前 |

@@ -25,7 +25,7 @@ AisenCore 统一管理多个独立 SaaS 的**公共账号、产品目录、产�
 | `membership_events`（逻辑） | 关键状态变化的主体、操作人、原/新状态、原因与发生时间 | 已确定仅作最小审计；当前成员状态以 `product_memberships` 为权威，不回放事件计算 |
 | 平台管理员授权（建议 platform_admins） | 可信 user_id、是否有效及最少授予信息 | 复用现有 Auth 身份，名单由可信管理接口维护；不做复杂 RBAC |
 | 用户公共资料（按需） | 昵称等最小公共展示资料 | 不重复保存 Auth 密码，不强制建表 |
-| `plans` / `entitlement_grants` / `redemption_codes` / `redemptions` | 各产品套餐及能力、授权事实、自有兑换码和核销记录 | 已在[权益模型](./billing-and-entitlements.md)与[权益数据库约束](../database/entitlements-and-redemption-constraints.md)定稿；不塞入成员表 |
+| `entitlement_grants` / `redemption_code_batches` / `redemption_codes` / `redemptions` | 按产品 Pro 资格、可信授予时段/来源/撤销、兑换码与核销事实 | 无公共业务套餐功能版本、功能开关或额度；具体功能策略属 SaaS，参见[资格边界](./membership-qualification-boundary.md) |
 | 各 SaaS 业务数据 | 项目、任务、内容、产品内协作权限和文件元数据 | 归各产品自己管理 |
 
 以上是逻辑实体与推荐字段，已确认采用当前状态表 + 最小事件审计表；具体 DDL、索引实现、同库部署或 API 路径尚未批准。数据库不变量与事务规则详见[数据库逻辑约束与最小审计模型](../database/database-constraints-and-audit.md)。公共身份、产品与成员核心使用已选择的 Supabase 托管 PostgreSQL；产品业务数据可逻辑隔离或物理隔离，无“一产品一 Supabase Project”强制要求。

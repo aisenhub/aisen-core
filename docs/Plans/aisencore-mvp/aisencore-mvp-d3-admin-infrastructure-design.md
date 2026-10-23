@@ -1,6 +1,6 @@
 # D3｜React-admin 与 Supabase/Cloudflare 基础设施实施设计
 
-> **D3 已批准方案覆盖（DEC-01～06 A）**：受限 SQL RPC 批量邮箱查询、安全 Edge 聚合后备、受保护管理 RPC、Free 版本指针、双模式直授、Edge→R2 小 JSON 备份等设计合同保留。旧 `development` G0B 原型已删除；后续已选择[交互优先的轻量 HTML 验证工作流](../../development/frontend/interaction-benchmark-workflow.md)，不再以真实 G0B 为前置原型。**当前 G0A NOT APPROVED、Theme 未冻结，正式开发及测试 NOT RUN**。业务权威仍为 [Admin 架构](../../architecture/applications/admin-console.md)、[主架构](../../architecture/current-main-architecture.md)与 [UI-G0](../../architecture/applications/admin-ui-design-system.md)。
+> **2026-10-23 轻量会员认证最新边界**：Admin 只管理产品身份/成员、Pro 当前资格与期限、发码/直授/撤销、管理员与审计；不提供 Free/Pro Features/Limits、Free 能力编辑、Pro 功能套餐克隆。原 AAL2/MFA、Code UNKNOWN、一闪明文、R2 备份专项流程保持。UI-G0A 仍 NOT APPROVED。
 
 > **状态：设计候选，未开发、未安装、未配置、未部署。** 本文为 D3 保留的实施设计，完成的执行清单已删除；业务唯一权威为[现行需求](../../spec/requirements.md)，逻辑规则看 [Admin 架构](../../architecture/applications/admin-console.md)、[D1 数据与安全设计](./aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/R2 设计](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)。U01 Aisenlens 本地优先、U02 首批 R2 备份、U03 公众注册、U05 单人运营与 Admin TOTP MFA 已确认，其余具体参数依[当前用户决议](./aisencore-u03-u11-user-decisions-2026-10-22.md)待确认。
 >
@@ -12,9 +12,9 @@
 >
 > **BaaS 成本与部署边界补订（2026-10-22）**：按 [BAAS-Q01～Q10 安全测试指南](../../development/testing/README.md) 保持 **Cloudflare Pages 静态 Admin + Supabase Auth/PostgREST/RLS/受保护 RPC + 极少量必要 Edge + 直连私有 R2**，MVP 不额外部署 Redis、独立 Node/API 服务器或为用户自带 API Key 的 AI 模型服务搭公共代理。Supabase Data API 标称 Unlimited Requests **不是免费无限 DB CPU/带宽/Edge**；D3 监控须分别量测 Auth/DB/Edge/R2 与配对恢复。真实配额以当前服务计划为准。
 >
-> **新增 D3-UI 详细页面阶段（2026-10-22）**：本 D3 的 Resource/Provider/认证/基础设施属于**技术实施设计**，不是页面线框与视觉规范完成的证明。用户已要求补入独立 [D3-UI 实施设计](./aisencore-mvp-d3-ui-admin-uiux-design.md)与[逐页面 UI/UX 实施设计](./aisencore-mvp-d3-ui-admin-uiux-design.md)：工作台/运营页面导航、宽窄屏线框、发码明文仅一次、TOTP MFA、全字段套餐与受保护操作，以及 D3-UI-X01～X18 **待执行**验收。**未创建实际 Admin 工程、原型或线上管理后台**。
+> **Admin 前端行为合同归属**：本 D3 只定义 React-admin Resource/Provider/Auth/环境及受保护操作的技术方案；可观察业务行为和 D3-UI-X01～X18 测试索引统一由[Admin 应用架构](../../architecture/applications/admin-console.md)维护。旧逐页线框、导航与控件样式不再是正式施工权威；真实前端仍未实施。
 >
-> **UI-G0 强制视觉基线关口（2026-10-22 最新用户决定）**：按 [Admin 全局 UI 规范](../../architecture/applications/admin-ui-design-system.md)，先统一 MUI 字体/字号/间距/组件与布局，并准备**四类可见高保真参考 + 多宽度变体 + 用户明确视觉批准记录**，只有 `UI-G0A APPROVED` 后才能启动正式 `apps/admin` Theme/Layout/页面编码。**当前只是规范候选，UI-G0A = BLOCKED**；D3 Resource/Provider 映射与 D3-UI 文字线框不能替代这个门槛。不为本次 UI 方案增加任何服务器或绕过 `aal2`/RPC 安全逻辑。
+> **通用 UI 质量与授权**：正式 Admin 仍使用 React-admin/MUI 统一 Theme、官方组件与真实浏览器/安全验收，见[通用 UI 规范](../../architecture/applications/admin-ui-design-system.md)。旧“先完成固定四类高保真页面并锁定字体/像素/布局才可进行任何编码”的 UI-G0A 硬门槛已解除；历史候选仍未签收，正式开发仍需所有者独立授权，不能绕过 `aal2`/RPC。
 
 ## 1. 前置事实、范围及推荐架构
 
@@ -34,17 +34,17 @@
 | `users`（虚拟只读） | `id,email` 最小白名单；DEC-06 受限 SQL RPC 优先（有限 UUID[]、有界精确邮箱与分页），隔离测试失败后单 Edge 批量回退 | 用户不经 PostgREST 直接编辑 `auth.users`；全局账号限制经受保护管理 RPC，当前管理员资格/`aal2` 和 reason 必须复核 |
 | `product_memberships` | `id,user_id,product_id,status,pre_suspend_status,joined_at`；产品/状态过滤 | `admin_suspend_membership`/`admin_restore_membership`；显示来自 left 的恢复仍为 left，不能用 UI 修改 `pre_suspend_status` |
 | `membership_events` | `id,membership_id,action,actor_type,actor_user_id,created_at`；以成员 ID 过滤 | 只读，不提供编辑/删除 |
-| `plans` | `id,product_id,plan_key,name,features,limits,default_duration_days,is_active`；按产品筛选 | `admin_upsert_plan` 候选；grant 或任何已发行码引用后冻结权益字段，修改权益创建新版本；停用不得撤销旧码 |
-| `entitlement_grants` | `id,user_id,product_id,plan_id,source_type,starts_at,ends_at,revoked_at`；按产品/用户 | `admin_grant_entitlement`（显式用户、套餐、期限、reason、request_id），`admin_revoke_grant`；不自动建成员 |
-| `redemption_code_batches` | `id,product_id,plan_id,quantity,max_redemptions,expires_at,created_at`；按产品/批次 | `admin_create_codes` 首次成功仅在**易失页面状态**展示明文；`admin_revoke_code_batch`；超时不确定先读非秘密批次元数据 |
-| `redemption_codes` | 仅 `id,batch_id,product_id,plan_id,redeemed_count,max_redemptions,expires_at,revoked_at` 等白名单列 | `admin_revoke_code`；**绝不选择 `code_hash` 或提供明文导出/再次显示** |
+| Pro 资格与期限（非实体） | 产品 `pro` 当前资格与 30/365/永久期限快捷预设，不读写功能套餐表 | 发码/直授携带 `tier=pro` + 期限；不做 Pro 功能版本新增/冻结/克隆 |
+| `entitlement_grants` | `id,user_id,product_id,tier,source_type,starts_at,ends_at,revoked_at`；按产品/用户过滤 | Pro 直授/撤销；不隐式创建成员，按可信时间派生 Pro 而不是写用户等级 |
+| `redemption_code_batches` | `id,product_id,tier,grant_duration_days,quantity,max_redemptions,expires_at,created_at` | 首次成功明文短暂保存在易失页面，UNKNOWN 先按原 request_id 核查，失明文先撤码再新发 |
+| `redemption_codes` | 仅 `id,batch_id,product_id,tier,grant_duration_days,redeemed_count,max_redemptions,expires_at,revoked_at` 等白名单列 | 撤码需受控；不读 code_hash/不重显明文 |
 | `redemptions` | `id,code_id,user_id,grant_id,created_at` | 只读，必要关联 grant/用户前再次判当前资格 |
 | `platform_admins`/`platform_account_restrictions` | 授权管理员所需最小字段；单独受限页面，不向普通用户公开 | `admin_grant_admin`/`admin_revoke_admin`/`admin_block_account`/`admin_unblock_account`；管理员人数保底只能由 M1 DB 事务保障 |
 | `admin_audit_log` | `id,actor_user_id,action,target_type,target_id,created_at` 和经脱敏白名单的 before/after | 只读，审计记录不可编辑或导出秘密；用 target_type/target_id 分页 |
 
 **列表机制**：React-admin 的 `getList` 将 page/perPage、sort、filter 映射到 PostgREST `range`、`order`、白名单过滤；必须以服务器响应的 `Content-Range` / `count: exact` 得到 `total`（大表改 `planned` 需清楚说明近似，不可伪报精确）。`getOne` 基于 RLS 安全列 + id，读不到返回明确未授权/不可见，而非推断对象不存在。`getMany` 用 `in` 有界批次和白名单列；`getManyReference` 只允许已批准外键及范围过滤。UUID 始终是 React-admin record `id`。对空态、加载态、分页越界、被撤销权限和跨页数据变更都要有清晰状态。
 
-**表单**：使用 React-admin/MUI 与 React Hook Form 原生组件，创建产品需标识/名称，套餐功能键/额度遵守 D1 JSON 规则。**F05 对 `admin_upsert_plan` 固定全字段提交**：更新只更名/停用也携带原 features/limits/plan_key，不允许把遗漏字段静默变为 NULL/空 JSON；客户端显示既有引用的冻结事实，服务端仍独立锁内校验。发码 `config.max_redemptions` 缺省=1 但显式 null 必须作为错误；其他字段按 F05 v1，不能以前端字符串对象序列化替代服务端有效指纹。危险动作二次确认明确目标、reason、范围，不用 UI 代替授权；不将 JWT、码明文、R2 URL 写入持久存储/监控。
+**表单**：React-admin/MUI 中 Pro 只使用会员等级和期限（30/365/永久、duration/explicit_window）选择，不出现具体产品功能/额度编辑器或版本克隆。发码参数 `max_redemptions` 缺省=1，显式 NULL 不合法；本产品、tier、天数和请求幂等须在服务端二次校验。保留一闪明文/UNKNOWN、AAL2、危险二次确认与不持久化 JWT/码/预签名链接规则。
 
 **用户邮箱批量补全（DEC-06）**：虚拟 `users` Resource 的标准 `getMany` 应对本页去重、有限 UUID[] 调用受限 `admin_lookup_users`，供成员/授权/兑换页面的 ReferenceField 批量显示邮箱并享受 React-admin 的已有缓存；与现有 UUID、精确邮箱查询同一安全投影。**先在真实隔离 Supabase 环境证明 SQL 读 auth.users 的权限与限流安全可行**；否则按 DEC-06 已批准回退单次受保护 Edge 批量查询，不制造逐行 Edge N+1 或额外用户画像表。请求失败则显示 UUID，不误报不存在。
 
@@ -61,7 +61,7 @@
 | 用户检索 Edge | `admin-user-lookup`：**先验真实 JWT 与 `aal2` → 使用原 JWT 查当前 `admin_check_access` → 通过后才执行服务端 Auth Admin 只读查询**；UUID/分页/有界 exact email、结果最小化 | 在资格通过前执行 service_role/Auth Admin 查询；浏览器含 secret；把超限查询声称“不存在” |
 | 非常规错误 | 401 进入登录/令牌刷新；403 MFA/资格拒绝；409 刷新当前实体；429 显示等待时间；503 服务不可用而非 blocked；超时不确定先读状态 | 捕获异常后 optimistic success、无条件重试发码或授予 |
 
-**写调用接口并非任意 CRUD**：只支持显式管理 RPC 白名单，未列的通用 CRUD 必须显式拒绝，**不自动写表**。Provider 以 F05 的字段三态、全字段 upsert、响应幂等结果和错误码建立候选 TypeScript 合同；页面实际操作位置、文本线框、错误与高风险确认见 [D3-UI](./aisencore-mvp-d3-ui-admin-uiux-design.md)。SQL/PostgREST 签名与 schema cache 尚需 V01/V02/V04 在隔离环境实测。
+**写调用接口并非任意 CRUD**：只支持显式管理 RPC 白名单，未列的通用 CRUD 必须显式拒绝，**不自动写表**。Provider 以 F05 的字段三态、全字段 upsert、响应幂等结果和错误码建立候选 TypeScript 合同；页面实际操作位置、文本线框、错误与高风险确认见 [Admin 行为合同](../../architecture/applications/admin-console.md)。SQL/PostgREST 签名与 schema cache 尚需 V01/V02/V04 在隔离环境实测。
 
 **MFA 与免费额度验收**：普通已登录 Admin 从列表、详情、分页到受保护写入**原则上每个操作只有一项主要业务 HTTP 请求**，该请求内部权限 SQL 不等于额外的 Auth/MFA 网络往返；JWT 到期刷新与只读 Auth Admin Edge 需要的服务端复核属于例外。实测收集 Auth `getUser`、MFA challenge/verify、`admin_check_access`、Data API/Edge 次数，以及 P50/P95、RLS SQL 成本。注册因素、后续 challenge、会话刷新后的 `aal2`、新设备/失设备恢复与撤权均为首版真实验收条件，不能只是一个 UI gate 原型。
 
@@ -174,7 +174,7 @@ PR / feature branch
 | --- | --- | --- |
 | U01/U02 | 首发 Aisenlens 本地优先、首批 R2 必需 | **已确认**，已经体现在本实施设计 |
 | U03 | 对公众开放/邀请制内测 | **已选公众正常注册运营**；实际邮件/注销/安全/公开发布验收仍待执行 |
-| U04 | 功能键、Free/Pro 配额/存储单位/试用 | **部分已定**：本地 Free，Pro AI 分析/无水印导出/R2 备份，30/365/永久，不自动试用；具体键与额度未定 |
+| U04 | AisenLens 自有 Free/Pro 产品功能、导出规格与 R2 备份额度 | **属于 SaaS 侧实现的未定具体数值/策略**；Core 只认证 Pro 时段。已确定匿名离线 Free、产品 Pro 功能方向与 30/365/永久期限，无公共功能键或额度配置待办 |
 | U05 | owner、备用管理员和恢复责任 | **单人日常运营 + Admin TOTP MFA 为 MVP 必做已确认**；新登录/失效时真实挑战、有效会话日常不重复 TOTP；备用身份及 MFA 恢复责任未定且须实测 |
 | U06 | 正式域名、发信品牌/供应商与回调 | **统一身份品牌 + 自定义 SMTP 已定**；域名/提供商/回调尚待批准 |
 | U07 | 账号注销、备份保留、数据处理责任及政策 | **人工核验、受控清理、合法留存例外已定**；实际期限、入口和例外范围未定 |

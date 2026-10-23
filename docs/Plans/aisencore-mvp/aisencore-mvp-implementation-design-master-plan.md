@@ -1,6 +1,6 @@
 # AisenCore MVP 实施设计总计划
 
-> **2026-10-22 用户新批准**：已明确按[owner-batch-decisions.md](../20261022-review-remediation/owner-batch-decisions.md)推荐路线统一确认 **DEC-01～06 全部 A**；现行 spec/architecture 已同步新双参兑换、Edge 小 JSON、G0A/G0B/G3、Free 当前版本指针、直授双模式与优先安全 SQL 身份批量查询。D1/D2/D3/F01～F08 旧示例如不同，以长期架构为准；**G0A 真实高保真视觉签收、U 项实际产品/运维参数与全部开发/测试/部署仍 NOT RUN/BLOCKED**。
+> **2026-10-22 用户新批准**：已明确按[owner-batch-decisions.md](../20261022-review-remediation/owner-batch-decisions.md)推荐路线确认了当时的 DEC-01～06，但 **DEC-04 已被 2026-10-23 用户复议替代**；现行 spec/architecture 已同步新双参兑换、Edge 小 JSON、G0A/G0B/G3、每产品唯一 `free_features/free_limits`（不发 Free 码/Grant、首期只授 Pro）、直授双模式与优先安全 SQL 身份批量查询。D1/D2/D3/F01～F08 旧示例如不同，以长期架构为准；**G0A 真实高保真视觉签收、U 项实际产品/运维参数与全部开发/测试/部署仍 NOT RUN/BLOCKED**。
 
 - **状态：ACTIVE（D0～D4 设计已完成、F01～F05 仅设计收敛、MVP Admin TOTP MFA 已确认必须交付；全量开发/上线仍 BLOCKED）**。D4 原 43 个逻辑场景 + 12 个 R2 场景全部 NOT RUN，后续新增 12 个 Auth/权益/性能/MFA 待执行场景。**2026-10-22 用户明确选择 U03 公众开放、U04～U11 的部分产品/运营方向，并进一步将 Admin MFA 纳入 MVP**；U05 的 MFA 是否取消不再是待决冲突，但真实备用管理员/设备恢复责任及体验仍待落实。真实 SDK/SQL/云资源/测试未运行。
 - **目的**：作为后续逐项实施设计、交叉评审和开发前验收的统一导航，不替代需求或架构权威。
@@ -46,8 +46,8 @@
 | **D1 数据库及可信安全** | 2、3 | D0 | 物理数据模型、DDL/迁移设计、RLS/GRANT、RPC 事务锁序 | 可直接转化为迁移与权限/并发测试 |
 | **D2 API 与身份/SaaS 接入** | 4、5 | D1 核心约束稳定 | RPC 具体契约、错误与幂等、Auth/MFA、SaaS 调用时序 | 客户端无需猜测输入输出和授权规则 |
 | **D3 Admin 与环境** | 6、7 | D1/D2 契约稳定 | React-admin Provider/Resource、权限与环境/发布恢复设计 | 技术和资源映射明确；**不意味着页面视觉/线框已齐** |
-| **D3-UI Admin UI/UX 详细设计（新增）** | UI1 | D3 Resource/Provider、M1～M5、已确认用户决议 | **页面 IA/路由、布局与文本线框、逐页交互/表单、MFA/发码敏感流程、响应式/无障碍及 D3-UI-X01～X18 验收规格** | 仅作为 UI-G0 高保真/设计审核输入；**不能只凭文字线框开始正式 Admin 编码** |
-| **UI-G0 Admin 全局设计系统与视觉基线确认（新增硬门槛）** | UI0-GATE | D3-UI 页面任务和唯一 UI-G0 全局规范 | **冻结字体/字号/色彩/间距/布局/共享组件，四类代表性高保真基准页及宽窄屏评审，用户明确签收可追溯版本** | **必须真正 UI-G0A APPROVED 才允许正式 Admin Theme/Layout/组件/页面编码；当前 NOT APPROVED / BLOCKED** |
+| **Admin 行为及 UX 验证** | UI1 | D3 技术合同和用户当前需求 | [Admin 应用合同 D3-UI-X01～X18](../../architecture/applications/admin-console.md)涵盖真实行为、状态及可访问性 | 旧逐页线框和页面布局不再决定正式实现 |
+| **Admin 统一 Theme 与用户设计确认** | UI0 | React-admin/MUI、当前设计任务 | 单一 Theme、必要的交互与视觉评审和真实测试 | 旧固定四类样例、主题与全景 UI-G0A 不是通用编码前置条件；正式施工另行授权 |
 | **D4 测试与设计评审** | 8（原 D0～D3 同步准备，已完成历史评审） | D0～D3 原设计；新 D3-UI 追加测试追踪 | 原有测试矩阵/交叉评审/阻塞；**追加 UI 真实验收关口** | 原 D4 结论不追溯改写，新页面测试必须在开发期实际运行并留证 |
 
 阶段是**设计决策的先后顺序**，不是已部署里程碑；设计完成不等于任何 SQL、RPC、前端或测试已运行成功。
@@ -61,11 +61,11 @@
 
 **当前设计基线（2026-10-22 后续整理）**：已完成的 D0 详细执行清单移除，U01/U02 及首条公共业务链路归入[需求](../../spec/requirements.md)与本计划。D1 数据库、D2 API/Auth/R2、D3 Admin、D3-UI 页面与 D4 测试仍是**未执行的**设计输入；SQL/SDK/云资源、真实客户端、浏览器与性能测试未运行。
 
-**安全与兼容性**：[F01～F04](./aisencore-f01-f04-security-convergence-design.md) 收敛最小 INVOKER/DEFINER、统一 L0～L8 锁序、**DEC-02 A 的 Edge 小 JSON→R2 final**、Admin `aal2` 与当前资格；[F05～F08](./aisencore-f05-f08-contract-compatibility-readiness-design.md) 以强类型幂等、双模式直授、Free 当前不可变版本及 F05-C/V00～07 运行门禁为准。全部 SQL/Edge/R2/Auth SDK 未实测，F06/F07 **仅剩运营具体字段未定**。
+**安全与兼容性**：[F01～F04](./aisencore-f01-f04-security-convergence-design.md) 收敛最小 INVOKER/DEFINER、统一 L0～L8 锁序、**DEC-02 A 的 Edge 小 JSON→R2 final**、Admin `aal2` 与当前资格；[F05～F08](./aisencore-f05-f08-contract-compatibility-readiness-design.md) 以强类型幂等、双模式 Pro 直授、产品单份可审计的 Free 默认配置与 Pro 引用冻结、F05-C/V00～07 运行门禁为准。全部 SQL/Edge/R2/Auth SDK 未实测，F06/F07 **仅剩运营具体字段未定**。
 
 **产品决策与性能**：[U03～U11 决议](./aisencore-u03-u11-user-decisions-2026-10-22.md) 已确认公众注册目标、单人运营、30/365/永久 Pro、Admin MVP **TOTP MFA 必做**等方向；100/批、15 分钟缓存、配置白名单/保留、SMTP/管理员恢复仍是待批/待测。[Auth/Pro/MFA](./aisencore-mvp-auth-entitlement-mfa-efficiency-design.md) 要求官方 SDK、按需 single-flight、管理低打扰且 R2 实时授权；[BAAS-Q01～Q10 安全测试指南](../../development/testing/README.md) 拒绝未经授权的 Redis/AI 代理/危险负数消费 RPC；相关真实用例仍 NOT RUN。
 
-**Admin UI/UX 关口**：[D3-UI](./aisencore-mvp-d3-ui-admin-uiux-design.md) 仅提供页面/文字线框；[UI-G0 全局视觉](../../architecture/applications/admin-ui-design-system.md) 和 [frontend 设计规范](../../development/frontend/README.md) 约束统一 MUI Theme、组件和 62 条规则，**尚无四类高保真参考和用户明确视觉签收**；UI-G0A 仍 **NOT APPROVED / BLOCKED**，正式 Admin 页面/Theme/Layout 编码须获真正视觉批准及独立开发授权；之后仍要真实执行 UI-G3、D3-UI-X 等浏览器与安全测试。
+**Admin UI 设计与验收边界**：[Admin 应用行为合同](../../architecture/applications/admin-console.md)与[统一 Theme/UX 规范](../../architecture/applications/admin-ui-design-system.md)保留成熟框架、安全行为及可访问性原则。旧逐页线框、固定四类参考页、指定视觉数值和全景原型不再强制。历史 UI-G0A 尚未签收，正式开发仍需独立授权；真实浏览器与安全 E2E 仍为 NOT RUN。
 
 **D0 完成阶段归并说明**：原 D0 详细执行计划为 2026-10-21 的**已完成文档阶段**，不再保存过期的勾选步骤、当时 U03～08 待定表、旧客户端直传 JSON 图或历史 Git/link 检查数字。仍有效的唯一成果是：**U01 Aisenlens 为首个本地优先产品；U02 首批需要受保护 R2 配置备份**，最小公共身份/成员/套餐/兑换/审计/管理和各 SaaS 自有业务数据的分工；它们已进入[现行需求](../../spec/requirements.md)、[主架构](../../architecture/current-main-architecture.md)和[U 项当前决议](./aisencore-u03-u11-user-decisions-2026-10-22.md)。DEC-02 A 后该小 JSON 改为受保护 Edge 校验并写 R2，**不再使用 D0 旧直传图**。后续 D1～D4 的真实阻塞及验收仍依本计划/TODO。
 
@@ -82,7 +82,7 @@
 ### 4.2 工作 2 — PostgreSQL 物理数据库（D1）
 
 - [x] 定义各公共实体实际 Schema/表名、字段类型、默认值、PK/FK、UNIQUE、CHECK、必要索引及引用删除策略（D1 设计文档 §1～2，**候选规格，未经 SQL 编译/执行**）。
-- [x] 涵盖 `products`、`product_memberships`、成员事件、`platform_admins`、账号限制、`plans`、`entitlement_grants`、兑换码/批次、`redemptions`、失败尝试限流与 `admin_audit_log`；不复制第二套 Auth 用户主档。
+- [x] D1 设计现已按 2026-10-23 最新决定修订，包含产品、成员/事件、管理员/限制、`entitlement_grants`、兑换码/批次/核销、限流和审计；**不包含公共 plans/plan_id 或 SaaS 功能/额度表**，不重复建 Auth 用户主档。真实迁移尚未执行。
 - [x] 定义不可变字段、可信时间、授权时间区间、码次数上限、`request_id` 幂等唯一性和状态组合约束。
 - [x] 设计空库迁移顺序、初始所有者种子、安全升级与备份/回退原则；**仅编制 SQL/DDL 设计，不执行迁移**。
 
@@ -132,23 +132,23 @@
 
 **产物**：Admin 资源/Provider/页面与交互规格。**通过判据**：UI 实现不需要猜测权限、字段和错误处理。
 
-**2026-10-22 MVP 审计建议收敛（只更新设计）**：Admin 导航按“当前产品运营 / 全平台管理”任务组织，关联兑换/事件/限制表合并为详情/子列表；用户只做利用现有受限数据的综合详情，邮箱按 DEC-06 批量 `getMany`；发码未知结果仅作非秘密 request_id 恢复，冻结套餐复制预填新版本，直授界面把顺延/固定时段/永久互斥且明确确认。均不新增通用服务/框架/后台，详细见 [Admin 架构](../../architecture/applications/admin-console.md) 与 [D3-UI](./aisencore-mvp-d3-ui-admin-uiux-design.md)；后端 FK 迁移顺序/直授幂等/授权断档与跨设备邮件/MFA 安全以 D1/D2/D4 的最小核验补丁为准，SQL/浏览器验收仍 NOT RUN。
+**Admin 行为收敛**：保留产品/全局权限区分、DEC-06 有界邮箱映射、发码 UNKNOWN 原 request_id 安全核查及直授合法期限/明确永久确认；旧“固定双区导航”“冻结套餐复制新版本”和具体弹窗/布局形态不再是当前实施要求。现行前端行为见[Admin 应用合同](../../architecture/applications/admin-console.md)，后端正确性依 D1/D2/D4，所有真实测试仍 NOT RUN。
 
 ### 4.6A 新增 UI1 — Admin 页面与交互详细设计（D3-UI）
 
-- [x] **独立设计交付**：在 [D3-UI 文档](./aisencore-mvp-d3-ui-admin-uiux-design.md) 中补足导航/路由、宽窄屏 Shell、逐页字段和操作、文本线框、组件/状态/错误/无障碍，以及兑换码一次性明文和 Admin MFA 关键旅程；**只是设计，没有 React/Figma/Cloudflare 页面**。
+- [x] **行为与验收迁移**：原 D3-UI 中有效的安全、业务、异常和无障碍用例已纳入[Admin 行为合同](../../architecture/applications/admin-console.md)；历史导航线框和固定控件样式不作为生产布局依据。
 - [x] **新增验收设计**：D3-UI-X01～X18 对应真实页面/身份/发码/套餐/用户/成员/审计/响应式与网络异常等未来 E2E/视觉/无障碍测试，**全部 NOT RUN**。
 
-**产物**：D3-UI 页面详细实施输入。**通过判据**：核心首版后台每个页面的入口、线框、字段、可执行业务动作与失败反馈均可找到唯一说明；正式前端开发仍需独立授权及真实接口。
+**产物**：Admin 行为合同及待运行的 UI/X 用例。**通过判据**：正式 React-admin 可按现行业务契约自行选择标准组件，真实接口与安全测试需要另外执行。
 
 ### 4.6B 新增 UI0-GATE — Admin 全局设计系统及视觉基线确认（UI-G0）
 
-- [x] **全局规则文档已编写（仅规范准备）**：[UI-G0 Admin Design System](../../architecture/applications/admin-ui-design-system.md) 有字体、字号、语义颜色、8px 间距、组件/模板、布局断点、样式例外与审查清单；**此项完成不算 Gate 通过**。
-- [ ] **制作/选定四类高保真基准页面**：登录/TOTP、兑换码列表+一次明文结果、套餐、用户/成员，需真实可见/可追溯版本并对比桌面/窄屏。
-- [ ] **用户明确视觉签收与 Token/版本冻结**：提交真实画板/图片/静态设计参考、各宽度问题清单与审批日期，用户明确同意唯一方向，`UI-G0A APPROVED` 才可释放 Admin 正式前端编码；当前 **NOT APPROVED / BLOCKED**。
+- [x] **统一 Theme/UX 规范已整理**：[Admin 通用 UI 质量规范](../../architecture/applications/admin-ui-design-system.md)要求唯一主题、组件复用和无障碍，不固定色板、字号、间距、布局或旧组件模板。
+- [ ] **按需审阅设计候选**：高风险任务可制作可交互原型或视觉参考，具体数量、载体、宽度由当前任务决定，不再固定要求四页全景。
+- [ ] **用户设计决策与开发授权**：记录实际审阅过的视觉/交互方案与版本。历史 UI-G0A 仍 NOT APPROVED，但它不是一切正式编码的唯一前置关口；正式开发须另行由所有者明确授权。
 - [ ] **后续浏览器 UI-G3 质量验收**：编码/部署后验证截图对比、跨屏幕排版、无障碍和后端权限 E2E；视觉基线批准本身**不意味着页面开发已经完成**。
 
-**更新后的阶段关系（2026-10-22）**：第 01～05 项现有设计与验收合同保留；原 `development` 真实 React-admin/MUI G0B 基础已删除。**新的方法采用按风险制作单文件交互 HTML、先验证业务模块关系与异常路径、交付时配套体验引导**，见[开发工作流](../../development/frontend/interaction-benchmark-workflow.md)；具体原型的真实体验、视觉/Token 签收与正式施工授权仍未完成。`UI-G0A NOT APPROVED`，不启动正式 DB/RPC/Auth/Edge/Admin 业务代码，UI-G3、安全 E2E 与上线许可分别验收。见[六项计划](../20261022-admin-mvp-six-step-master-plan.md)。
+**当前实施边界**：旧 development/G0B 原型已删除；依据[按风险的 AI/原型工作流](../../development/frontend/interaction-benchmark-workflow.md)决定验证范围，旧固定场景/样式不继承。现有交互/视觉认可状态和正式施工授权分别记录，真实后端、安全 E2E 与 UI-G3 尚未运行。
 
 ### 4.7 工作 7 — 环境、迁移、发布与最小运维（D3）
 
@@ -164,7 +164,7 @@
 
 - [x] 将 [API 验收场景](../../architecture/backend/api-contract-and-mvp-acceptance.md) 的 I-01～I-28、R-01～R-15 **逐案**映射到数据库约束、RLS、RPC、公共 API、SaaS 与 Admin（43/43，**均 NOT RUN**）。
 - [x] 设计 pgTAP 或等价数据库权限正反向测试、事务回滚、行锁竞争、核销限流/幂等、多产品隔离、Aisenlens R2 补充用例和关键安全回归。
-- [x] 覆盖管理员 MFA 与最后管理员保护、套餐冻结、兑换码明文泄露、重复兑换优先级、`CheckAccess` 200/401/503 语义。
+- [x] 当时覆盖管理员 MFA、最后管理员保护、套餐冻结等旧测试设计；**套餐功能冻结已在 2026-10-23 被“Pro 授权来源、期限和已发行码事实不可篡改”取代**，仍保留明文泄露、重复兑换优先级和 CheckAccess 200/401/503 的验收。
 - [x] **新增设计规格**：AUTH-P01～P12 的普通用户会话/权益按需复核、Admin MFA 登录/AAL 刷新/因素恢复、MFA 低打扰和免费资源/延迟验收方案已经列出（**均 NOT RUN**）。
 - [x] **新增第三方建议安全评审设计**：识别公开 `SECURITY DEFINER`/负数消费输入/JWT VIP Hook/Redis 滥用风险；编列 BAAS-Q01～Q10 条件性配额/缓存/RLS/并发与 BaaS 资源真实验证用例（**NOT RUN，不要求新增现阶段消费业务**）。
 - [x] **新 D3-UI 文档设计补入**：D3-UI-X01～X18 的首版 Admin 逐屏验收/可访问性/敏感数据/低请求量等规格已列，**原 D4 的逻辑案例和状态未修改**。

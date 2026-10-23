@@ -17,10 +17,10 @@
 
 | 专题 | 内容 |
 | --- | --- |
-| [前端开发与 Admin UI/UX 设计规范](./frontend/README.md) | **统一入口**：React-admin 技术与开发约束、62 条 UX 规则、字体/布局方法、组件准入、页面模式和真实验收；不另设独立 `admindesign` 目录，全局 Token 仍以 architecture UI-G0 为准 |
+| [Admin 前端与通用 UX 规则](./frontend/README.md) | React-admin 技术复用、62 条 JSON 规则、单一 Theme 和实际 UI 质量要求，不规定固定页面样式 |
 | [交互优先的轻量验证与 AI 开发工作流](./frontend/interaction-benchmark-workflow.md) | 按风险决定是否制作 HTML 交互原型、每次配套用户体验引导、人工决策后正式实现与运行验收；可供以后 AisenFlow 复用，不创建第二套工程 |
-| [交互基准产物规范](./frontend/interaction-benchmark-spec.md) | HTML 应具备的模块交互、状态/报错/危险确认及视觉系统映射；包括对话或网页内「怎么体验」引导 |
-| [原型复用与分级测试边界](./frontend/prototype-to-production-rules.md) | 复用交互决策和场景，不复制模拟 JS/CSS；P0/P1 原型检查与 P2/P3 正式 E2E 的边界 |
+| [原型产物规范](./frontend/interaction-benchmark-spec.md) | 依据任务选择状态、错误、恢复与模拟场景，不强制全景 HTML 模板 |
+| [原型复用与分级真实验收](./frontend/interaction-benchmark-workflow.md) | 验证行为与状态等价，按 P0～P3 分级核对，不照搬原型 DOM/CSS |
 | [测试规范](./testing/README.md) | 测试范围和验收原则，具体工具随实施阶段选择 |
 | [会员、兑换码与支付订阅](./billing-subscriptions/README.md) | 兑换码优先、爱发电初期暂定；参考资料、对接指南与模板 |
 

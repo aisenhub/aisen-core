@@ -1,6 +1,6 @@
 # F01～F04｜安全设计收敛定稿（实施候选，待真实验证）
 
-> **批准方案施工覆盖（DEC-01/02 A）**：F02 兑换改为显式声明 `product_key`，按 L1/L2/L3 声明产品→L5 成员先拒绝 left/suspended→L6 真实码并核对归属→L7 续期→L8 同事务提交；历史发行码的套餐不可变，核销不需在 L5 之后逆序获取 L4。**F03 旧“客户端 staging PUT/可信 Worker final 提升”仅是未采用的实施候选**：首发 Aisenlens 小型非敏感白名单 JSON 已批准受保护 Supabase Edge 接收/校验，使用受限凭据 R2 final 条件写，并经 PostgreSQL 幂等配额/ready 与异步对账；通用普通文件 R2 直传不变。F01/F04 `aal2` 和最小权限不变。真正 SQL/R2 实测均 NOT RUN，以[可信事务长期合同](../../architecture/database/rpc-security-and-locking-contract.md)和[产品文件架构](../../architecture/database/product-data-and-files.md)为准。
+> **2026-10-23 F02 更新**：Core 不建 plans/plan_id；DEC-01 继续声明产品+已有成员先验证、码核销本人已兑优先和失败限流入账。L4 保留编号但无套餐行锁，L7 是同用户同产品 Pro 可信续期锁。R2 配置备份是 AisenLens 专项 Edge/R2 逻辑；MFA、M1、M3–M5 仍在。DB/RPC E2E 尚未运行。
 
 > **状态：DESIGN RESOLVED / RUNTIME NOT VERIFIED**。本文件保留有效的安全设计；完成的阶段执行清单按 Plans 规则删除。本文件给 D1、D2、D3 的后续实际代码/迁移提供**优先遵循的安全实施约束**；不替换 [现行需求](../../spec/requirements.md)与[逻辑 API/43 项验收](../../architecture/backend/api-contract-and-mvp-acceptance.md)，不表示任何数据库函数、Edge、R2 或 MFA 已运行。
 >
@@ -10,14 +10,14 @@
 >
 > 四项关联：[D4 F01～F04 风险](./aisencore-mvp-d4-test-and-readiness-review.md#61-静态交叉评审发现的问题与风险台账)；D1 [物理/RLS/事务候选](./aisencore-mvp-d1-database-implementation-design.md)、D2 [接口/Auth/R2](./aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、D3 [管理端与基础设施](./aisencore-mvp-d3-admin-infrastructure-design.md)。
 >
-> **范围固定**：U01 Aisenlens 本地优先、U02 首批 R2 私有文件/配置备份必需；U03 公众注册、U05 单人运营与 Admin TOTP MFA 已确认，U04/U06～U11 需按[当前用户决议](./aisencore-u03-u11-user-decisions-2026-10-22.md)区分方向已定与具体参数待定。保留 M1～M5 业务语义，尤其重复兑换优先级、管理保底、套餐冻结、兑换失败限流与 CheckAccess 200/401/503。
+> **2026-10-23 后续边界修订**：原 M2 公共套餐功能冻结已删除，替换为 Pro 授权时段/发行时原始配置不可被篡改与旧码保留。M1、M3、M4、M5、F01/F02/F03/F04 安全约束继续有效，R2 属于 AisenLens 专项服务不属于通用会员功能额度引擎。
 
 ## 1. 最终设计决议概览
 
 | 风险 | 设计层收敛决议 | 运行验收前状态 |
 | --- | --- | --- |
 | **F01** | 对外 `public` RPC 一律以 **SECURITY INVOKER** 最薄包装；真正需扩权的单事务业务函数放 **`private` 不暴露 schema** 且最小 `SECURITY DEFINER` 所有者；所有被授权执行的私有内核本身再验证身份与操作权限 | **设计收敛；未验证** NOLOGIN owner/GRANT/RLS/PostgREST |
-| **F02** | 固定全局 Admin 写锁 → 目标账号门禁锁 → 用户限流 → 产品 → 套餐 → 成员 → 码 → 授权续期 → 写入/审计，按实际对象子集取得，绝不逆序；兑换特殊分支明确 | **设计收敛；未验证** pg 两连接竞态/死锁/时段 |
+| **F02** | 管理锁→用户→限流→产品→L4空位→成员→码→用户+产品 Pro 续期→审计；不涉及公共功能版本 | 需真实双连接锁/死锁/幂等验收 |
 | **F03** | **DEC-02 A 已批准**：Aisenlens 小型非敏感白名单 JSON 由受保护 Edge 可信校验、用受限 R2 权限条件创建唯一 final；通过产品 DB pending/ready/对账处理非 ACID，客户端不能写 final；普通其它私有文件才直传 | **设计获批；SDK/R2/Edge/补偿未实测** |
 | **F04** | `aal1` 只做官方 TOTP enroll/verify，取得被验证的 `aal2` JWT → `admin_check_access` 当前名册资格；Edge 持原用户 JWT 复核后才使用 Auth Admin 服务端秘密 | **设计收敛；未验证** SDK/JWT/资格撤销与 Auth Admin E2E |
 
@@ -60,7 +60,7 @@
 
 ### 2.3 授权边界的限制
 
-PostgREST 识别 JWT 的具体网关配置与 Supabase SDK/CLI 版本必须实际核查；SQL 中任何有权设置请求上下文 GUC 的**高权限 DB 会话**都不等同真实 Auth JWT；生产不能把 SQL 连接权/密码给普通客户。函数所有者可能绕开 RLS，必须在 definer 函数**显式**检查每个实际被操作 `user_id/product_id/plan_id` 的资格与关联一致性。封禁/管理员资格在**每次新事务**重新核实；已在执行中的事务与外部请求不能承诺无时差的全球瞬时撤销。
+PostgREST 识别 JWT 的具体网关配置与 Supabase SDK/CLI 版本必须实际核查；SQL 中任何有权设置请求上下文 GUC 的**高权限 DB 会话**都不等同真实 Auth JWT；生产不能把 SQL 连接权/密码给普通客户。函数所有者可能绕开 RLS，必须在 definer 函数**显式**检查每个实际被操作 `user_id/product_id/tier` 的资格与关联一致性。封禁/管理员资格在**每次新事务**重新核实；已在执行中的事务与外部请求不能承诺无时差的全球瞬时撤销。
 
 ## 3. F02｜唯一事务锁总序与逐操作锁矩阵
 
@@ -71,11 +71,11 @@ PostgREST 识别 JWT 的具体网关配置与 Supabase SDK/CLI 版本必须实�
 | **L0** | **全平台 Admin 写入口**事务级 advisory mutex（固定、唯一、私有 namespace） | **每一项管理写 RPC**（不只是改管理员资格）先取得 L0，再重新检查当前管理员 `aal2`+资格；确保 admin 撤权与 admin 已认证写入串行、M1 共用入口 |
 | **L1** | **目标账号**事务级 advisory lock（对 `auth.uid()` 或管理目标 `target_user_id`），名字空间与 L0、L7 不交叉 | 任何会改变/要求未 blocked 的本人敏感 RPC、所有影响目标账户的管理写入和 Block/Unblock；锁后重新查 blocked。不存在 restriction 行时也有锁，不依赖 SELECT FOR UPDATE 锁“缺失行” |
 | **L2** | **本人核销限流行** `redemption_rate_limits` 插入唯一安全创建后 FOR UPDATE | 仅 `redeem_code`，先修剪滚动 15 分钟时间戳，达到阈值不继续锁产品/码；未知/不可兑失败记录需正常提交 |
-| **L3** | 目标 `products` 行：要求 active 的请求 `FOR SHARE`、改变状态/套餐跨版本一致性 `FOR UPDATE` | 按 UUID 升序锁多产品，确保产品状态与本事务操作串行；若函数不需要产品状态，可以不取此层，但**之后不得反向补锁 L3** |
-| **L4** | 目标 `plans` 行：发行/直接授予 `FOR SHARE`，修改已存在权益字段 `FOR UPDATE` | `plans.is_active` 对**旧发行码兑现不重新施加新发行限制**；在冻结设计不变量下码兑现只读已经冻结的方案 |
+| **L3** | 产品行 FOR SHARE 或状态修改 FOR UPDATE | 锁内复核 product.active，不再为功能矩阵版本获取额外行锁 |
+| **L4** | 兼容锁序编号（无 plans 行锁） | 公共套餐表已取消，不能获取 plan_id 锁 |
 | **L5** | **已存在**的 `product_memberships` 行 `FOR UPDATE`；**不存在的成员不在此提前写入** | 对状态变更及合法核销先读取/锁住当前状态，严格区分 left/suspended；核销中确认可兑后，首次 INSERT 才进入 L8 写入阶段 |
-| **L6** | `redemption_codes` 行 `FOR UPDATE`；多码按固定 UUID 升序 | 核销先从码哈希定位其产品/码 ID（**不先取行锁**），经 L3/L4/L5 后再锁码并重新核实资格；必须先查本人是否已有 redemptions，再判断已用尽/到期/撤销 |
-| **L7** | `user_id + plan_id` 的事务级 advisory lock、已有 grant（必要时）按稳定顺序 | 所有直接授权/同套餐续期都按此锁序计算最新有效期限；多个 grant 以稳定 ID 顺序加锁，不能先锁 grant 再补 L6 |
+| **L6** | redemption_codes 码行 UPDATE | 先声明产品/成员约束，锁后复核原码 product/tier=pro/授予天数及已兑换优先；禁止逆序补锁 |
+| **L7** | 同 user+product+tier=pro 的续期事务锁 | 根据未撤销同产品 Pro 周期 Grant 可信最远未来末期顺延，永久不隐式更改 |
 | **L8** | 同事务写码次数/成员/授权/审计和唯一约束；必要时幂等批次/来源键的唯一冲突序列化 | 不再取得更低级别对象锁；`admin_audit_log` 或成员事件失败，整笔技术事务回滚；业务拒绝按既定契约提交限流失败窗口 |
 
 **准则**：只获取需要的级别，但绝不先 L6 后 L3 或先 L7 后 L5。每级的**多个对象**先按稳定 UUID 顺序排序。碰到 PostgreSQL FK/唯一键/索引引入的**隐含锁**、升级锁及级别嵌套时，真实双连接竞争测试必须证明无循环；超时/死锁当作技术失败整体回滚，采取有界重试，**不**以部分写结果冒充业务拒绝。
@@ -84,14 +84,14 @@ PostgREST 识别 JWT 的具体网关配置与 Supabase SDK/CLI 版本必须实�
 
 ### 3.2 RPC 获取锁矩阵（空格=不需，使用 “—”）
 
-| 受控操作 | L0 Admin | L1 账号 | L2 限流 | L3 产品 | L4 套餐 | L5 成员 | L6 码 | L7 续期 | 必须复核的结果 |
+| 受控操作 | L0 Admin | L1 账号 | L2 限流 | L3 产品 | L4 空位 | L5 成员 | L6 码 | L7 Pro 时段 | 必须复核 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `ensure_membership / rejoin_product` | — | 本人 | — | SHARE | — | UPDATE/唯一键 | — | — | blocked/active/left/suspended 不得隐式恢复 |
 | `leave_product` | — | 本人 | — | — | — | UPDATE | — | — | 退出不撤销 grant/R2 |
-| `redeem_code` | — | 本人 | UPDATE | SHARE | 只读冻结 plan | 已有成员 UPDATE；无成员时暂不写 | UPDATE | user-plan | M4 已用优先、失败只计限流；成功时 L8 创建缺失成员并写 grant→redemption→次数 |
-| `admin_create_codes` | 全局 | — | — | SHARE | SHARE | — | 新增批次/码 | — | 仅 active plan 新发；M3 request_id 重放无明文 |
-| `admin_upsert_plan` | 全局 | — | — | UPDATE | UPDATE/新版本 | — | — | — | 已引用权益不可改，其他计划键类型一致 |
-| `admin_grant_entitlement` | 全局 | 目标用户 | — | SHARE | SHARE | — | — | user-plan | 新授予不能入会，时段与 source_ref 幂等 |
+| `redeem_code` | — | 本人 | UPDATE | SHARE | — | 已有成员 UPDATE，left/suspended 先拒绝 | UPDATE | 同用户产品 Pro | 本人已兑优先、成功写 Grant/核销/次数，失败限流正常提交 |
+| `admin_create_codes` | 全局 | — | — | SHARE | — | — | 新码批次 | — | 仅 tier=pro 和正授予天数，原 request_id 重放不返回明文 |
+| 已取消 `admin_upsert_plan` | — | — | — | — | — | — | — | — | 无公共功能套餐版本 |
+| `admin_grant_entitlement` | 全局 | 目标用户 | — | SHARE | — | — | — | 同用户产品 Pro | duration/explicit_window、actor 幂等、历史时段留存，不隐式入会 |
 | `admin_revoke_grant` | 全局 | 目标用户 | — | — | — | — | — | 视需要 | 只标撤销和审计，不删除历史 |
 | `admin_suspend / restore_membership` | 全局 | 目标用户 | — | — | — | UPDATE | — | — | pre_suspend_status 精确恢复，事件同提交 |
 | `admin_revoke_code / batch` | 全局 | — | — | SHARE | — | — | UPDATE（多码按 ID） | — | 只阻未来兑，批量撤销审计原子 |
@@ -106,10 +106,10 @@ PostgREST 识别 JWT 的具体网关配置与 Supabase SDK/CLI 版本必须实�
 
 - **管理员写入一律 L0**，在锁内重新验证 actor 当前 `aal2` 和 `active && !blocked`，从而 M1 最后管理员不会与其他 admin 写入交叉破坏授权。管理员本人的被 block/revoke 持 L0；若目标同时为当前操作者，照样在修改后核对 M1 非零。
 - **账号状态**：`block`/ `unblock` 持 L0+目标 L1；全部用户受保护数据库写入及目标授权也持同一 L1，故**数据库新写**与封禁具有提交串行顺序；但 **不表示**不持 L1 的只读 `CheckAccess` 或跨系统 R2 预签 URL 可被瞬间撤销。
-- **M2**：新发码/直授在 L3 产品 SHARE→L4 计划 SHARE 后核查 `is_active`；修改权益需 L3 产品 UPDATE→L4 plan UPDATE，再检查包括已撤销码在内的历史引用。锁的冲突保证先后次序，不能先出码再允许旧 plan 权益变化。
+- **M2 最新语义**：已发行码授予天数/Grant 来源与可信时段不可因时长 UI 预设或产品功能变更而被改写。无 plans 功能版本锁。
 - **M4**：`redeem_code` 在 L1、L2、L3/成员可用性读取并锁码后，**先查用户+该码的历史兑换**。对已经兑过的合法用户返回 `REDEEM_ALREADY_USED`（即使当前码用尽/失效），不计本次失败；对新用户统一不透露过期/耗尽/撤销差异。用户是否 blocked 和已经 RATE_LIMITED 的分支优先于这次重复查询。注意若成员后续被暂停/退出，重复兑换的优先级与已定业务身份限制的交集必须按 API 权威执行；此处不批准暂停成员绕过准入。
 - **失败限流**：不论未知码、已存在码但业务拒绝等合规失败，都在同事务中更新 `redemption_rate_limits` 再**正常返回** `ok=false`；不要在失败前创建成员或 grant，也不要抛 SQL 异常回滚计数。真正 DB 异常/审计故障整体回滚，响应 5xx。
-- **周期续期**：在 user-plan L7 锁内读取最新**未撤销**同套餐 grant 的未来末端，计算下一时段；永久授权不叠加假的周期。不同码同用户同 plan 并发依靠 L1/L7 排序。
+- **周期续期**：L7 依 user+product+Pro 锁聚合未撤销 Pro 周期 Grant 最远未来期末，永久不扩展假周期，不能并发重复顺延。
 - **管理读、R2 签发**：数据库 read RPC 不取这套写锁，得到的是当前语句/事务一致性判断；R2 签发跨 Edge→数据库→R2 并非同事务，封禁可能在查权后与出 URL 前发生，新 URL 的最短 TTL 和额外提交前复核只能缩短窗口、不能声称真正原子撤销。
 
 ### 3.4 必须真实执行的并发及故障用例
@@ -117,8 +117,8 @@ PostgREST 识别 JWT 的具体网关配置与 Supabase SDK/CLI 版本必须实�
 | ID | 两连接/故障注入排程 | 不得出现的结果 |
 | --- | --- | --- |
 | `LCK-01` | A/B admin 同时互封禁、撤权、一方再授管理资格 | 资格总数清零或审计与资格不同事务（M1/I-27） |
-| `LCK-02` | 修改 plan 功能与新发码/直接授予对撞 | 先发码后仍改变冻结功能（M2/R-14） |
-| `LCK-03` | 同一用户两张同 plan 码同时兑，另附 `admin_grant_entitlement` | grant 时间区间重叠、来源重复或循环等待（R-13） |
+| `LCK-02` | 发码和直授与后续 UI 时长预设改变并发 | 历史码授予天数、已授 Grant 被错误重写 |
+| `LCK-03` | 同用户同产品两码并发兑付和人工 Pro 直授 | Grant 起止重叠、重复发放、死锁 |
 | `LCK-04` | A/B 争同一码最后一次、A 同码再次提交、revoke_code 同时执行 | 超量、重复 grant 或已用用户被误判为其他新用户（R-04/R-05） |
 | `LCK-05` | block_account 与用户 ensure/rejoin/redeem、管理员对目标直接 grant 并行 | block 已按锁序提交后仍新发 grant/成员；被 block 的账户在下一事务获得受保护权益 |
 | `LCK-06` | 码未知/失效、限流时间窗口临界、业务拒绝、写审计故障 | 失败次数回滚或失败后留下成员/grant/码计数副作用（R-06/R-11/I-15） |

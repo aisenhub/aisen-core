@@ -57,9 +57,9 @@
 
 ### 3.2 单次聚合权益快照：**可选独立只读查询契约，未批准替代原 RPC**
 
-目前唯一的逻辑权威仍是 `check_access(product_key, capability?)`，可信业务拒绝为 `HTTP 200 {"allowed":false,...}`，无效 JWT = `401`，真实验证失败 = `503/5xx`。原 `get_my_products` 亦不等于跨产品授权许可证。
+当前唯一逻辑权威改为 `check_access(product_key)`：AisenCore 只认证本人会员身份/产品成员/Pro 时段，不携带 capability，不返回 Features/Limits。业务拒绝 200/allowed=false，JWT 401，无法可信计算 503/5xx；不能把故障降级成 Free。
 
-**优化候选**：如果一个 Pro 页面确实需要同时显示 AI 分析、无水印导出、备份是否可用和多个额度，可在**不改变原 RPC**前提下，为“当前本人/指定产品”设计一个**独立**版本化只读聚合权益接口或给原只读方案加受控扩展；输出白名单 capability keys 与 `limits`、`evaluated_at`、最近有效授权终点。候选 JSON：
+**本候选已被 2026-10-23 轻量后端边界取消**：即使 SaaS 页面要显示多个业务功能和额度，也只向 Core 查询一次可信 Pro 资格；功能矩阵由 SaaS 自身持有，不建设 Core 端的 capability/limits 聚合 API。下列早期候选示例仅供历史对照，不得作为现行实现依据：
 
 ```json
 {
