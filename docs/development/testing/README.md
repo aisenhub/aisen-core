@@ -8,8 +8,8 @@
 - **关键安全场景**：普通用户不得执行 Admin 高权限操作；他人的兑换码/权益/文件不能无授权访问；不能仅依赖浏览器 UI 控制权限。
 - **重复/并发与失败恢复**：重点覆盖重复兑换、并发争抢码、重复或漏发支付通知、支付状态与权益状态不一致。
 - **客户端权益**：首版在线 Pro 在启动时校验，并按具体产品关键操作复核；离线免费功能不受无关错误牵连。
-- **Admin UI-G0 编码前硬门槛与 UI-G3 运行质量**：先取得 [全局设计系统/视觉基线](../../architecture/applications/admin-ui-design-system.md)四类高保真页面及统一 Token、实际用户签收和版号，未获批准不得启动正式 Admin 前端编码；编码后还须对照视觉基准，在真实浏览器检查排版、字号、布局、表单/表格/弹窗状态、1440/1280/820/375/320 宽度、键盘/对比度与资源权限，不能以文字规范或静态测试充当截图/可用性已验收。
-- **Admin 测试时的规则与页面映射**：使用[开发设计验证矩阵](../frontend/admin-design-verification.md)和[结构化规则目录](../frontend/admin-design-rules.md)挑选适用的中文混排、错误恢复、列表/详情返回、MFA/发码等场景；62 条规则的建议 `browser-test/manual-audit` **不是已经执行的自动化检查**，也不会替代 D3-UI-X01～X18、UI-G0-G01～G12 的既有 NOT RUN 状态。
+- **Admin 原型及真实 UI 验证**：复杂或风险较高的新交互按 [原型与 AI 开发工作流](../frontend/interaction-benchmark-workflow.md) 先验证；正式 React-admin 前端在明确施工授权后实现，视觉方案由用户审阅，发布前须用真实浏览器测试布局、键盘、焦点、缩放、内容可读性和必要权限行为；不强制旧四页/四主题/指定像素作为编码前置条件。
+- **Admin 质量与安全回归**：结合[62 条通用 UX 规则](../frontend/admin-design-rules.json)和[Admin 应用行为验收索引](../../architecture/applications/admin-console.md)按任务选择测试。机器规则的建议审查方式不等于自动 CI 已运行；真实 RLS/Auth/MFA/RPC、码明文和危险操作必须由实际测试证明，未运行维持 `NOT RUN`。
 
 ## 待实际实施时补充
 

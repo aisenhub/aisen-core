@@ -36,21 +36,21 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | ensure_membership / rejoin_product | — | 本人 | — | 产品 SHARE | — | 已有成员 UPDATE／唯一性 | — | — | blocked / active / left / suspended；不可隐式复活 |
 | leave_product | — | 本人 | — | 适用时产品 | — | 成员 UPDATE | — | — | 仅退出不撤销 grant、备份或项目 |
-| redeem_code(product_key, code) | — | 本人 | 限流行 UPDATE | **声明产品 SHARE** | **—，历史码所指套餐不可变** | **先已有成员 UPDATE，left/suspended 在码前拒绝** | **随后码 UPDATE，并核对真实产品归属** | 本人+套餐 | success 才插入缺失成员、grant、redemption 与次数；失败仅允许约定计数 |
-| admin_create_codes | 全局排他 | — | — | 产品 SHARE | 套餐 SHARE | — | 新码/批次唯一性 | — | 已停用套餐不新发；同 request_id 明文仅首次响应 |
-| admin_upsert_plan | 全局排他 | — | — | 产品 UPDATE | 套餐 UPDATE / 新版本 | — | — | — | 已被授权/码引用权益冻结 |
-| admin_grant_entitlement | 全局排他 | 目标用户 | — | 产品 SHARE | 套餐 SHARE | — | — | 用户+套餐 | 不自动入会；同来源请求幂等 |
+| redeem_code(product_key, code) | — | 本人 | 限流行 UPDATE | 声明产品 SHARE | —（无 plan 表） | 先已有成员 UPDATE，left/suspended 先拒绝 | 后码 UPDATE 并确认产品、tier=pro 和原始授权天数 | 本人+产品 Pro | 成功才写必要成员/Grant/核销与次数，失败只能保留限流计数 |
+| admin_create_codes | 全局排他 | — | — | 产品 SHARE | —（无 plan 表） | — | 新码/批次唯一性 | — | 发 Pro+固定授予天数；首响明文，重放只能读非秘密 |
+| 已取消 admin_upsert_plan | — | — | — | — | — | — | — | — | 不再维护公共套餐功能版本，不应实现该 RPC |
+| admin_grant_entitlement | 全局排他 | 目标用户 | — | 产品 SHARE | —（无 plan 表） | — | — | 用户+产品 Pro | duration / explicit_window，同 actor 幂等；不自动入会 |
 | admin_revoke_grant | 全局排他 | 目标用户 | — | — | — | — | — | 视续期竞争而定 | 只撤销当前 grant，审计同提交 |
 | admin_suspend / restore_membership | 全局排他 | 目标用户 | — | — | — | 成员 UPDATE | — | — | 精确恢复 pre_suspend_status；不得隐式 rejoin |
 | admin_revoke_code / batch | 全局排他 | — | — | 产品 SHARE | — | — | 多码 UPDATE，ID 固定排序 | — | 撤码仅影响后续兑现；审计同事务 |
 | admin_set_product_status | 全局排他 | — | — | 产品 UPDATE | — | — | — | — | 产品停用不批量覆盖成员状态 |
 | admin_block / unblock_account | 全局排他 | 目标用户 | — | — | — | — | — | — | 当前资格与 M1 保底；阻止锁后新受保护写 |
 | admin_grant / revoke_admin | 全局排他 | 目标用户 | — | — | — | — | — | — | 修改后有效管理员数至少 1 |
-| check_access / get_my_products / admin_check_access | — | — | — | 一致性只读 | 一致性只读 | 一致性只读 | — | — | 无副作用；不宣称跨 HTTP/外部 URL 全程加锁 |
+| check_access / get_my_products / admin_check_access | — | — | — | 产品一致性只读 | — | 成员一致性只读 | — | Grant 一致性只读 | 无副作用，仅 Pro 资格；不跨外部 HTTP 保持 DB 锁 |
 
 **L0 性能候选**：将普通管理写改共享 L0、撤权/封禁改排他 L0 是尚未批准/验证的方案。当前发布基线**全部管理写均用排他 L0**；测试不过则保留较慢但安全边界清楚的版本。L1 的共享范围包括本人兑换、重新加入与作用于该用户的管理写，封禁锁后不得存在新获准写入。旧码停用与本人已经兑换的优先级按 API 规则执行，不能以此绕过 left/suspended 或 blocked。
 
-**锁实施验证**：LCK-01～07 至少双连接并发，测试管理员资格互撤、grant 竞争、套餐冻结与发码、最终码次数与撤码、失败计数但成功写全回滚、多对象排序及短 lock_timeout/deadlock_timeout；记录真实错误、锁等待和 P50/P95，不以文档作 PASS。
+**锁实施验证**：LCK-01～07 以真实双连接并发检验管理员资格互撤、同用户同产品 Pro 周期续期与 Grant 冲突、码发行/撤销/核销、防枚举失败计数、请求幂等与 UNKNOWN、安全锁超时和死锁；**不再测试公共套餐功能版本的冻结并发**。保留 L0～L8 兼容一致顺序并以真实执行计划/锁轨迹验证。
 
 ### 2.1 锁键映射的尚未完成项
 

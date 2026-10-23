@@ -164,19 +164,19 @@
 
 **验收 REV-M01**：所有 U 项状态交叉阅读无矛盾；不存在已经确认又同时写成“未关闭政策冲突”的条目。
 
-### B-03｜Free 默认版本与累计续期展示（P1）
+### B-03｜线上 Free 配置简化与累计续期展示（P1）
 
 **相关文件**：docs/architecture/domains/billing-and-entitlements.md；architecture/database/entitlements-and-redemption-constraints.md；architecture/backend/api-contract-and-mvp-acceptance.md；D1、D2、Auth/权益性能设计。
 
-**已批准 A（DEC-04；待物理实现）**：优先推荐区分“逻辑 Free”与“不可变的具体 Free 版本”，以产品 current/default_free_plan_id（或同等受控映射）切换 v1→v2；历史被引用的 grant/code 所绑定版本不变。成本更小的替代方案是禁止任何 free grant/code 使其可原地修改；仅作为备选，不能同时写为现行决定。
+**2026-10-23 DEC-04 已由用户复议替代**：首期未上线、匿名本地 Free、只有 Pro 发码/授予，缺少 Free 版本/历史承诺的必要性。唯一现行合同为产品 `free_features/free_limits`，管理员受控原位更改与审计；无需 Free plan 或默认指针，禁止 Free grant/code。
 
-- [ ] 决定“已入会/未入会用户何时采用新版 Free”和“无 Free 配置”的明确语义；不静默修改任何已引用权益。
-- [ ] 在 D1 设计版本引用、复合外键、冻结判定、修改默认指针时的锁及历史追踪。
+- [ ] 已定：符合在线准入的现有和新用户下次可信评估采用当前 Free 配置；无配置能力为零。D1/D2 验证 Pro 到期/撤销后无需写降级事务、只剩默认 Free，多个有效 Grant 不能误降级。
+- [ ] 在 D1 按唯一 Free 产品配置设计原子编辑、审计及权限约束；Pro grant/code 保留同产品复合 FK 和引用冻结，禁止发 Free 码或 Free Grant。
 - [ ] CheckAccess/GetMyProducts 区分 current_period_ends_at（当前阶段截止）、effective_ends_at（已经确认的同套餐连续授权最远截止）与 is_lifetime；评估保留旧 ends_at 的兼容关系。
 - [ ] 同一套餐周期续期的 starts_at 在锁内取 max(可信当前时间, 最新未撤销周期 ends_at)，按固定天数计算；永久授权不伪装成无限续期。
 - [ ] 未来 grant 尚未 starts_at 生效时不能提前开放未来套餐的 features/limits；不同套餐不错误叠加时长，额度同名最大值不相加。
 
-**验收 REV-B03**：Free v1→v2 时历史授权不可变；用户剩余 3 天又取得 365 天连续授权，界面能展示累计最远到期日；续期前的实际能力仍正确。
+**验收 REV-B03**：修改默认线上 Free 配置时旧 Pro 码/Grant 仍绑定原 Pro 方案、无 Free grant；用户剩余 3 天又取得 365 天连续 Pro 授权，界面能展示累计最远到期日；续期前的实际能力仍正确。
 
 ### M-02｜指纹冗余、列权限和直授合同（P1）
 
@@ -258,7 +258,7 @@
 **最新项目所有者决定（2026-10-22）**：原 `development` 下基于真实 React-admin/MUI 的 G0B 原型、Theme 和截图已删除；现已选定「按风险制作轻量交互 HTML、先验证跨模块操作与异常恢复、视觉作为辅助，并同时交付体验引导」方法，详见[开发工作流](../../development/frontend/interaction-benchmark-workflow.md)。先前 G0B 必须先行路径仅属历史方案。`UI-G0A NOT APPROVED`，方法讨论不授权新视觉工程或正式 MVP 代码/SQL。
 
 - [ ] 将 62 条规则分为安全/可访问性硬要求、共用视觉 Token 与建议性参考，减少重复画板与机械逐屏签收。
-- [ ] 保留四类典型交互：登录/MFA、发码及一次性明文、套餐冻结、用户/成员；利用共用 Shell/表格/表单/对话框抽取可复用样式，而非每个资源独立建系统。
+- [ ] 四类关键交互调整为：登录/MFA、发码与一次性明文/UNKNOWN、**Pro 资格与30/365/永久授权期限**、用户/成员；使用共用 Shell/表格/表单/对话框，不再演示业务 Features/Limits 克隆。
 - [ ] 桌面为主要工作场景，窄屏仍需支持登录/MFA、必要应急操作、可阅读错误态，不能忽略基本键盘/对比度/溢出检查；具体覆盖宽度按批准的 DEC-03 执行。
 - [ ] **分阶段设计已经批准，但 G0A 真实视觉签收之前**，UI-G0A = BLOCKED，禁止 apps/admin 正式 Theme/Layout/业务页面代码；可继续独立且已授权的后端规划。
 - [ ] 按具体任务获准后优先使用**单文件 HTML 交互基准**并提供用户体验引导，验证业务路径后由用户明确决定；正式实现阶段使用 React-admin/MUI 官方组件，再完成浏览器截图/版号/运行验收。`UI-G3` 不能因原型签收而自动 PASS。
@@ -324,7 +324,7 @@
 | **DEC-01** | 兑换双参数已批准 | `redeem_code(product_key, code)` 按声明产品成员先验、真实码归属后验 | 撤销旧单参可探测接口 EXECUTE、更新客户端、REV-B01 与 LCK 实测 |
 | **DEC-02** | 限定小 JSON 经 Edge 已批准 | 受保护 Supabase Edge 校验非敏感备份 JSON 并条件写 R2 final；其他通用文件仍直传 | 白名单/大小值尚待 U09，DB/R2 补偿/物理清理必须实测；不用 Worker |
 | **DEC-03** | 轻量交互优先方法已选 | 旧 G0B 已删除；按风险用 HTML 验证业务交互、附体验引导，视觉与 Token 另行签收 | **G0A NOT APPROVED**，正式 MVP 实现未获批准 |
-| **DEC-04** | Free 当前不可变版本指针已批准 | `current_free_plan_id` 切换，同产品 Free 家族及审计，不改历史 grant/code | 物理 DDL/迁移、无默认/现有与新用户时点和回滚真实测试 |
+| **DEC-04（2026-10-23 再修订）** | 统一 Core Pro 资格/有效时段，不定义/编辑产品 Free/Pro Features/Limits 或功能套餐版本 | 每产品 Pro 码/Grant/时段和可信准入；SaaS 自行控制具体功能、次数、R2 配额；旧 Free 指针/Free 配置方案均被替代 | DB/API/D1-D4 按轻量会员认证合同验收 |
 | **DEC-05** | 直授双模式与强类型幂等已批准 | duration 可信顺延/explicit_window 显式时间，保存首次参数和结果，异参冲突 | 保留必要技术证据、安全投影；上线前只更新当前接口与调用方、不造历史兼容层；F05-C 实测 |
 | **DEC-06** | 安全只读 SQL RPC 优先已批准 | 限页 UUID[]/受控精确邮箱、JWT/aal2/管理员当前资格与最小字段 | 真环境权限/性能不安全时自动回退单次 Edge 聚合，不开放 auth.users |
 
@@ -336,7 +336,7 @@
 | --- | --- | --- |
 | B-01 新签名与当前调用方不一致 | 兑换可用性和错误语义 | 明确上线前只实现 `redeem_code(product_key,code)`，同步更新当前调用方/测试并移除旧入口；不写历史兼容层 |
 | B-02 L0 共享锁竞态或死锁 | M1、封禁/管理资格实时核验 | 保留全局排他 L0 |
-| B-03 Free 切版改历史权益 | 历史 grant/code 不可变 | 暂不切换 Free 默认指针 |
+| B-03 Free 能力配置误改 Pro 历史承诺 | Pro grant/code 绑定的套餐不可变，Free 作为产品当前配置独立修改 | 校验产品范围、更新审计及下次在线 Free 能力，不应改变 Pro 引用 |
 | M-02 去指纹后重复授权 | 同 request_id 幂等及不同参数冲突 | 保留原摘要/私有幂等账，直到替代验证 |
 | M-03 Edge 简化后双写失败 | 最终对象不被客户端覆盖、额度正确 | 保留经验证 staging/final 方案 |
 | A-02 私有 auth.users 查询泄露 | aal2+当前资格+字段白名单 | 仍用可信 Edge 或受控投影 |

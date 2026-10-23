@@ -1,3 +1,5 @@
+> **历史审计报告，非现行开发指令（2026-10-23 更新）**：报告中的 Free v1/v2、`current_free_plan_id`、`products.free_features/free_limits`、公共 Pro 功能版本克隆、指定 Admin 页面线框及旧 UI-G0A 视觉硬门槛，均已被后续用户决定取代，不得据此恢复旧后端模型或约束正式 React-admin UI。现行后端职责以[轻量会员边界](../architecture/domains/membership-qualification-boundary.md)及 API/DB 合同为准；前端通用规范见[统一 Theme/UX](../architecture/applications/admin-ui-design-system.md)。报告正文只作历史意见追溯。
+
 # AisenCore MVP 正式开发前架构与 Admin 前端设计深度审核报告
 
 > **审查基线**：AisenCore 仓库全量 65 份需求、架构与实施设计文档（含 2026-10-22 `DEC-01` 至 `DEC-06` 全部采用推荐方案 A 后的最新架构合入基线）

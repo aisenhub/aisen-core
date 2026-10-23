@@ -1,3 +1,27 @@
+1. admin前端设计：
+
+   ::OBJECTIVE{site_design|pri:OVERRIDE_ALL}
+     target: build page to award-tier visual standard
+     ACCEPT: no visible improvement remaining across all CHECK dimensions
+     BENCHMARK: Awwwards | Webby Awards | FWA winning entries
+
+   ::CHECK{typography|standard:award_tier}
+   ::CHECK{whitespace|standard:award_tier}
+   ::CHECK{visual_hierarchy|standard:award_tier}
+   ::CHECK{color|standard:award_tier}
+   ::CHECK{motion|standard:award_tier}
+   ::CHECK{micro_interaction|standard:award_tier}
+   ::CHECK{responsive|standard:award_tier}
+   ::CHECK{originality|standard:award_tier}
+
+   ::LOOP{self_review|trigger:on_completion}
+     [READ] current page against CHECK list
+     [COMPARE] each dimension to BENCHMARK entries
+     [IF] gap found => [PATCH] then re-enter LOOP
+     [IF] no gap => [Ω]
+
+
+
 1. **优先复用成熟框架，绝不手写造轮子**：
 
 - 优先复用 `react-admin`（配合 `ra-supabase`）和 `Supabase Auth` 已有的成熟能力，只自行设计 AisenCore 特有的用户、产品、授权关系与必要的业务接口（`DataProvider` / `AuthProvider` 胶水层与受保护 SQL RPC）。
@@ -11,10 +35,10 @@
 
 
 
-3. **交互优先、按风险使用轻量基准（UI-G0A）**：
-   - **必须先验证的情况**：新的跨模块旅程、复杂表单联动、危险/不可逆操作、权限作用域、`UNKNOWN` 等重要异常恢复；既定交互的小改动直接实现并回归，不重复做原型，但不能跳过现有项目级 UI-G0 和施工许可。
-   - **验证顺序与交付**：先读已批准的业务契约，制作最小自包含 HTML（交互/状态/恢复优先，视觉辅助）；每次交付同步提供实际可操作的「怎么体验」引导。产物放在 `docs/interaction-benchmarks/`，具体要求和分级测试见 `docs/development/frontend/README.md` 的规范索引。
-   - **强制边界**：原型只用模拟数据；不把模拟 PASS 当真实权限/安全/无障碍证据；**交互认可、视觉 Token 签收、正式开发授权分开由所有者明确决定**。网页按钮不能自动签收。当前 `UI-G0A NOT APPROVED`。
+3. **Admin 原型验证与 AI 开发工作流（按风险分级）**：
+   - Admin 正式实现以 React-admin/MUI 官方组件与当前业务、安全合同为准。原型只用于验证尚不明确的复杂任务、跨模块操作、高风险动作和异常恢复；已确定的小变更可以直接实现并回归，不强制制作全景原型或复刻某次示例。
+   - 原型应清楚表达必要信息，使用合成数据，关键操作要产生可观察的状态变化而非假成功提示；可按实际任务需要采用 HTML、真实组件或其他适合的验证载体，不强制单文件、固定模块数、特定工具栏、主题、抽屉或视觉模板。辅助说明与生产业务界面应区分。
+   - 原型通过不代表真实 RPC/RLS/MFA、安全、性能或无障碍验收。交互确认、视觉确认、正式施工授权及真实系统验证分别记录，不能在演示页面伪造批准；当前既有 UI-G0A 未获签收的事实不因文档清理自动改为 APPROVED。具体见 `docs/development/frontend/interaction-benchmark-workflow.md`。
 
 4. **【UI/UX 强制原则：让界面自己说明问题，拒绝无效文案】** 优先通过清晰的信息层级、布局分组、对齐、留白、视觉权重、准确的主标签和明确的交互反馈，让用户直观理解“这是什么、能做什么、下一步是什么”。**禁止**用重复的副标题、次级标签、说明段落、提示卡或装饰性文字解释界面本来就能表达的内容；每段可见文案都必须提供必要且不重复的信息。**优先优化布局和交互，而不是增加说明文字**。但**不得以极简为借口省略**表单必需标签与单位、重要限制和操作后果、权限或错误提示、关键状态及无障碍可访问名称；复杂或高风险操作应在恰当位置提供简短、具体、可操作的引导。最终以**简洁、清晰、一致、易用、可访问**为验收标准。
 

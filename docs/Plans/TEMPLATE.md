@@ -25,4 +25,4 @@
 
 不把未运行、失败或环境受限项写成通过。完成后按[计划规则](README.md)删除过程材料。
 
-若涉及原型，按[分级验证规则](../development/frontend/prototype-to-production-rules.md)区分 P0/P1 模拟体验检查与 P2/P3 真实实现测试；**不能把原型模拟 PASS 当作后端/RPC/权限或 UI-G3 通过**。
+若涉及原型，按[分级验证规则](../development/frontend/interaction-benchmark-workflow.md)区分 P0/P1 模拟体验检查与 P2/P3 真实实现测试；**不能把原型模拟 PASS 当作后端/RPC/权限或 UI-G3 通过**。

@@ -17,6 +17,7 @@
 - **domains/**：成员退出、封禁恢复、会员与订单关系等业务规则的首要出处。
 - **backend/**：逻辑接口、可信授权、调用时序和 API 行为；需要业务规则时引用 domains。
 - **database/**：逻辑表、唯一性/外键、RLS/事务和数据存储归属；需要业务语义时引用 domains。
+- **2026-10-23 唯一会员资格边界**：[身份/Pro 与 SaaS 功能职责分离](./domains/membership-qualification-boundary.md)；各 SaaS 的导出、AI、备份额度策略独立，公共后端只管理身份、成员和 Pro 授权/有效期。
 - **applications/**：用户和管理员应用交互、本地优先和跨 SaaS 会话；调用 backend 接口。内部平台管理门面参见 [Admin 管理前端架构](./applications/admin-console.md)。
 - **infrastructure/**：确认的技术平台和部署承载方式，不把技术选型当作业务规则。
 - **development/**（[开发资料](../development/README.md)）：教程、接入指南、测试实践和模板，不承载新的架构决定。

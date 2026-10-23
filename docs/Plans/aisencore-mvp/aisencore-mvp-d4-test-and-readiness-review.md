@@ -1,6 +1,6 @@
 # D4｜43 项分层测试规格、跨 D0～D3 评审及正式开发就绪结论
 
-> **用户批准 DEC-01～06 A 后增补的运行验收（全部 NOT RUN）**：REV-DEC01-01～08 测左/suspended 先于码探测、跨产品码、旧单参禁用、失败计数/码次数不越界；REV-DEC02-01～08 测 Edge 限体/白名单 JSON、安全 R2 final 条件写、DB pending/ready/孤儿/删除补偿、无客户端写 final；REV-DEC03 测 G0A 四类真实高保真/用户签收、G0B 原型、G3 浏览器多宽度/E2E；REV-DEC04 测 Free v1→v2 指针、现有/新用户下次计算、旧 grant/code 不变、无指针安全默认、回滚审计；REV-DEC05 测双模式互斥/NULL/永久/UTC/同键同参与异参竞争；REV-DEC06 测只读 SQL Auth 最小权限/aal2/分页/UUID 数/性能、失败 Edge 批量回退及缺邮箱降级。**方案批准不是以上任何一项 PASS**，继续遵循[API 验收权威](../../architecture/backend/api-contract-and-mvp-acceptance.md)和[决策记录](../20261022-review-remediation/owner-batch-decisions.md)。
+> **2026-10-23 最终会员边界（真实 D4 测试仍全部 NOT RUN）**：保留 DEC-01 双参兑换、DEC-02 R2 专项业务、DEC-03 UI 签收、DEC-05 直授和 DEC-06 身份查询；更新 DEC-04 为仅产品级 Pro 资格认证，不再存 Free/Pro 具体功能/额度或通用 capability 策略。Pro 30/365/永久是授予时长而非功能套餐版本。旧码 UNKNOWN、M1、AAL2、安全并发与业务拒绝/技术故障隔离仍为硬性验收。
 
 > **阶段性质：设计与静态审查，不是已经执行的测试。** 本文件承接已完成设计阶段的测试规格、风险台账与未验证门槛，执行清单按 Plans 规则清理。本报告中所有案例统一为 **NOT RUN**；本阶段只执行了文档一致性与工作区静态检查。业务预期仅源自 [API 逻辑验收唯一权威](../../architecture/backend/api-contract-and-mvp-acceptance.md)、[现行需求](../../spec/requirements.md) 与已批准[领域/技术架构](../../architecture/README.md)，绝不把候选实现写成已通过。
 >
@@ -8,11 +8,11 @@
 >
 > **后续第三方 BaaS 建议安全审查（2026-10-22）**：已形成 [BAAS-Q01～Q10 安全测试指南](../../development/testing/README.md)，新增 **BAAS-Q01～Q10 共 10 项未来负向/性能测试候选**（其中消费型额度用例只在业务真实引入时触发），均 **NOT RUN**。严禁把外部 `public SECURITY DEFINER` 的负数扣余额示例部署生产，也不把动态 Pro/blocked 放进 JWT 作当前权威；原 **55 项 I/R/A** 和后续 **12 项 AUTH-P** 均保留 NOT RUN。
 >
-> **新增 D3-UI 阶段追踪（2026-10-22）**：原 D4 在 D3 Resource/Provider 技术设计之后完成，**当时尚未包含真实 Admin 页面布局/线框/无障碍规格**。用户已批准并形成 [D3-UI 页面详细设计](./aisencore-mvp-d3-ui-admin-uiux-design.md)，列出 **D3-UI-X01～X18 共 18 条新的 UI/安全/可访问性/响应式验收**，全部 **NOT RUN**。该增量不改写已形成的 D4 原 I/R/A **55 项**，也不把历史 D4 误称为已评审后来新增的全部 UI，真实前端 MVP 必须未来另行实现并 E2E 留证。
+> **Admin 行为测试索引**：保留[Admin 应用架构](../../architecture/applications/admin-console.md)中 D3-UI-X01～X18 的可观察行为、安全和可访问性验收，全部 NOT RUN；旧公共套餐功能克隆/冻结 X08/X09 已由 Pro 授权事实与历史发码期限不变原则取代。D4 原有后端安全测试范围不变。
 >
-> **UI-G0 新增正式编码前硬关口（2026-10-22）**：根据用户最新决定，已形成 [UI-G0 全局设计系统权威](../../architecture/applications/admin-ui-design-system.md)。必须先统一 MUI 主题/字号/间距/布局/组件，并产出**四类可见的高保真基准页、宽窄屏评估及用户显式视觉签收**，才可把 `UI-G0` 设为 `APPROVED` 释放 Admin 前端正式编码。现仅有设计规范正文，**G01～G12 均 NOT RUN、UI-G0 NOT APPROVED / BLOCKED**；之后仍须执行 D3-UI-X01～X18 的真实浏览器截图/无障碍/权限 E2E。此补订不改变历史 D4 原 55 项、AUTH 12、BAAS 10 的 NOT RUN 状态。
+> **Admin UI 验证边界**：正式前端遵循 React-admin/MUI 单一 Theme，按当前任务对交互、视觉和可访问性进行必要评审。旧四类固定高保真参考、指定布局与样式不是任何编码的硬前提；正式施工仍需用户授权，后续真实浏览器和权限 E2E 必须留证。历史 UI-G0A 未签收、D4 测试均 NOT RUN。
 >
-> **设计规则迁移与 UI 验收细化（2026-10-22）**：用户提供的临时设计副本中的通用 `rules` 原则现经 [Admin 规则索引](../../development/frontend/admin-design-rules.md)与 [真实页面验证矩阵](../../development/frontend/admin-design-verification.md) 专门适配，**62 条原 ID（其中 3 条条件适用）不是新增 62 项 E2E 测试或已运行的自动化 gate**。其字体混排、列表返回/草稿、一次明文 UNKNOWN、动态视口/局部滚动、焦点/可访问性作为原 D3-UI-X01～X18 和 UI-G0-G01～G12 的**补充判据**，旧用例状态一律 NOT RUN。原项目脚本/CI 和先前运行记录不作为 AisenCore 测试证据。
+> **通用 UX 评审**：保留[62 条结构化 UX 规则](../../development/frontend/admin-design-rules.json)，按任务选择适用的规则与状态，不产生额外业务或 62 个必做独立 E2E；机器规则建议不代表已运行测试。对应 UI 行为见[Admin 验收索引](../../architecture/applications/admin-console.md)。
 
 ## 1. 分层模型、风险等级与执行顺序
 
@@ -33,7 +33,7 @@
 
 ## 2. 独立测试环境、造数与证据记录
 
-**隔离测试对象**：三个模拟用户 `A`、`B`、`C`（各独立 Supabase Auth ID 与真实测试 JWT）；两名以上管理员 `M1`、`M2`（TOTP/`aal2`）及仅 `aal1` 与普通用户对照组；至少两个已启用产品 `P`、`Q`（包含本地优先 Aisenlens 的隔离产品 Key），另设 `draft/suspended` 产品；存在 active/left/suspended 的独立成员、基础 Free、周期/永久 plan、未冻结与被 grant/码冻结版本、不同发行/使用/撤销状态的码及批次、测试 R2 私有桶中的允许配置样本。**不能**使用真实邮箱、个人备份、支付或真实客户兑换码；测试 Secret 仅用隔离环境秘密管理。
+**隔离测试对象**：三个独立 Auth 测试用户 A/B/C、两名管理员 M1/M2（含 aal1 对照）；产品 P/Q/draft/suspended，成员 active/left/suspended；**无 Free plans、Core Features/Limits 或 Pro 功能版本**，有 Pro 30/365/永久、未来、过期、撤销和并行 Grant、发行/兑换/撤销批次、安全限流及 R2 合规小型 JSON 样本。不能使用真实密钥/码，真 DB/RPC 测试仍 NOT RUN。
 
 **可重复造数**：为测试建立命名空间和独立 `request_id`；UTC 可控逻辑时间（冻结时钟/数据库可测试时钟方案须审查是否削弱生产时钟信任），15 分钟限流边缘点涵盖恰好阈值、刚过窗口、同用户并发；两连接用同步屏障保证窗口真正重叠，不以顺序循环代替并发；大量重复请求/故障注入后核对数据库事实与审计。R2 用不同用户/环境的随机 key，必要时测试两个重放的 PUT 与已 ready 内容是否一致。
 
@@ -67,7 +67,7 @@
 | I-16 | Auth+RPC | A JWT 未过期但成员已被产品管理员封禁 | 新的受保护操作拒绝，不信 UI 缓存 | 可信 RPC、前端提示记录 | P0 | NOT RUN |
 | I-17 | RPC+多产品 | A 在产品 P 被封禁，产品 Q 正常且有权益 | P deny、Q 仍 allowed，权益不跨产品 | 双产品查询快照 | P0 | NOT RUN |
 | I-18 | HTTP+RPC | 全局 blocked 用户查询两个产品/ensure/兑换 | CheckAccess 均 200 allowed=false ACCOUNT_RESTRICTED；普通写拒绝；兑换 200 ok=false ACCOUNT_RESTRICTED；解除仍保留原成员状态 | HTTP 状态与 JSON、前后状态 | P0 | NOT RUN |
-| I-19 | E2E+Edge | 本地缓存 Pro，但 grant 已到期/撤销，再请求云保护操作 | 服务端拒绝新 Pro/R2 签发；保留正常 Free | 状态与实际服务端判定、签名未发 | P0 | NOT RUN |
+| I-19 | E2E+Edge | 本地缓存 Pro，但 grant 已到期/撤销，再请求云保护操作 | 服务端拒绝新 Pro/R2 签发；保留无需登录的本地 Free，受保护在线 Free 仍须通过账号/产品/成员准入 | 状态与实际服务端判定、签名未发 | P0 | NOT RUN |
 | I-20 | 产品 ACL | A 有有效 Pro 却访问 B 的项目或私有文件 | Aisenlens 所有权检查 403；公共 allowed 不替代文件 ACL | 不同 owner 的对象/元数据请求 | P0 | NOT RUN |
 | I-21 | 容错集成 | 故障注入公共 CheckAccess 超时/503 | 新云端业务和新签名 fail-closed；提示不可验证非 blocked | 模拟故障、HTTP、无新对象 | P0 | NOT RUN |
 | I-22 | 跨系统事务 | 公共 ensure 已提交，产品业务库初始化失败 | 成员保留，产品业务可幂等重试；不假装跨库事务 | 前后两库状态、重试 trace | P1 | NOT RUN |
@@ -94,9 +94,9 @@
 | R-10 | 跨产品 | 产品 P 的码给 A，查询 Q 的权益 | 仅 P 授权，Q 权益、成员未变 | 复合 FK 与两产品响应 | P0 | NOT RUN |
 | R-11 | 限流+时间 | 同 A 于 15 分钟窗口连续输错至少 10 次，窗口推进 | 达到阈值再请求 RATE_LIMITED（HTTP 200 ok=false），计数事务持久；窗口清理后恢复 | 时间控制、rate_limits 状态、HTTP | P0 | NOT RUN |
 | R-12 | 幂等+Admin | 创建批次成功丢首响应，重试同 request_id 和改变 config | 原码不变且不回显明文；冲突配置报冲突；撤批+新 id 可重新发码 | 批次数量、哈希数、日志/UI | P0 | NOT RUN |
-| R-13 | 双事务并发 | 同 A 同套餐同时兑换两张不同周期码 | 序列化按最新授权末期续期、无重叠，且两笔仅各一次 | 锁等待/时段排序/死锁检测 | P0 | NOT RUN |
-| R-14 | 并发+计划冻结 | 已有 grant 或任何已发行 code（未兑/撤销）后改 features/limits；再与发行交错 | 不可原地修改，必须新 plan_key；并发无竞态；状态不部分提交 | plans/grants/codes 快照、锁轨迹 | P0 | NOT RUN |
-| R-15 | RPC+计划停用 | 码发行后停用 plan，兑换旧有效码；再尝试新发/直接授予 | 旧码可兑，新码/新直接授予拒绝；显式撤码才阻断旧码 | plan/批次/grant/HTTP 变化 | P0 | NOT RUN |
+| R-13 | 双事务并发 | 同 A 同产品 Pro同时兑换两张不同周期码 | 序列化按最新授权末期续期、无重叠，且两笔仅各一次 | 锁等待/时段排序/死锁检测 | P0 | NOT RUN |
+| R-14 | 跨模块权限边界 | 修改 AisenLens 的 AI/导出/备份业务策略并同时核销 Pro 码 | Core API/schema 和历史码/Grant 不受业务规则变化影响；SaaS 自有可信执行端重新核实 Pro/资源归属 | 端到端覆盖 Core 与 SaaS 服务边界 | P0 | NOT RUN |
+| R-15 | 旧码生命周期 | Pro 30天期限预设后来被管理界面隐藏，但已有有效码尚未到期 | 旧码仍按首次记录的产品、Pro 和授予天数兑现；不应依赖 plans.active/version；明确撤码才可阻断旧码 | 首次规范发行参数、查询和码状态 | P0 | NOT RUN |
 
 ## 5. Aisenlens 私有 R2 备份追加测试（不改原 43 项）
 
@@ -120,9 +120,9 @@
 | 规则 | 对抗性排程/注入 | 需要共同成立的 DB/API/UI 断言 | 开发前必须确认 |
 | --- | --- | --- | --- |
 | **M1 最后合格管理员** | M1 自撤权；两个 admin 事务同时 `BlockAccount`/`RevokeAdmin`；另从 Edge/Auth Admin 尝试绕过 | 所有入口共用保底事务锁，提交后的 `active且未blocked` 人数≥1；失败 409 `STATE_CONFLICT` 且无错误管理审计；MFA `aal1` 不能读/写 | DB 锁真正串行、Auth 外部禁用不得破坏保底、受控恢复责任 U05 |
-| **M2 套餐冻结** | T1 发码/授予并暂停；T2 修改同 plan 权益；先发行后停用/撤码 | 任何历史 grant 或码引用后 features/limits/plan_key 原地更新不可提交；竞争结果串行，停用后旧有效码仍可兑 | 产品行与 plan 行锁是否覆盖全部写入入口；产品内 capability 分类跨版本一致 |
+| **M2 改为 Pro 授权事实不可篡改** | T1 新发 Pro 30天码/授予并暂停；T2 修改时长 UI 快捷选项；再进行旧码核销、撤销 | 已发行码仍按首次签发的授予天数兑，Grant 已开始/结束时段不能被后续 UI 配置更改；Pro 资格从多条 Grant 可信聚合；产品新增功能不变更 Core schema | Pro 来源/时段幂等、行锁与历史码不因配置变化被删除 |
 | **M3 明文一次** | T1 DB 已提交但首次 HTTP 响应丢失；相同 request_id 配置相同/不同并发重试；管理员页切换 | 只有首成功响应允许明文，DB 只留 hash；重放空码清单；参数差异冲突；UI 内存清除，日志/浏览器存储不泄密 | 批次唯一键/指纹/事务、服务端日志/网络反向扫描、重放不重新生成 |
-| **M4 本人重复兑换优先** | 码已由 A 兑，之后用尽/过期/撤销；A 再兑、B 首次兑；A 同套餐两码并行 | A 在身份/blocked/限流通过后必得 `REDEEM_ALREADY_USED` 且不增加失败计数；B 统一无效；唯一 grant，续期不重叠；业务拒绝 200 提交失败计数 | 码锁与同用户/plan 续期锁顺序、并发真实屏障；业务拒绝不能抛导致回滚的异常 |
+| **M4 本人重复兑换优先** | 码已由 A 兑，之后用尽/过期/撤销；A 再兑、B 首次兑；A 同套餐两码并行 | A 在身份/blocked/限流通过后必得 `REDEEM_ALREADY_USED` 且不增加失败计数；B 统一无效；唯一 grant，续期不重叠；业务拒绝 200 提交失败计数 | 码锁与同用户/产品 Pro 续期锁顺序、并发真实屏障；业务拒绝不能抛导致回滚的异常 |
 | **M5 CheckAccess 三分** | 本人 JWT 有效但 left/blocked/产品暂停/缺权益；JWT 无效；真实 DB/网络故障 | 可信业务拒绝 200 allowed=false + reason；无效 JWT 401；无法计算 503；R2 新签名及 SaaS 高风险操作 fail closed，UI 区分不可验证与被封禁 | PostgREST SQLSTATE/HTTP 对照真实部署版本、Edge JWT 验签、客户端失效路径 |
 
 ### 6.1 静态交叉评审发现的问题与风险台账
@@ -161,10 +161,10 @@
 
 | 对照既有验收 | 真正要跑的证据 | 明确不扩展 |
 | --- | --- | --- |
-| D1 M01/M02、F02、R-07～09 | 空数据库按迁移顺序建 Free 复合 FK；同套餐先有远期孤立 explicit_window 再兑换，连续权益及新码开始时间正确；Admin 同 request_id 超时重试不增加期限 | 不为了想象的未来多租户扩建锁层/通用权益模拟服务 |
+| D1 M01/M02、F02、R-07～09 | 空库迁移无 Free/Pro 功能配置表、plans FK，Grant 和码按 product_id+tier=pro+时段；多 Pro 当前/未来区间、永久/撤销正确，拒绝 Free 发码/Grant；同 actor request_id 在超时重试不能延长期限 | 不为未来业务功能扩建通用权限/额度引擎 |
 | AUTH-P、I 类 | 桌面邮箱+密码、手机/异机点击确认与密码重置邮件均能完成；真实回调域名/白名单拒绝不可信 URL；已有 aal2 标签页不被重复登录静默降级；撤销会话后旧 JWT 的紧急封禁/撤权处理实测 | 不建 OAuth 代理、多 SaaS 邮件路由中台或自有会话管理器 |
 | D3-UI-X01/05/07/15 | 单产品运营页面保留真实产品过滤，平台用户/安全页面不被误过滤；成员暂停与账号封禁清楚显示各自影响范围 | 不建设全产品汇总切换状态机 |
-| D3-UI-X06/08/10/13 | 批量邮箱调用有界且无 N+1；用户详情分页按需查询；套餐复制创建新版本不影响旧版；直授永久显式选择；发码刷新后仅恢复非秘密 request_id，明文丢失后手动分两步撤销与新建 | 不建准入模拟器、自动双写补码器、通用 JSON Schema 编辑器 |
+| D3-UI-X06/08/09/10/13 | 批量邮箱有界且无 N+1；X08/X09 历史套餐功能克隆/冻结不再适用，改测 Pro 原始授权时段/码事实不受期限预设变更影响；直授永久必须显式确认，UNKNOWN 保留非秘密原 request_id 并分步恢复 | 不建准入模拟器、自动双写补码器或公共套餐功能编辑器 |
 
 **审计报告仍是参考意见**；已有 DEC-01～06 业务合同不因报告建议自动变动（特别是核销拒绝计数、CheckAccess 响应、UI-G0A 必须真实签收）。上述全部 **NOT RUN**；未创建 SQL、前端代码或任何云服务。
 

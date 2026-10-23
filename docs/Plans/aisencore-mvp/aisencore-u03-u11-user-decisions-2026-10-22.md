@@ -18,22 +18,20 @@
 | **U10** | **RESTORE FLOW CONFIRMED**：用户手动选择备份版本、预览差异、确认后**替换选中的配置类别**，不自动合并或静默覆盖 | 最多保留的版本数、保留时长/过期清理、类别清单、失败回滚策略细节未定；“10 版”此前仅建议**未批准** | Aisenlens 恢复 UI/生命周期实现前 |
 | **U11** | **BEHAVIOR CONFIRMED / INTERVAL CANDIDATE**：采用方案 A，启动/关键 Pro 操作在线复核；已启动的**纯本地**操作断网可以完成，无法验证时不得启动需新授权的 Pro 操作，Free 离线不受影响 | **最近一次成功授权 15 分钟**只是明确愿意评测的技术候选值，需隔离运行观察网络开销、频率与撤权窗口；是否按设备限制使用未决定。云端/R2 新签名仍要实时校验，不可套用客户端 15 分钟缓存 | Pro 客户端权益状态机/体验验收前 |
 
-## 2. 永久 Pro 的已有正确物理模型与首版策略
+## 2. Pro 的可信期限与明确永久（2026-10-23 最终修订）
 
-**无需引入“不可能到期的日期”或长期 JWT**。AisenCore 已有 [权益逻辑](../../architecture/domains/billing-and-entitlements.md#3-mvp-权益逻辑模型)：每条 `entitlement_grants` 使用 `starts_at timestamptz NOT NULL`、`ends_at timestamptz NULL`、`revoked_at`。Pro 永久授权表示 `ends_at IS NULL` 且未撤销、开始时间已到；**并不是无限续费的 365 天订阅，也不是永不过期的 JWT**。CheckAccess 仍实时检查产品 active、成员状态、blocked、授权被撤销与功能键；永久只意味着这条**产品套餐授权没有预定自然到期日**，不绕过风险/管理封禁。
+**公共核心仅有产品 Pro 资格、来源和时段**。每条 `entitlement_grants` 以 `user_id + product_id + tier='pro'`、可信 `starts_at`、`ends_at` 和撤销信息表达。Pro 永久是明确的 `ends_at IS NULL`，不是永久 JWT、免于封禁，也不是循环发行 365 天授权。无当前有效 Pro 时派生 Free；不会发行 Free 授权或编辑公共功能/额度。
 
-**建议的产品套餐组织（候选键名，不是实际 seed）**：
-
-| 用户展示 | `plans.plan_key` 候选 | 发行/授予结果 | 说明 |
+| 产品运营显示 | 公开资格 | 原始授权时段 | 说明 |
 | --- | --- | --- | --- |
-| Free | `free` | 不必创建 grant | 匿名离线基础功能可用，按既定无需每个 Free 登录 |
-| Pro 30 天 | `pro_30d` | `ends_at = starts_at + 30 days` | 固定**30 天**不一定等于每月相同日续订，不提供自动续费 |
-| Pro 365 天 | `pro_365d` | `ends_at = starts_at + 365 days` | 固定 365 天，不伪称包含闰年后自然周年日 |
-| Pro 永久 | `pro_lifetime` | `ends_at = NULL` | 产品权益持续有效直至经合法规则撤销/产品服务中止；永久购买的范围、退款/服务承诺仍待用户明确 |
+| Free（默认） | 无有效 Pro | 无 Free Grant | AisenLens 离线免费功能由 SaaS 实现，Core 不控制功能矩阵 |
+| Pro 30 天 | `pro` | `ends_at=starts_at+30 days` | 固定 30 天并不等于自动月订阅 |
+| Pro 365 天 | `pro` | `ends_at=starts_at+365 days` | 固定天数，并非每年相同日扣费 |
+| Pro 永久 | `pro` | `ends_at=NULL`（显式确认） | 无自然截止日，仍可撤销/被成员或账号限制 |
 
-上述三个 Pro SKU 可指向等价的功能开关集，例如经产品审查后的 `ai.analysis`、`video.export.no_watermark`、`backup.config`，但**价格/实际配置字段与上限尚未冻结**。套餐一旦被 grant 或已发行码引用，权益字段不再原地更改，应新建套餐版本。
+30、365、永久只是**发行时长参数或 UI 快捷预设**，不是三个 `plans.plan_key`、不同功能版本，也不要求 Pro 套餐引用冻结。改变 AI、视频导出、私有配置备份、次数/容量只应改 AisenLens 自己的策略与可信执行端。
 
-**发码与永久分离**：U08 已确认**首批单次兑换、固定天数码**，因此初期面向用户发的码可选择 `grant_duration_days=30` 或 `365`，`max_redemptions=1`；码自身的有效截止 `expires_at` 与使用后 grant 的 `ends_at` 独立。**首批永久 Pro 先保留套餐模型，可通过未来受控管理员直接 grant `ends_at=NULL`，或者待批准后为永久套餐发行 `grant_duration_days=NULL` 的一次性永久码**。不要自动把所有 Pro 兑换码变永久。永久购买是否允许后续新特性/政策调整及对用户的精确展示条款仍需明确。
+**首批发码**：已确认仅固定正整数天数、通常单次兑付，优先 30 或 365 天；每个 Code 要保存首次 Pro 授予天数，`expires_at` 表示码可兑换的截止时间，不是 Grant 期末。永久 Pro 先由受控人工直授在 `explicit_window` 模式明确传 `ends_at=NULL`；若以后决定发行永久 Pro 码，应单独批准其运营和不可缺省的输入语义，不能把漏传天数误当永久码。后续价格、退款、永久购买承诺依然待产品决议。
 
 ## 3. Admin MFA：已纳入 MVP，解决重复验证的体验诉求
 

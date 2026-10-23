@@ -18,7 +18,7 @@
 - [MVP 总计划（ACTIVE）](Plans/aisencore-mvp/aisencore-mvp-implementation-design-master-plan.md)：整体阶段依赖、实际开发与发布门槛。
 - [当前 TODO](./Plans/TODO.md)：尚待确认的产品/运营参数、UI-G0 视觉签收及真实后端、MFA、R2、浏览器测试。
 - [D1 数据库设计](Plans/aisencore-mvp/aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/Aisenlens 设计](Plans/aisencore-mvp/aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3 Admin/环境设计](Plans/aisencore-mvp/aisencore-mvp-d3-admin-infrastructure-design.md)：实施候选而非已运行代码。
-- [D3-UI Admin 页面设计](Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md)、[UI-G0 全局规范](./architecture/applications/admin-ui-design-system.md)和[六项设计收敛计划](./Plans/20261022-admin-mvp-six-step-master-plan.md)：旧 development 视觉基础/G0B 原型已删除，**轻量交互优先验证方法已选**，但 G0A NOT APPROVED、Token 未冻结，正式 MVP 业务代码与 G3 仍未开始。
+- [Admin 应用与行为合同](./architecture/applications/admin-console.md)、[统一 Theme 与 UI 质量规范](./architecture/applications/admin-ui-design-system.md)、[MVP 设计状态](./Plans/20261022-admin-mvp-six-step-master-plan.md)：保留 React-admin 与安全行为，取消历史固定主题、页面、像素与全景原型，正式施工须另行授权。
 - [D4 测试/开发就绪评审](Plans/aisencore-mvp/aisencore-mvp-d4-test-and-readiness-review.md)：逻辑/安全/R2 增量测试设计，全部 NOT RUN。
 - [F01～F04 安全收敛](Plans/aisencore-mvp/aisencore-f01-f04-security-convergence-design.md)、[F05～F08 契约及兼容准备](Plans/aisencore-mvp/aisencore-f05-f08-contract-compatibility-readiness-design.md)：仅设计收敛，真实环境验收仍未执行。
 - [U03～U11 当前决议](Plans/aisencore-mvp/aisencore-u03-u11-user-decisions-2026-10-22.md)：已确认项与真实待定条件。
@@ -28,13 +28,13 @@
 
 - [开发总入口](./development/README.md)：开发规范和各主题参考。
 - [前端指南](./development/frontend/README.md)：React-admin 前端约束与官方资料。
-- [交互验证开发流程](./development/frontend/interaction-benchmark-workflow.md)、[原型制作规则](./development/frontend/interaction-benchmark-spec.md)、[复用与测试边界](./development/frontend/prototype-to-production-rules.md)：独立规范；frontend/README 仅作索引。
+- [原型与 AI 开发流程](./development/frontend/interaction-benchmark-workflow.md)、[原型产物规范](./development/frontend/interaction-benchmark-spec.md)：按风险选验证场景，不强制固定六模块或特定 HTML 外壳；前端 README 为索引。
 - [测试指南](./development/testing/README.md)：测试规范入口。
 - [计费/订阅接入资料](./development/billing-subscriptions/README.md)：参考资料、集成指南与模板。
 
 ## 交互基准网页（验证产物，不是另一层权威）
 
-- [interaction-benchmarks 原型目录](./interaction-benchmarks/README.md)：按具体任务保存可双击的单文件 HTML 和必要引导；规则在 development，业务/Token 在 architecture，人工认可和未决问题在 Plans。当前没有已批准的 UI-G0A 原型，不自动迁移根目录 `灵感/` 候选演示。
+- [交互原型目录](./interaction-benchmarks/README.md)：按任务存实际产物；当前未找到旧计划引用的可运行全景 HTML，旧 UI-G0A 未签收。
 
 ## 文档维护规则
 

@@ -4,60 +4,44 @@
 
 ## 1. 逻辑表与最小字段
 
-### 1.0 `products` 当前 Free 家族指针（DEC-04）
+### 1.0 `products` 与 `product_memberships`
 
-逻辑字段 `products.current_free_plan_id` 可空，通过 `(current_free_plan_id,product_id)` 复合外键引用同产品的 `plans(id,product_id)`；候选 `plans.plan_family='free'` 或等价可信约束，防止该指针指向 Pro。首次 `plan_key='free'` 不改 key，后续 `free_v2` 等各有独立 id；迁移保留旧 code/grant FK 和版本不变量。NULL 意味着未配置公共 Free 附加能力。管理员只有通过 L0/L3/L4 一致锁序的受保护 RPC 才能切换指针与写审计；匿名本地 Free 仍由 Aisenlens 本地能力承载。
+`products` 保存产品 key、名称、状态；`product_memberships` 独立保存当前成员状态与受控转换。**不新增 `products.free_features/free_limits`、公共业务额度或功能表**。匿名 AisenLens 本地 Free 由自身提供。
 
-### 1.1 `plans`（产品套餐）
+### 1.1 `entitlement_grants`：唯一的产品 Pro 授权事实
 
-| 建议字段 | 逻辑约束 |
+| 字段 | 最小约束 |
 | --- | --- |
 | `id` | PRIMARY KEY |
-| `product_id` | NOT NULL，引用 `products.id` |
-| `plan_key` | NOT NULL；`UNIQUE(product_id, plan_key)` |
-| `name` | NOT NULL |
-| `features` | 功能开关键集合（如 JSON 数组）；默认空；成员权益求并集 |
-| `limits` | 非负数值上限键值（如 JSON 对象）；默认空；同名额度求最大值，不相加 |
-| `default_duration_days` | 可空；空表示由授权来源决定 |
-| `is_active` | 停用后不可创建该套餐的新兑换码或管理员新授权；已发行且仍有效的兑换码可继续兑换，已存在授权不受影响 |
-| `created_at`, `updated_at` | 可信端维护 |
+| `user_id` | FK 到 Auth 用户，NOT NULL |
+| `product_id` | FK 到 products，NOT NULL；授权不可越产品生效 |
+| `tier` | 首期固定 CHECK (= 'pro')；Free 不创建 Grant |
+| `source_type/source_ref` | 来源类型、强唯一源引用；首期 `redeem_code/admin`，以后才增加已验证渠道 |
+| `starts_at` / `ends_at` | start NOT NULL，end 可显式 NULL 表示永久；非空时严格 > start |
+| `revoked_at/revoked_by/revoke_reason` | 可信撤销记录，不删除原授权 |
+| 受控幂等元数据 | 同 actor、同 request_id 首次规范字段与可信算出的时段须可回读比较 |
 
-每产品允许多个不可变 Free 家族版本，仅 `current_free_plan_id` 指向一个当前版本；默认 Free 不需 grant，无 Free 指针时无附加能力。**Free 家族权益字段自首次创建成功起即永久冻结**（即使没有任何 grant/code 引用，也不能原位改 features/limits，必须新建版本切指针）。**非 Free 套餐一旦被任意 `entitlement_grants` 或 `redemption_codes` 引用（包括已撤销码）**，其 `product_id`、`plan_key`、`features`、`limits` **冻结不可变**；修改功能与额度应创建新套餐版本，旧码和旧授权继续引用原版本。可信 `admin_upsert_plan` 与发码/授予函数须使用兼容的套餐行锁序，在同一事务内检查引用，避免“检查时无引用、随后并发发码”的竞态。停用旧套餐只阻止**新发行/新直接授予**，已发行有效码仍可兑换；停止旧码兑现须显式撤销码/批次。套餐不保存价格与支付渠道配置；价格随渠道接入再建模。
+`UNIQUE(source_type,source_ref)` 与受保护来源域构造保证重试不重复发放。`tier=pro` 不是用户表里的 `is_pro`；没有历史功能版本或 `plans.features/limits`，未来的产品功能发布不改历史 Grant。当前有效 Pro 仅按 `user_id,product_id,tier`、`starts_at<=trusted_now`、未撤销且 `ends_at IS NULL OR ends_at>trusted_now` 聚合；有任意有效 Pro 才显示 Pro。最后一个失效自然显示 Free（表示无 Pro），**不删除历史、不生成 Free Grant/降级行**。账号 blocked、产品暂停和成员 left/suspended 仍独立拒绝受保护在线操作。
 
-### 1.2 `entitlement_grants`（产品授权，当前权益的唯一事实来源）
+**Pro 时间预设**：30/365 天或永久只作为发行/直授请求参数，**不新建三份 Pro 功能套餐、`plan_id` 或 `pro_v2` 功能版本**。按同用户同产品 Pro 为周期授权计算最长未撤销未来结束日，保持原 L7 锁及首次规范时段存证；永久身份不自然到期、仍可撤销。
 
-| 建议字段 | 逻辑约束 |
+### 1.2 `redemption_codes`：自有码发放 Pro 资格
+
+| 字段 | 最小约束 |
 | --- | --- |
-| `id` | PRIMARY KEY |
-| `user_id` | NOT NULL，引用 `auth.users.id` |
-| `product_id` | NOT NULL，引用 `products.id` |
-| `plan_id` | NOT NULL，引用 `plans.id`；须与 `product_id` 属于同一产品（在 `plans` 增加 `UNIQUE(id, product_id)`，以 `(plan_id, product_id)` 复合外键引用它） |
-| `source_type` | NOT NULL；MVP 仅 `redeem_code`、`admin`，以后按渠道增加 |
-| `source_ref` | NOT NULL；兑换为确定性 `code_id:user_id`，**人工授予为可信端构造的 `admin:<actor_uuid>:<request_uuid>`**（用户原始 request_id 仍由调用者提供；必须按 actor 分域），未来外部渠道为带商户/渠道命名空间的权威订单 ID |
-| `admin_request_metadata`（受控技术列/私有幂等行） | DEC-05 已批准：首次记录 actor/request_id、mode、规范输入与可信时间结果；只有被安全强类型列完整覆盖的信息才可去掉冗余 SHA-256 指纹；元数据不向普通 Data API 暴露 |
-| `starts_at` | NOT NULL |
-| `ends_at` | 可空；**NULL = 永久非周期授权**；非空时须大于 `starts_at` |
-| `revoked_at`, `revoked_by`, `revoke_reason` | 撤销信息；撤销不删除记录 |
-| `created_at` | 可信端生成 |
+| `id`、`code_hash` | PRIMARY KEY；哈希唯一，SHA-256 规范化高熵码，明文不落库/日志 |
+| `product_id`、`tier` | 产品非空；MVP tier 固定 'pro'；不指向业务 `plan_id` |
+| `grant_duration_days` | 正整数天数；首发运营默认 30/365 天。永久发行必须另行明确授权和显式语义，绝不把省略天数误判为永久 |
+| `max_redemptions` / `redeemed_count` | 正整数与 `0 <= redeemed_count <= max_redemptions` |
+| `expires_at` | 兑换码本身到期时间，与 Pro 授权结束时间分开 |
+| `batch_id/batch_ordinal` | 可信批次和顺序、actor scoped request_id、唯一约束 |
+| `revoked_at/revoked_by`、`created_by/created_at` | 可信发行和撤销事实 |
 
-**核心不变量**：`UNIQUE(source_type, source_ref)` 保证同一来源只授权一次；兑换的确定性来源引用在创建 redemptions 前即可计算，**先创建 grant，再以 grant_id 创建 redemption**，避免循环非空外键。人工授予使用 actor-scoped `request_id` 的稳定来源键，并保留**首次请求规范语义及计算结果的受保护幂等证据**：同 actor/UUID 同有效参数重试只读原 grant，目标/时间/reason/套餐参数不同返回 `STATE_CONFLICT`，不生成重复授权/审计。现有授权事实表仍唯一，未新增业务表；未来订单引用包含商户作用域。授权记录只新增与撤销，不物理删除、不回写历史时间。请求签名、首笔语义比较与 NULL 契约见本文 §2.1；F05 中的迁移与测试排程不作为长期安全规则的唯一来源。
+同批次发行只返回首响明文；重试同 actor/request_id 不再返回明文。旧有效码仍按照**首次记录的产品、Pro、授予天数**兑换，即便管理端后来删除了某个“期限快捷选项”；只有码自己过期/用尽/撤销、产品/成员资格不满足才拒绝。业务码优先级和 UNKNOWN/失明文后先撤销再新建保留。
 
-建议索引：`(user_id, product_id)`，满足“当前有效权益”查询。
+### 1.3 无功能版本套餐表（变更前提）
 
-### 1.3 `redemption_codes`（自有兑换码）
-
-| 建议字段 | 逻辑约束 |
-| --- | --- |
-| `id` | PRIMARY KEY |
-| `code_hash` | NOT NULL，UNIQUE；仅存对规范化、高熵兑换码计算的 SHA-256，不存明文、不在日志或审计保存明文 |
-| `product_id`, `plan_id` | NOT NULL；以 `(plan_id, product_id)` 复合外键指向同产品的套餐，拒绝跨产品发码 |
-| `grant_duration_days` | 可空；NULL = 永久授权 |
-| `max_redemptions` | NOT NULL，≥ 1，默认 1 |
-| `redeemed_count` | NOT NULL，默认 0；CHECK `0 ≤ redeemed_count ≤ max_redemptions` |
-| `expires_at` | 可空；码本身的兑换截止时间 |
-| `batch_id`, `batch_ordinal` | 由一次发码 `request_id` 唯一确定的批次与批次内序号；`UNIQUE(created_by, batch_id, batch_ordinal)`，同一管理员的同一批次不可重复创建；重复 `request_id` 但配置不同应拒绝为请求冲突 |
-| `revoked_at`, `revoked_by` | 撤销信息 |
-| `created_by`, `created_at` | 可信端生成 |
+原 `plans` 仅因公共功能/额度配置与冻结/克隆而存在，首期**从目标逻辑 schema 移除**。Admin 可保留 `30天`、`365天`、`永久（直授）` 操作预设，但它们不是数据库套餐实体。未来涉及支付定价/Team/Enterprise 时单独设计价格/发行模板实体，不提前混入功能策略。
 
 ### 1.4 `redemptions`（兑换记录）
 
@@ -85,22 +69,22 @@
 
 所有状态变更通过[数据库访问与可信事务](./database-access-and-transactions.md)中约定的**单次受保护 PostgreSQL RPC** 完成（一个数据库函数调用处于一次数据库事务内）。普通用户无直接表写权限。
 
-1. **`redeem_code(product_key, code)`（用户本人，DEC-01）**：以 `auth.uid()` 验证身份，在统一 [F02 L0～L8 长期事务锁合同](./rpc-security-and-locking-contract.md) 中先取目标本人 L1 并排除 blocked、L2 失败限流锁；按不可信声明 `product_key` 先取得 L3 产品锁并验证产品，再取 L5 **已有**成员锁（没有成员不得提前创建）；left/suspended 不接触码表即一致拒绝并计入本人失败窗口 → 对 none/active 才规范化哈希、非锁定定位码 ID（未知/跨产品同一错误），然后取得 L6 码 `FOR UPDATE`，**优先查该本人已有兑换**：若已有返回 `REDEEM_ALREADY_USED`，哪怕码后来用尽、过期或撤销，也不新增授权/失败计数（前提是身份/blocked/限流检查通过）→ 对尚未兑过的人检查最新码状态、真实码产品 ID 与声明产品一致并复核产品/成员合法性；`plans.is_active` **不阻止旧已发行有效码兑现** → 按 L7 用户+计划事务锁计算续期 → 最终 L8 **仅在成功分支**创建缺失的 active 成员+join event → **先 INSERT grant** → 再 INSERT redemption → 更新 `redeemed_count+1`。预期业务拒绝结构化正常返回以保留限流计数，不能提交任何新增成员/授权/码次数；技术异常整体回滚。无成员时的唯一键/隐含锁仍需真实双事务验证。
-2. **`admin_create_codes(product, plan, config, quantity, request_id)`**：管理员/`aal2`、产品/计划资格通过后**以持久化强类型首次配置进行 NULL-safe 语义比较，不能从字段完整还原时才保留受限 canonical 指纹**：缺省 `max_redemptions=1`、显式 JSON null 对该字段无效，`grant_duration_days/expires_at` 缺省/NULL 等价、时间规范为 UTC 微秒；`UNIQUE(created_by,request_id)` 保护同 actor 幂等且配置不同返回冲突；只存密码学码 hash、审计同事务；**首次成功响应才返回明文**，所有重放均不回显。实际业务单批上限 U08 未确认。
+1. **`redeem_code(product_key, code)`**：按原 DEC-01/F02 安全锁序、声明产品 + left/suspended 先拒绝、本人限流、查码/核销/Grant 原子事务；校验 `redemption_codes.product_id` 同产品且 `tier=pro`，Grant 源为 redeem_code，授予期限读取首次码发行的可信时长。不可再以旧 `plan_id` 判权；重复兑换、撤销、未知及失败计数语义维持原有约束。
+2. **`admin_create_codes(product, tier, duration_days, config, quantity, request_id)`**：只允许 `tier=pro` 且启用产品；明确正天数/合法时段，不接受 Free 或业务功能列表。与原 M3 相同的 actor-scoped request_id、强类型配置规范、NULL 安全比较、旧请求 UNKNOWN 查询、哈希保存与首响明文独占规则继续适用；同产品码不得跨平台兑现。
 3. **`admin_revoke_code(code_id, reason)`**：只设置 `revoked_at`，不影响已有授权；写审计。
-4. **`admin_grant_entitlement(user, product, plan, mode, duration_days?, starts_at?, ends_at?, reason, request_id)`（DEC-05）**：管理员与 MFA 验证 → 由可信 actor 构造 `admin:<actor_uuid>:<request_uuid>` 来源键并比较首次持久化的完整输入语义（`duration` 正天数且不允许时间字段；`explicit_window` 必须同时提交 starts_at 与 ends_at，明确 null 才永久），在 L7 中仅首次可信计算顺延时间 → 相同请求返回原 grant，无新增审计；异参 `STATE_CONFLICT` → 原子 INSERT 授权+审计；不改变成员状态。
+4. **`admin_grant_entitlement(user, product, tier, mode, duration_days?, starts_at?, ends_at?, reason, request_id)`（DEC-05）**：只允许指定产品 `tier=pro`，原 `duration` 正天数可信顺延或 `explicit_window` 完整起止（显式 NULL 才永久）、同 actor request_id 幂等语义和 L7 并发锁保持；不写会员布尔字段，Grant 与审计原子写入。
 5. **`admin_revoke_grant(grant_id, reason)`**：设置撤销字段并写审计；重复撤销不重复写入。
-6. **`admin_upsert_plan(...)` / `admin_set_default_free_plan(product, free_plan_id)`**：创建套餐或修改**非 Free、且尚无 grant/已发行 code 引用**的套餐能力；**Free 家族无论是否已引用均不得修改权益字段，只能新建版本后原子切换当前 Free 指针**。非 Free 存在任一引用时只能修改非权益展示字段（如名称）、停用，权益变化须创建新套餐版本（如 `pro_v2`）。与发码/授权函数共用套餐行锁序，防止并发破坏冻结条件；写审计。
+6. **仅会员资格管理命令**：不实现 `admin_upsert_plan`、`admin_update_product_free_capabilities`、功能版本克隆/指针切换；Pro 发行时长经发码/直授参数指定。管理员只能在受控写接口中修改码或 Grant 的明确生命周期事实，不能编辑 SaaS 功能策略。
 
-**并发要点**：多人同码依靠行锁 + CHECK 防超量；同一人同码依靠 `UNIQUE(code_id,user_id)` 与来源幂等键；所有影响同一用户+套餐续期的可信操作先采用一致的事务级锁顺序（如以用户/套餐派生的 advisory transaction lock），再检查未来未撤销的最长到期时间，避免并发读旧值造成重叠。尽量把授权时段计算与写入放在同一 RPC 中。
+**并发要点**：多人同码依靠行锁 + CHECK 防超量；同一人同码依靠 `UNIQUE(code_id,user_id)` 与来源幂等键；所有影响同一用户+产品的 Pro 周期续期的可信操作先采用一致的事务级锁顺序（如以用户/套餐派生的 advisory transaction lock），再检查未来未撤销的最长到期时间，避免并发读旧值造成重叠。尽量把授权时段计算与写入放在同一 RPC 中。
 
-**消费型额度不是当前 MVP 已批准的实体**：`plans.limits` 表示产品权益的上限，不能被客户端直接当成可扣余额修改。Aisenlens 备份的真实 `ready+reserved` 使用量由产品可信元数据事务预留、核验后结算，跨 R2 与 PostgreSQL 的补偿按 F03；**用户自带 AI API Key 的模型调用不由 AisenCore 通用 RPC 扣费**。若将来确需按次消费，必须先完成服务端可信计算消费额、正数/溢出边界、actor/资源属主、原子幂等与限额的安全验证（测试反例可见开发计划），**不新建公共余额表作为当前 D1 交付**。
+**产品配额与计量不是 Core 实体**：AisenLens 备份 `ready+reserved` 容量仍由其专用可信元数据/R2 事务预留和核验；AI 自带 API Key、导出次数和存储额度都不进入公共会员数据库。本轮不设计跨 SaaS 扣减/余额表。
 
 ### 2.1 管理写入幂等与可读取字段（DEC-05 已批准）
 
-**发行批次**逻辑键至少为 `(created_by, request_id)`，唯一竞争后必须**重新读取首次请求的持久化参数**再判断同键同参数；等价输入须定义强类型规范化，包括 `max_redemptions` 缺省与显式 null 的不同、`grant_duration_days` / `expires_at` 的缺省和显式 null 等价规则、UTC 时间戳微秒精度、数量与套餐产品组合。DEC-05 已批准优先**保存强类型首次配置列并按 NULL-safe 值比较**；旧 SHA-256 `config_fingerprint` 仅在必要且语义不能重建时保留，删前必须通过并发、异参冲突与旧数据回归；绝不能仅因 request_id 相同就返回成功。
+**发行批次**逻辑键至少为 `(created_by, request_id)`，唯一竞争后必须**重新读取首次请求的持久化参数**再判断同键同参数；等价输入须定义强类型规范化，包括 `max_redemptions` 缺省与显式 null 的不同、`grant_duration_days` / `expires_at` 的缺省和显式 null 等价规则、UTC 时间戳微秒精度、数量与 Pro 产品及授予时长组合。DEC-05 已批准优先**保存强类型首次配置列并按 NULL-safe 值比较**；旧 SHA-256 `config_fingerprint` 仅在必要且语义不能重建时保留，删前必须通过并发、异参冲突与旧数据回归；绝不能仅因 request_id 相同就返回成功。
 
-**人工直授**使用稳定、actor-scoped `admin:<actor_id>:<request_id>` 的 `source_ref`，对有效的 user/product/plan、授权时段与可信归一化 reason 作首次请求语义校验；同参数重试只返回**原 grant 的非秘密摘要**，绝不重新授予或重复审计；同键不同参数返回 `STATE_CONFLICT`。直授已批准两条互斥 `mode=duration` 顺延与 `mode=explicit_window` 显式时段的规范；旧显式签名通过可审计迁移保持含义，不能默认为永久。`ends_at=NULL` 是永久授权，不能与字段遗漏混淆；重试不能按新的当前时间重新计算 fingerprint。
+**人工直授**用 actor-scoped `admin:<actor_id>:<request_id>` 作为可信源键，对目标 user/product、`tier=pro`、授予模式、首次规范化时段与 reason 做完整幂等语义比较；相同参数重试只返回原授权非秘密摘要，同键异参 `STATE_CONFLICT`。`duration` 与 `explicit_window` 必须互斥且可信计算首次持久化；`ends_at=NULL` 只有明确永久才合法，不得用字段缺失默认永续。
 
 **暴露面**：`code_hash`、管理请求指纹、幂等元数据、JWT、密钥、码明文都不是普通 Data API 可读列。列级 GRANT 和客户端 `select=*` 不是天然兼容；普通用户的合法查询应走经真实 `GRANT/RLS/security_invoker` 验证的**安全投影**或明确允许列，不为了修 42501 授予隐藏列 SELECT。码 hash 只在 private 受保护函数访问；管理员查询码列表也必须是无 hash/无明文安全视图。安全投影与指纹精简物理版本在实现时定稿，必须以 F05-C01～12 验证真实 HTTP/SQL、列 GRANT、空值和重放。
 
@@ -108,7 +92,7 @@
 
 | 对象 | 普通 authenticated 用户 | 平台管理员（RLS 读取） | 写入 |
 | --- | --- | --- | --- |
-| `plans` | 可 SELECT `active` 产品的启用套餐（供客户端展示功能差异） | 全部 SELECT | 仅管理函数 |
+| 产品与授权资格（无 plans） | 根据本人已关联的产品身份和安全状态查询；普通用户只能读获准的公共元数据 | 管理员可查必要状态/Pro Grant，不可读取产品业务功能/额度 | 新产品及运行状态仅经受保护函数 |
 | `entitlement_grants` | 仅本人行 SELECT | 全部 SELECT | 仅可信函数 |
 | `redemptions` | 仅本人行 SELECT | 全部 SELECT | 仅 `redeem_code` |
 | `redemption_codes` | **禁止**（哈希也不暴露） | 仅允许**非哈希元数据列** SELECT（列级 GRANT/安全投影视图 + 管理员 RLS），如批次、状态、使用次数；`code_hash` 对所有 Data API 客户端不授 SELECT | 仅管理函数 |
@@ -120,11 +104,11 @@
 
 - 退出、封禁、产品暂停均不修改授权、兑换码或兑换记录。
 - 授权与兑换记录属于必要的计费事实，账号注销时的保留/去标识化随注销政策确定，不使用 `ON DELETE CASCADE` 自动清除。
-- 套餐停用不删除；产品永久下线时的权益处理留待专门策略。
+- 期限快捷预设变化不修改历史 Pro 码或 Grant；产品暂停不自动删除已有授权。
 
 ## 5. 待实施前确定
 
-最终字段类型与 JSON 结构约束、兑换码字符集（不低于 128 bit 已确定）与具体格式、批量上限、限流行清理执行方式、试用来源表达、外部渠道订单表是否同库、实际 RLS SQL 与 pgTAP 测试。
+最终 Grant/码强类型字段、可信时间/时区和请求幂等结构、兑换码字符集（熵不低于 128 bit）、发行数量上限、限流清理、未来渠道订单是否同库、真实 RLS/GRANT 和 pgTAP/并发测试。**产品功能/额度 JSON 规则及 plans 表不再是 Core DDL 工作项**。
 
 ## 相关架构
 

@@ -1,38 +1,29 @@
-# AisenCore Admin Design｜前端开发设计专题指南
+# Admin 前端开发总纲（React-admin / MUI）
 
-> **定位**：面向以后 AisenCore Admin React-admin/MUI 开发的**设计原则与具体执行指南**；源自对临时参考 `参考/design` 的有边界重构，**不是直接复制 AisenLens 的设计系统或已完成的前端代码**。
->
-> **状态（2026-10-22）**：规范已建立，**未完成高保真设计、用户视觉签收、真实浏览器与组件运行验收**。`UI-G0A = NOT APPROVED / BLOCKED`；此目录存在不能释放 Admin 正式 Theme/Layout/业务页面编码。
->
-> **技术选型**：Admin 继续使用 React-admin + MUI + TypeScript，保留 [Admin 业务设计](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md) 与 [D3 Resource/Provider](../../Plans/aisencore-mvp/aisencore-mvp-d3-admin-infrastructure-design.md)；不从参考项目引入 Tailwind、Base UI、shadcn、独立数据缓存/路由框架、AisenLens 专属主题和产品功能。
->
-> **当前统一入口**：[frontend/README.md](./README.md)。本文件是其 Admin 设计专题细则，而非单独设计系统目录入口；字体/颜色/尺寸仍只由 [UI-G0](../../architecture/applications/admin-ui-design-system.md) 决定。
+> **定位**：通用前端实施、复用及审核规则，不是页面线框、Theme 色板或业务/API 权威。业务、安全与数据操作以 [Admin 应用架构](../../architecture/applications/admin-console.md)、[当前需求](../../spec/requirements.md)和后端合同为准。
 
-## 阅读顺序与单一权威
+## 技术与组件复用
 
-| 要解决的问题 | 唯一主入口 | 本目录如何使用 |
-| --- | --- | --- |
-| Admin 功能范围/权限/安全合同 | [正式需求](../../spec/requirements.md)、[D3](../../Plans/aisencore-mvp/aisencore-mvp-d3-admin-infrastructure-design.md) | 不通过 UI/规则改写业务状态、数据模型或 API |
-| **品牌、字体字号精确候选、全局 Theme/布局/组件 Token、UI-G0 门槛** | **[Admin UI-G0 全局唯一视觉权威](../../architecture/applications/admin-ui-design-system.md)** | 这里不维护第二套 HEX、px 配色、主题运行值 |
-| Admin 页面 IA/路由/业务动作 | [D3-UI 页面详细规格](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md) | 把规则映射到真实业务场景 |
-| 设计原则/适用条件/验证问题 | [规则目录](./admin-design-rules.md)与机器可读 [admin-design-rules.json](./admin-design-rules.json) | 先按实际页面读取有关分类；保持原 `UX-*` ID 可追踪 |
-| 文字/色彩/布局/密度/图标/动效的**通用方法** | [设计基础](./admin-design-foundations.md) | 细化“如何使用”而不是再定义 Token |
-| 标准组件/列表详情/设置表单与保存模型 | [组件与页面模式](./admin-design-components-and-patterns.md) | 优先 React-admin/MUI，最小扩展，不写平行控件 |
-| 交互优先的低成本实验、体验引导与 AI 交接 | [轻量交互验证工作流](./interaction-benchmark-workflow.md) | 按跨模块/风险决定是否模拟；原型交付必须附上引导；不新增另一套业务或 Token 权威 |
-| UI-G0 高保真前门禁 / UI-G3 真实浏览器验收 | [规则与页面验证矩阵](./admin-design-verification.md) | 标明证据/阶段/权威数据，不把设计或构建当视觉通过 |
+1. 正式 Admin 优先基于 React-admin + TypeScript + MUI 的当前适配版本；使用其 Resource、List、Datagrid、Show、Create/Edit、表单、Menu、Dialog、Notification、DataProvider、AuthProvider、Query/Router 能力。不同时维护第二套路由、表单状态机、表格、缓存或完整样式体系。
+2. 标准能力可满足任务时直接复用；不足时优先组合或少量扩展 MUI/React-admin 组件，只有确认真实缺口后才自行开发。扩展不得绕过标准键盘、可访问性或数据流机制。
+3. 正式应用只从一个全局 Theme 消费字体、语义色、间距、圆角与组件变体，细则见 [统一 UI 质量规范](../../architecture/applications/admin-ui-design-system.md)。不要把历史候选 Token 或 HTML 样式直接复制成事实标准。
+4. 表单优先使用标准字段和校验，必须在失败后保留可恢复输入，显式区分确认、取消、加载与未知结果；授权、发码等危险写遵循现有可信 RPC/Edge 权限与幂等合同。
+5. 一切实现遵守 KISS/YAGNI：有证据的共享需求才抽象；不为两个页面轻率建设万能模板，不因通用 UX 建议而发明新 MVP 功能。
 
-### 基本执行协议
+## 通用设计基础（原 foundations 与 components 合并）
 
-1. **先确认 UI-G0 实际批准状态**。本轮已决定采用轻量、交互优先的方法，但 **UI-G0A NOT APPROVED / BLOCKED**；可进行已获授权的文档设计与评审，原型需按用户授权开展，禁止正式 Admin Theme/Layout/业务页面施工。
-2. 有具体任务时先读现有业务合同与 D3-UI，再查询本目录相关规则，最后检查 UI-G0 精确 Token、已批准视觉基准及版本。**不要无差别加载长篇设计原则手册**。
-3. 对每个交互优先使用 React-admin/MUI **当前版本已有组件与能力**；其次组合/有限变体；真实缺口记录理由后才自行实现。原则上不建第二套组件/路由/表单/数据缓存。
-4. **AI 不得自行更改全局字号/配色/密度/导航布局**。如需求违反规则：记录例外、范围、视觉/无障碍/安全影响，由项目运营者明确批准并同步 UI-G0 视觉参考版本。
-5. 组件完成不等于页面完成，静态规则命中不等于浏览器体验通过。按 [verification](./admin-design-verification.md) 提交真实 screenshot/DOM/键盘/焦点/网络证据；在此之前保持 NOT RUN。
-6. 遵守仓库根 `AGENTS.md`：**尽量通过布局本身表达信息，避免冗余次要标签、重复说明及过度装饰**。但**交互原型交付时的「怎么体验」指引是必要的评审说明**，默认放在对话，不强制塞进业务页面；必要的步骤、异常恢复和风险说明不能删。
+- **文字与内容**：按语义角色使用 Theme Typography；支持简体中文、英文混排、长邮箱、UUID、日期与数字，必要时采用可复制/可展开文本；缩放与字形变化不得裁切必需内容。
+- **布局**：使用 Theme spacing 和官方布局/栅格；弹层与浮层跟随 MUI Portal/焦点模型；表格可以局部滚动，但不能以隐藏根溢出掩盖操作不可达。具体密度、断点、导航和卡片结构由设计任务决定。
+- **状态与颜色**：成功、告警、错误及权限等语义一致，不只靠颜色表达；重点验证真实背景下的对比度、可见焦点与禁用原因。无需强制某一状态徽章色值、边框或图标组合。
+- **控件与任务**：支持列表→详情→返回、筛选上下文、表单草稿、取消与失败恢复；危险确认应清晰说明目标、范围、后果，低风险操作无需一律二次弹窗。成功通知不必重复报告界面已经清楚展示的事实。
+- **无障碍与性能**：键盘与读屏可完成关键任务；输入法、缩放、低动效、异步提示应正确处理；避免无界身份搜索、不必要的 Auth 重查、泄露秘密或仅因布局美观增加后端请求。
 
-## 管理与未来维护
+## 规则消费与验证
 
-- `admin-design-rules.json` 是迁入的**机器可读规则唯一维护源**，`admin-design-rules.md` 仅维护分类路由，不重复 62 条规则正文；编辑需验证 ID 唯一、实际强度、适用范围及检查清单，不能把外部历史 `gate` 当 AisenCore 已启用的测试。
-- 本目录不建立新主题编译器、npm 工具链、自动生成 `MANUAL.md` 或 Figma 文件。确实需要持续自动检查时，先锁真实 Admin SDK/运行版本，并增设有**可验证合法/违规案例**的本地检查；未实现前不能声称已部署 CI。
-- 配色/字号/布局若改变，先更新 UI-G0 唯一规范及高保真参考，再同步真实 Theme 实现与相关截图；此处只更新通用规则/开发流程，不另写“参考项目的另一份主题”。
-- 参考规则中 `must/should` 与缺陷优先级、`recommended` 不混淆。标注 `conditional` 的条目只在确有该功能时需要验收，**不因此给 MVP 新增 AI 代理、动画屏、拖拽、视频/导出等功能**。
+- [admin-design-rules.json](./admin-design-rules.json) 是唯一 62 条通用机器可读 UX 规则源；[规则索引](./admin-design-rules.md)用于按任务筛选。条件性规则不应被误读为产品功能需求。
+- [交互原型产物规范](./interaction-benchmark-spec.md) 与 [AI 开发工作流](./interaction-benchmark-workflow.md)规定如何按风险验证，并区分设计演示与真实实现；原型的布局不强制 1:1 搬运到生产代码。
+- 需要截图/DOM/键盘/网络/安全 E2E 的结论只能在真正运行后登记；评审建议、静态规则与 Markdown 都不能冒充浏览器或后端 PASS。
+
+## 设计决策权限
+
+AI 可在已授权范围内依据任务选择适合的 React-admin/MUI 布局和组件；涉及全局品牌视觉、重大交互或业务行为改变时，向用户提供对照依据并由用户决定。已确认的业务和安全合同不可由前端原型反向改写。正式开发、视觉认可与发布/真实运行验收应分别取得明确结论；当前旧 UI-G0A 尚未签收的事实不因本指南更新而改变。

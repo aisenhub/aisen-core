@@ -1,12 +1,12 @@
 # D1｜AisenCore MVP PostgreSQL 物理模型、RLS 与事务实施设计
 
-> **D1 数据库实施规格同步（DEC-01/04/05/06 均选 A，已批准但未建库）**：公开用户兑换接口改为 `redeem_code(product_key, code)`，先按用户声明产品/成员检查后按真实码校验，并据已发行码绑定套餐不可变的约束在 L5 后取得 L6，禁止倒序补取 L4；产品增加当前 Free 家族不可变版本指针 `current_free_plan_id`；管理员直授采用 duration/explicit_window 两模式，首次语义与计算结果受保护持久化、同键不同参数拒绝；Admin 邮箱批量查询先验证极限权 SQL RPC（安全不可行则已批准 Edge 批量回退）。下文旧单参、`admin_request_fingerprint` 必选列、原地可改 Free 等物理草图均只是**被后续决议覆盖的历史候选**，实施前依[数据库长期约束](../../architecture/database/entitlements-and-redemption-constraints.md)和[受保护锁方案](../../architecture/database/rpc-security-and-locking-contract.md)重拟迁移，SQL/pgTAP NOT RUN。
+> **D1 数据库实施规格同步（DEC-01/05/06 仍遵循已批准方案；DEC-04 按 2026-10-23 复议简化，已批准但未建库）**：公开用户兑换接口改为 `redeem_code(product_key, code)`，先按用户声明产品/成员检查后按真实码校验，并据已发行码绑定套餐不可变的约束在 L5 后取得 L6，禁止倒序补取 L4；产品直接配置唯一线上免费能力 `free_features/free_limits`（不设 Free 版本和指针）；管理员直授采用 duration/explicit_window 两模式，首次语义与计算结果受保护持久化、同键不同参数拒绝；Admin 邮箱批量查询先验证极限权 SQL RPC（安全不可行则已批准 Edge 批量回退）。下文旧单参、`admin_request_fingerprint` 必选列、原地可改 Free 等物理草图均只是**被后续决议覆盖的历史候选**，实施前依[数据库长期约束](../../architecture/database/entitlements-and-redemption-constraints.md)和[受保护锁方案](../../architecture/database/rpc-security-and-locking-contract.md)重拟迁移，SQL/pgTAP NOT RUN。
 
 > **状态：D1 实施设计候选，待后续迁移代码/真实环境与 pgTAP 验证。本文不是已执行的 SQL、已部署权限或新增业务规则。**
 >
 > **F01/F02 安全收敛补订（2026-10-22）**：关于公开 RPC 与扩权权限、统一锁序及核销分支，以下候选以 [F01～F04 安全设计收敛 §2～3](./aisencore-f01-f04-security-convergence-design.md) 的明确方案为准：**public 只允许 SECURITY INVOKER 薄外壳，private 最小 SECURITY DEFINER 内核；所有管理写函数先 L0，敏感本人操作使用 L1，产品/计划/成员/码/续期严格按 L0～L8 顺序**。不改变 M1～M5 业务含义，真实 SQL/RLS/pgTAP 未测试。
 >
-> **DEC-05 已批准物理合同覆盖**：发码批次以 `(created_by,request_id)` 唯一 + 强类型首次有效配置 NULL-safe 比较；直授按 actor-scoped source_ref 保存首次 mode/参数/可信计算时段；指纹只在旧行语义无法从强类型列复原时保留。Free 当前默认版本指针和双参数兑换已批准；所有以下物理字段/DDL 仍需隔离迁移验证，权威为[DB 长期模型](../../architecture/database/entitlements-and-redemption-constraints.md)。
+> **DEC-05 已批准物理合同覆盖**：发码批次以 `(created_by,request_id)` 唯一 + 强类型首次有效配置 NULL-safe 比较；直授按 actor-scoped source_ref 保存首次 mode/参数/可信计算时段；指纹只在旧行语义无法从强类型列复原时保留。2026-10-23 DEC-04 已收敛为产品免费能力配置，双参数兑换合同不变；所有以下物理字段/DDL 仍需隔离迁移验证，权威为[DB 长期模型](../../architecture/database/entitlements-and-redemption-constraints.md)。
 >
 > **BaaS/RPC 安全适用性补订（2026-10-22）**：按 [BAAS-Q01～Q10 安全测试指南](../../development/testing/README.md) 在**未来真的存在消费型产品操作时**检查可信成本正数/上下限、真实 actor/对象归属、F02 锁序、条件写/请求指纹幂等与审计。拒绝将外部 `public SECURITY DEFINER consume_user_quota(cost_amount)` 示例作为迁移；客户端传负数可能**增加**余额、且默认函数 EXECUTE/owner/RLS 会扩大攻击面。**不新增本 D1 表或 RPC**；现有 R2 配额是产品元数据 `ready+reserved` 事务，不是 AisenCore 通用余额。
 >
@@ -48,7 +48,7 @@
 - `id uuid PK DEFAULT gen_random_uuid()`；`product_key text NOT NULL UNIQUE`；`name text NOT NULL`；`description text NULL`；`status text NOT NULL DEFAULT 'draft'`；`created_at timestamptz NOT NULL DEFAULT transaction_timestamp()`；`updated_at timestamptz NOT NULL DEFAULT transaction_timestamp()`。
 - `CHECK (status IN ('draft','active','suspended'))`；对 `product_key` 可选 ASCII slug 与长度约束（技术候选，例如小写字母/数字/下划线，总长最多 64），真正 Aisenlens 的 `product_key` 值待 D2 注册时确认；`name` trim 非空且有适度长度上限。
 - `product_key` 创建后不允许修改/复用；可信管理函数对状态更新写审计。产品暂停不批量更新成员或授权。
-- 产品受控 `current_free_plan_id` 指向**同产品 Free 家族不可变计划版本**，NULL 无公共 Free 附加能力；复合外键和类型/权限检查按[DB 长期约束](../../architecture/database/entitlements-and-redemption-constraints.md)，旧 code/grant 引用保留。
+- 产品不保存 `free_features/free_limits` 或业务 Features/Limits；只保存 key、运行状态、名称等公共身份/成员准入所需信息。产品功能与额度由 SaaS 自己部署/维护，匿名本地 Free 不由公共数据决定。
 
 **`public.product_memberships`**
 - `id uuid PK`；`user_id uuid NOT NULL REFERENCES auth.users(id)`；`product_id uuid NOT NULL REFERENCES public.products(id)`；`status text NOT NULL DEFAULT 'active'`；`pre_suspend_status text NULL`；`joined_at timestamptz NOT NULL DEFAULT transaction_timestamp()`；`updated_at timestamptz NOT NULL DEFAULT transaction_timestamp()`。
@@ -74,32 +74,22 @@
 - `before/after` 仅允许 JSON object 或 NULL；可信管理函数将字段白名单映射到精简 JSON：不保存 code_hash、码明文、密码、邮件验证码、Token、R2 签名 URL、高权限密钥或冗余个人资料；高风险管理员动作必须有非空 reason（由 RPC 按 action 验证）。
 - 索引 `(target_type,target_id,created_at DESC)` 与 `(actor_user_id,created_at DESC)`；无多态 FK：`target_type,target_id` 的正确性由可信写函数保证。只增不改、不自动级联删除。
 
-### 2.2 套餐、授权、发码批次、兑换与限流
+### 2.2 统一 Pro 授权、发码批次、兑换与限流（不设功能套餐表）
 
-**`public.plans`**
-- `id uuid PK`；`product_id uuid NOT NULL REFERENCES public.products(id)`；`plan_key text NOT NULL`；`name text NOT NULL`；`features jsonb NOT NULL DEFAULT '[]'::jsonb`；`limits jsonb NOT NULL DEFAULT '{}'::jsonb`；`default_duration_days integer NULL`；`is_active boolean NOT NULL DEFAULT true`；`created_at/updated_at timestamptz NOT NULL`。
-- `UNIQUE(product_id,plan_key)`，再声明 `UNIQUE(id,product_id)` 供授权和码的复合 FK；`CHECK(default_duration_days IS NULL OR default_duration_days>0)`。
-- **features** 是去重、非空字符串键的 JSON array；**limits** 是键到非负且有限的 JSON number 的 object，键不能与同产品 features 冲突。用受控 `private.valid_features/valid_limits` 的 IMMUTABLE 约束辅助（若 DB CHECK 中调用自定义函数，应限制未来函数行为随意变更），写函数检查**同一产品所有版本**的“相同键不能同时是开关又是额度”的业务不变量，并对产品行取得排他锁串行化两个新套餐的插入/变更。
-- **Free 家族计划的 features/limits 自创建起即冻结**；非 Free 方案一旦被任意 grant 或已发行/撤销 code 引用，权益字段也冻结。权益变更须新建版本，Free 通过受保护 `products.current_free_plan_id` 指针切换，不修改历史 grant/code。`is_active=false` 只禁止新发码和新授予，不阻止旧有效码兑换。
-- 索引 `(product_id,is_active,plan_key)`（产品套餐列表候选；若小数据量应压缩索引，待 EXPLAIN 核验）。
+**删除目标表**：MVP 无 `public.plans`、无 `products.free_features/free_limits`、无 `plan_id`、无业务功能/额度 JSON 字段。AisenCore 不管理 SaaS 的导出、AI、备份等功能策略。30/365/永久只是授予时间，不冻结产品功能。需要固定的是码和 Grant 的原始时长/来源/撤销事实。
 
 **`public.entitlement_grants`**
-- `id uuid PK`；`user_id uuid NOT NULL REFERENCES auth.users(id)`；`product_id uuid NOT NULL REFERENCES public.products(id)`；`plan_id uuid NOT NULL`；`source_type text NOT NULL`；`source_ref text NOT NULL`；`starts_at timestamptz NOT NULL`；`ends_at timestamptz NULL`；`revoked_at timestamptz NULL`；`revoked_by uuid NULL`；`revoke_reason text NULL`；`created_at timestamptz NOT NULL`。**DEC-05 直授 mode/完整首次规范输入和可信算出的时段必须在受限技术列或 private 幂等行中存储**（例如仅 Admin 记录保存 `grant_mode`/`requested_duration_days`，不可对 `redeem_code` 来源施加“必须有 duration 天数”的全表 NOT NULL/CHECK）；旧 `admin_request_fingerprint` 只在历史/必要语义中保留，不是新表强制字段。
-- `FOREIGN KEY(plan_id,product_id) REFERENCES public.plans(id,product_id)`；`UNIQUE(source_type,source_ref)`；`CHECK(ends_at IS NULL OR ends_at>starts_at)`；`source_type` 只允许批准来源。管理来源必须具有可比较的首次请求证据；若保留旧指纹，还应额外校验 32 字节，但**不强制全部新授权创建指纹**。
-- 索引 `(user_id,product_id,starts_at DESC)` 与 `(user_id,plan_id,ends_at DESC) WHERE revoked_at IS NULL AND ends_at IS NOT NULL`，分别支持当前权益和同套餐续期。严禁以删除行撤销权益或在成员状态转换时改动它。
-- `source_ref` 对兑换按 `code_id:user_id` 确定；对 Admin 使用 actor-scoped `admin:<actor_user_id>:<request_id>`。**DEC-05 已批准**：用受保护的完整首次规范输入+可信算出的时段/请求模式做幂等比较，只有旧记录无法从强类型列还原时保留私有 fingerprint；普通 Data API 不得 SELECT 技术列。
+- `id uuid PK`、`user_id uuid FK auth.users`、`product_id uuid FK products`、`tier text NOT NULL CHECK(tier='pro')`、`source_type/source_ref NOT NULL`、`starts_at timestamptz NOT NULL`、`ends_at timestamptz NULL`、撤销字段与可信时间；非空 end 严格大于 start。
+- `UNIQUE(source_type,source_ref)`；管理端必须持久保留首次同 actor/request_id、mode、参数与可信计算结果，NULL 安全重试，异参冲突不写。没有 `users.is_pro`；当前 Pro 必须按可信当前时间与未撤销 Grant 动态求存在，最后一条失效时仅展示 Free，不插入/删除降级记录。
+- 索引 `(user_id,product_id,starts_at DESC)` 和 `(user_id,product_id,ends_at DESC) WHERE revoked_at IS NULL`。L7 并发续期锁使用用户+产品的 Pro 范围；已到期/撤销不参与延长，未来孤立窗口不自动给当前 Pro。
 
-**`public.redemption_code_batches` —— 本 D1 的最小新增实现辅助表**
-- 发码批次是同 actor/request_id 唯一行；记录首次生效强类型配置，用于并发重试一致性比较、同键异参冲突和明文不可重显，不另建授权事实。
-- `id uuid PK`；`created_by uuid NOT NULL REFERENCES auth.users(id)`；`request_id uuid NOT NULL`；`product_id uuid NOT NULL REFERENCES public.products(id)`；`plan_id uuid NOT NULL`；`quantity integer NOT NULL`；`grant_duration_days integer NULL`；`max_redemptions integer NOT NULL`；`expires_at timestamptz NULL`；`created_at timestamptz NOT NULL`。**强类型保存首次有效配置，必要时私有历史列保留旧 fingerprint/算法版本**，不能强制新批次 SHA-256 v1。
-- `UNIQUE(created_by,request_id)`、`UNIQUE(id,created_by)`、`FOREIGN KEY(plan_id,product_id) REFERENCES plans(id,product_id)`；`CHECK(quantity>0 AND max_redemptions>=1 AND (grant_duration_days IS NULL OR grant_duration_days>0))`。指纹如实际保留须校验长度/权限，不能因 request_id 一致无条件返回成功。
-- 幂等重放在唯一键竞争后按首次规范强类型值做 NULL-safe 比较；`max_redemptions` 缺省=1、显式 null 拒绝，`grant_duration_days/expires_at` 缺省/NULL 等价，时间统一 UTC 微秒。同参只返非秘密、异参 `STATE_CONFLICT`；U08 上限值仍未决定，真实 SQL/并发尚未测试。
+**`public.redemption_code_batches`**
+- `id uuid PK`、`created_by`、`request_id`、`product_id FK products`、`tier='pro'`、`quantity`、`grant_duration_days`（首发发行正天数）、`max_redemptions`、`expires_at`、`created_at`，保存完整首次规范强类型配置。`UNIQUE(created_by,request_id)` 和 `UNIQUE(id,created_by)`，无 plan FK。
+- 缺省/NULL 规范化、UTC 精度、actor-scoped 幂等及不同参数冲突沿用 F05；一次性明文从来不持久化。无需为“Pro 30天/365天”建数据库功能版本。
 
 **`public.redemption_codes`**
-- `id uuid PK`；`code_hash bytea NOT NULL`；`product_id uuid NOT NULL REFERENCES public.products(id)`；`plan_id uuid NOT NULL`；`grant_duration_days integer NULL`；`max_redemptions integer NOT NULL DEFAULT 1`；`redeemed_count integer NOT NULL DEFAULT 0`；`expires_at timestamptz NULL`；`batch_id uuid NOT NULL`；`batch_ordinal integer NOT NULL`；`revoked_at timestamptz NULL`；`revoked_by uuid NULL REFERENCES auth.users(id)`；`created_by uuid NOT NULL REFERENCES auth.users(id)`；`created_at timestamptz NOT NULL`。
-- `UNIQUE(code_hash)`；`CHECK(octet_length(code_hash)=32)`、`CHECK(max_redemptions>=1 AND redeemed_count>=0 AND redeemed_count<=max_redemptions)`、`CHECK(grant_duration_days IS NULL OR grant_duration_days>0)`、`CHECK(batch_ordinal>=1)`；`FOREIGN KEY(plan_id,product_id) REFERENCES plans(id,product_id)`；`FOREIGN KEY(batch_id,created_by) REFERENCES redemption_code_batches(id,created_by)`；`UNIQUE(created_by,batch_id,batch_ordinal)`。
-- 码的规范化与安全随机数候选：在受控 RPC 内使用经验证的密码学随机数产生不少于 128 bit 有效熵，例如 20 个加密安全随机字节编码为 40 个十六进制字符（160 bit）；输入只允许约定分组标点并规范化，再 SHA-256 得到 `bytea(32)`。**只存哈希，不存可还原随机种子或明文**。若采用 pgcrypto，安装位置和 RNG 函数的版本需在隔离环境验证；D2 再固定码格式与网络响应。
-- 索引 `(batch_id,batch_ordinal)` 由上述 UNIQUE 的前导列顺序可能并不完全覆盖，分页按批次需显式 `(batch_id,batch_ordinal)` 索引；索引 `(product_id,created_at DESC)` 用于管理员按产品分页。**普通/管理员 Data API 均不得 SELECT `code_hash`**（见 §3）。
+- `id uuid PK`、仅可信的 `code_hash bytea`、`product_id FK products`、`tier='pro'`、`grant_duration_days`、`max_redemptions/redeemed_count`、`expires_at`、`batch_id/batch_ordinal`、撤销和创建字段。正时长与多次使用 CHECK、批次与 actor 外键、码哈希不公开等不变量完全保留。
+- 发码时的产品/tier/授予期限固定在码及批次，后来移除一个 UI 时长预设不得使旧有效码无法兑；显式撤销才可停止其后续兑换。跨产品一致错误、防枚举、本人已兑优先和原码 UNKNOWN 安全核查不变。
 
 **`public.redemptions`**
 - `id uuid PK`；`code_id uuid NOT NULL REFERENCES redemption_codes(id)`；`user_id uuid NOT NULL REFERENCES auth.users(id)`；`grant_id uuid NOT NULL REFERENCES entitlement_grants(id)`；`created_at timestamptz NOT NULL`。
@@ -117,7 +107,7 @@
 | --- | --- | --- |
 | 成员唯一、状态组合、事件方向 | PK/UNIQUE/CHECK/FK | 谁能改变状态、封禁前身份来源、加入允许的产品状态、同事务审计 |
 | 管理员资格、阻断保底 | 列存在与类型、限制 kind | **M1** 跨表有效管理员数量、统一互斥与当前 MFA |
-| 套餐引用、字段冻结、键类型 | FK、UNIQUE、局部 JSON 合法性 | **M2** 任何历史 grant/code 引用、并发发码/授予与字段修改串行化、产品内所有版本能力键类别不冲突 |
+| Pro 资格/授权时间一致性 | Grant/Code 的 product+tier=pro、时间 CHECK、幂等 UNIQUE | **M2 保护真实事实**：发行时固定授予天数，历史码/Grant 不因时长预设或 SaaS 功能迭代改变；多授权当前/未来/永久及并发按产品续期 |
 | 授权来源唯一、归属、期限 | `UNIQUE(source_type,source_ref)`、复合 FK、时间 CHECK | 同用户同套餐续期顺序、真正同源幂等、审批鉴权 |
 | 码唯一、次数不超上限 | `UNIQUE(code_hash)`、次数 CHECK | **M3** 首次明文丢失处理、发码 RNG/规范化、批次冲突、**M4** 本人已兑换优先级与事务级锁 |
 | 兑换唯一、授权 FK | 两个 UNIQUE / FK | 当前产品/成员状态、码过期/撤销、授权与码计数同事务 |
@@ -138,7 +128,7 @@
 | `platform_admins` | 无 | 无 | 管理资格必要列 | 全部拒绝 |
 | `platform_account_restrictions` | 无 | 无 | 限制必要列 | 全部拒绝 |
 | `admin_audit_log` | 无 | 无 | 脱敏精简审计列 | 全部拒绝 |
-| `plans` | 无 | 只读启用套餐且产品 `active` | 全部套餐必要列 | 全部拒绝 |
+| 会员资格查询（无 plans 表） | 无 | 按产品可见状态与本人/管理员权限读取必要资格 | 管理员可读取 Pro Grant 的必要安全列，不得对业务套餐功能/额度做通用授权查询 | 全部拒绝直接写入 |
 | `entitlement_grants` | 无 | 仅本人（包括历史已撤销，供查询） | 必要授权列 | 全部拒绝 |
 | `redemption_code_batches` | 无 | 无 | **只读非秘密批次元数据**，不可恢复明文 | 全部拒绝 |
 | `redemption_codes` | 无 | 无 | **只读非哈希列**（批次/状态/次数/日期），不得查 `code_hash` | 全部拒绝 |
@@ -150,7 +140,7 @@
 - 每一张可直接读取的表 `ALTER TABLE public.<table> ENABLE ROW LEVEL SECURITY`，不要使用“只给 authenticated GRANT 就足够”的错觉。每张表显式 `REVOKE ALL ... FROM PUBLIC,anon,authenticated` 后按白名单授予 `SELECT`；普通客户端一律不授 `INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER`。表若出现 Supabase 默认宽授权，迁移中必须先撤销，再打开必要权限。
 - `products`：anon/authenticated 公开行 predicate `status='active'`；authenticated 管理分支 `(select private.is_platform_admin())`。Anon 可见字段仅 `id,product_key,name,description,status`；authenticated 为管理员所需查询可选更多安全列，RLS 保证普通用户只见 active 产品。
 - `product_memberships`：authenticated `auth.uid()=user_id OR (select private.is_platform_admin())`；`membership_events`、限制、管理员资格与管理审计只对 `(select private.is_platform_admin())` 为 true 的 JWT 有读 policy。平台限制 `blocked` 不代表本人可读取任何其他人数据。
-- `plans`：普通 authenticated `is_active AND EXISTS (SELECT ... products WHERE status='active')`，加管理员谓词。产品表的 policy 若使用对 admin helper 的递归查询，必须在 pgTAP 中验证不会递归/泄露。管理员列表必须使用 Auth 批准后 RLS。
+- **不再创建 plans RLS 策略**：项目没有公共功能套餐表。用户本人只查询必要的产品、成员和 Pro Grant，受控管理员查询按真实 JWT+aal2 和活跃资格/RLS 校验；产品本身的状态查询沿用 products 的最小授权规则。
 - `entitlement_grants/redemptions`：本人 `auth.uid()=user_id` OR 合格管理员；不要把 RLS 强行要求 active 成员，否则用户退出后无法查询合法历史。**DEC-05 的私有首次请求语义证据（可为强类型列/private 幂等行，旧指纹并非强制）**仅供 private 内核幂等检查，不进入普通/管理员 Data API SELECT 字段白名单，必须核查是否存在能绕过列授权的基表级 GRANT**；敏感字段不得被其他用户筛选枚举。
 - `redemption_code_batches/redemption_codes`：RLS 仅合格管理员；对 authenticated **只授非秘密列的列级 SELECT**，**绝不** `GRANT SELECT ON TABLE redemption_codes`，否则会覆盖列级拒绝；对 code_hash、config_fingerprint 不授 Data API SELECT。客户端即便猜出 UUID 也不能用 SELECT/filter/order/returning 读取这些列。
 - `redemption_rate_limits`：不授 anon/authenticated SELECT；仅可信受保护 `redeem_code` 函数 owner 可读写。平台管理员也不直接读取各用户原始失败时间戳。
@@ -172,8 +162,8 @@ CREATE POLICY memberships_read ON public.product_memberships FOR SELECT
 -- 避免授权码哈希通过 Data API SELECT/filter 直接泄露。
 ALTER TABLE public.redemption_codes ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.redemption_codes FROM PUBLIC, anon, authenticated;
-GRANT SELECT (id, product_id, plan_id, batch_id, batch_ordinal,
-              grant_duration_days, max_redemptions, redeemed_count, expires_at,
+GRANT SELECT (id, product_id, tier, grant_duration_days, batch_id, batch_ordinal,
+              max_redemptions, redeemed_count, expires_at,
               revoked_at, revoked_by, created_by, created_at)
     ON public.redemption_codes TO authenticated;
 CREATE POLICY admin_codes_read ON public.redemption_codes FOR SELECT
@@ -187,9 +177,9 @@ CREATE POLICY admin_codes_read ON public.redemption_codes FOR SELECT
 
 ### 4.1 公用锁序（F02 统一后的唯一规范）
 
-**统一采用 [F02 L0～L8 总序及逐操作矩阵](./aisencore-f01-f04-security-convergence-design.md#3-f02唯一事务锁总序与逐操作锁矩阵)**，替换此前不完整的“只针对管理员资格写入口互斥、核销先锁码”的建议。摘要：**L0 所有管理写全局互斥 → L1 目标账号事务级锁 → L2 本人核销失败限流 → L3 产品 → L4 套餐 → L5 已存在成员 → L6 码 → L7 同用户套餐授权续期 → L8 最终写入/审计**。按需获取，不得逆序；获取 ID 可先非锁定读取，锁内须再次验证归属与状态。用户成员缺失且核销尚未确定有效时不得提前插入；首次 INSERT + join event 延至 L8。隐式 FK/唯一锁和跨用户竞态仍须实际双事务验证。
+**统一采用 [F02 L0～L8 总序及逐操作矩阵](./aisencore-f01-f04-security-convergence-design.md#3-f02唯一事务锁总序与逐操作锁矩阵)**，但2026-10-23最新资格合同已移除套餐行：**L4 不再获取计划锁**；L0 管理写全局锁 → L1 本人/目标用户 → L2 本人失败限流 → L3 产品 → L5 已存在成员 → L6 码 → L7 同用户同产品 Pro 期限顺延 → L8 写入/审计。不得逆序；DB 实施时应先同步改写旧 F02 锁表和实验验证，不能直接照抄旧 plan FK/锁语句。
 
-**M1** 所有管理写而非仅管理资格变更必须先取 L0 并重验当前 admin/`aal2`；**M2** 修改套餐的 L3 UPDATE/L4 UPDATE 与发行授予的 L3 SHARE/L4 SHARE 互斥；**M4** 核销在 L5 已存在成员锁后取 L6 码锁，再检查本人 redemptions 优先级，在业务成功之后才写入缺失成员、grant/redemption/次数。技术死锁/审计异常须全事务回滚，预期业务拒绝在限流写入后正常提交。
+**M1** 管理操作始终校验 AAL2、实时管理员资格和保底；原 **M2 套餐功能锁取消**，但 L3 产品状态锁、L7 同用户同产品 Pro 续期锁及 M4 码/成员准入/兑换优先的锁序仍要在真实 DB 事务里验证，不能丢失发码、撤销与限流安全。
 
 ### 4.2 自助成员 RPC
 
@@ -210,12 +200,12 @@ CREATE POLICY admin_codes_read ON public.redemption_codes FOR SELECT
 - Auth Admin SDK 的“禁用登录”如为高风险额外动作，不得对合格管理员**单独**直接调用绕过数据库保底；即使数据库 block 成功，跨 Supabase Auth 外部 API 仍非同库原子操作，要在 D3 设计故障补偿/恢复。若真实唯一管理员 MFA 丢失，是另行受控运维恢复情形，不因 DB 行数认为能够登录。
 - 不将名册约束写成 `CHECK`（CHECK 无法可靠统计并发跨行计数）；需要统一事务锁协议及安全管理函数。
 
-### 4.4 M2：套餐冻结与发码/授予竞态
+### 4.4 去除 Pro 业务功能版本与保留发行事实的并发规则
 
-- `UpsertPlan` 更新 `product_id,plan_key,features,limits` 前，统一锁序取得产品更新锁及目标 `plans FOR UPDATE`，核验该计划**不存在任何** `entitlement_grants` 或 `redemption_codes` 引用（不排除已撤销码/历史授权），否则拒绝权益列原地修改；名称/停用允许相应管理操作。
+- **不实现 UpsertPlan 或功能/额度版本克隆**；Pro 30/365/永久不映射 `plans` 功能版本。并发保护仅覆盖真实授权、兑换、撤销、会员和码事实，锁顺序按 L0～L8 保留。
 - `CreateCodes` 与 `GrantEntitlement` 必须在同一产品状态/套餐锁规则下取得 `plans FOR SHARE`，在事务内检查 `is_active` 再创建码/授权。两个相向并发事务必有先后次序：要么先编辑后发行，新码绑定修改结果；要么先发行后编辑，编辑被拒绝。
-- `is_active=false` 只阻止**新**发码与管理员直接授权；已发行有效码仍能按其已冻结的套餐版本兑换；已授予的权益不因停用消失；若要止旧码必须显式撤销码/批次。修改套餐能力要创建 `pro_v2` 等新版本，旧计划不可删除导致级联损失。
-- 若没有权益字段变更，仅修改展示名，不应无故要求复制新的套餐权益版本；`product_id/plan_key` 自有稳定性仍照领域权威检查。
+- 发行时长选项可由 UI 调整，但已发行未撤销、未过期且仍有次数的 Pro 码必须继续按原授予天数兑现；已经发放的 Grant 不随配置改变。禁止自动从“套餐停用”反推撤销旧码。
+- 不存在公共套餐功能/显示名修改命令，也没有 `plan_key` 版本约束；只能通过受控发行参数设置当前 Pro 授予时段。历史码/Grant 不因 UI 时长预设调整被重写。
 
 ### 4.5 M3：批次幂等与明文一次性
 
@@ -244,7 +234,7 @@ CREATE POLICY admin_codes_read ON public.redemption_codes FOR SELECT
 - `RevokeGrant` / `RevokeCode`：管理员资格与目标行锁 → 只设置撤销信息并同事务审计；重复请求不重复审计，旧码撤销不追溯取消已兑换 grant。
 - `SetProductStatus`：管理员资格 → `products FOR UPDATE` → 状态与审计同提交；`active→suspended` 只影响**新的**公共准入/加入/兑换，不重写所有成员或历史授权。
 - `UnblockAccount` / `GrantAdmin`：统一管理员互斥锁与当前资格校验，状态变更和审计同一事务；对外登录封禁/恢复在 D3 编排，不声称跨 Auth API 原子。
-- `CheckAccess`：**无副作用**地读取平台限制、成员、产品受控 `current_free_plan_id` 当前不可变 Free 家族版本及各有效 grant 引用的冻结计划。不得在此 RPC 建成员、写审计、计次数；业务拒绝 200/allowed=false，JWT 错 401，服务故障 503，不以本地缓存替代云端实时验证。
+- `CheckAccess(product_key)`：本人无副作用只读，公共平台只判断账号、产品、成员和同产品 Pro 有效时段；返回 `tier/pro_active/period/allowed/reason`，不读取 Free/Pro 业务 Features/Limits 或 capability。业务拒绝 200，JWT 401，可信失败 503；不替 SaaS 执行项目/备份权限和用量核算。
 
 ## 5. Aisenlens R2 备份的数据归属与权限边界
 
@@ -254,7 +244,7 @@ CREATE POLICY admin_codes_read ON public.redemption_codes FOR SELECT
 | --- | --- | --- |
 | 用户身份与 UUID、Aisenlens `product_id/product_key` | 公共 Auth + products | D2 客户端如何携带真实本人 JWT，D3 产品注册与安全启用 |
 | 本人 Aisenlens active/left/suspended、产品和全局限制 | 公共成员/限制 + CheckAccess | 备份签发前再次在线检查，退出/封禁不得获得**新的**签名权限 |
-| 备份功能开关与**上限** | 公共 `plans.features/limits` 与 `entitlement_grants` | U04 未定具体键、单位、容量；D2/D3 确认准入能力与额度如何传递 |
+| AisenLens 私有备份业务限制 | AisenLens 产品自己的可信 Edge/备份元数据流程 | U04 未定具体上限；Pro 资格向 Core 验证，容量/对象/文件属主由 AisenLens 自己管理 |
 | 单个备份对象 Key、用户与产品属主、大小、版本、上传状态、已用量 | **Aisenlens 持有的产品文件/备份元数据**，位置由其接入详设决定 | D2/D3 明确业务元数据存储（可独立库或合适的受保护 Schema）、锁定计算、数据生命周期与多设备恢复 |
 | R2 对象字节与临时受控签名 | Cloudflare R2 + 最小可信签发 Edge Function | 备份读写签名作用域、有效期、上传确认、空间覆盖/垃圾文件、短凭证撤权延迟；**不得**把长期 R2 secret 放桌面客户端 |
 | 客户端配置备份包含字段、版本兼容、合并/覆盖、过额、清理 | Aisenlens 产品业务设计 | 真实产品专项进一步确认，U07 数据政策和 U04 容量功能规格均未定；不在此授权云端备份视频/秘密 |
@@ -270,8 +260,8 @@ CREATE POLICY admin_codes_read ON public.redemption_codes FOR SELECT
 | 序列 | 独立 migration 逻辑 | 依赖与验证关口 |
 | --- | --- | --- |
 | M00 | 确认项目 PostgreSQL/Supabase 版本；创建/检查 private Schema、所需 pgcrypto（若实际码 RNG/摘要采用），函数属主和默认 REVOKE 策略 | 不假设 extension 已可用；分离开发/生产、拒绝默认 PUBLIC EXECUTE |
-| M01 | products（含可空 `current_free_plan_id` 列，**先不引用尚不存在的 plans 表**）、product_memberships、membership_events、platform_admins、platform_account_restrictions、admin_audit_log | Auth FK、状态/审计 CHECK/索引、默认不级联 |
-| M02 | plans（建立 `UNIQUE(id,product_id)`）及授权/发码/兑换/限流表，**此后 ALTER TABLE products 补齐 `(current_free_plan_id,id) → plans(id,product_id)` 同产品复合 FK** | 外键目标须先存在；先插产品→建 Free 套餐→受保护更新产品指针即可，不无理由强制引入延迟 FK；校验指向的是 Free 家族 |
+| M01 | products（仅身份与状态字段）、product_memberships、membership_events、platform_admins、platform_account_restrictions、admin_audit_log | 不创建 `free_features/free_limits`、Free 指针或业务功能 schema |
+| M02 | entitlement_grants、redemption_code_batches、redemption_codes、redemptions 与最小安全限流表 | 只记录 product_id+tier=pro+期限和授权来源，不建 plans、plan_id、Free/Pro 功能配置；保留哈希、兑换、强类型幂等与同产品索引 |
 | M03 | 私有资格/验证助手、只读管理员策略；各表 RLS/GRANT/列级读取白名单；核心受保护管理/自助 RPC | 函数 owner、search_path、RPC 公开 Schema、业务拒绝事务提交的一致性审查；**全表默认禁止终端写入** |
 | M04 | 在本人身份已确认且 U05 决定的情况下，通过受控运维过程引导首个管理员资格；注册真实产品由可信管理接口进行 | 引导不内嵌真实 owner UUID，保底约束不在初始化时把未创建管理员误拒绝；恢复能力明确 |
 | M05 | 隔离环境权限/事务/竞争/回滚测试，检查 Admin DataProvider、SaaS 客户端最小查询及“云端服务故障拒绝” | pgTAP、并发工具、JWT/AAL 真实验证；通过前不得部署生产 |
@@ -287,7 +277,7 @@ CREATE POLICY admin_codes_read ON public.redemption_codes FOR SELECT
 | Admin + 最后管理员 | I-14～I-15、I-26～I-27 | 无 `aal2` 管理读取/写入均拒绝；自封禁/撤权保底；并发管理员互封禁，失败不产生假审计 |
 | SaaS 和本地优先 | I-02～I-04、I-19～I-25 | Aisenlens 匿名 Free/本人在线 Pro/备份；公共校验不代替产品文件授权；退出不删除备份，跨产品不混权 |
 | 兑换、安全限流 | R-01～R-06、R-10～R-12 | 码明文只首次；码 hash 不可查询；已用尽/过期/撤销对本人重复与其他用户不同分支；15 分钟限流可提交、拒绝不增 grant |
-| 权益、续期与套餐冻结 | R-07～R-09、R-13～R-15 | 双模式直授首次入参持久化后重试不重复顺延；远期显式时段不冒充连续权益/延迟新兑换；周期续期事务锁；永久授权；套餐冻结与旧有效码不因 plan 停用失效 |
+| Pro 授权期限、发码与真实并发 | R-07～R-09、R-13～R-15（按新资格合同修订） | 双模式直授首次输入重试不重复顺延；未来显式时段不提前给 Pro；周期续期、永久授权及旧有效码不随 UI 期限预设变化而失效 |
 
 测试应包含 `git diff --check`、数据库 pgTAP 断言、双事务并发（非串行假测试）、拒绝读取 `code_hash` 的 SQLSTATE/HTTP、审核日志去敏、回滚故障注入。只有创建实际 SQL 和隔离 DB 后才能填写通过证据。**本次 D1 只交付设计，没有运行任何 pgTAP 或部署**。
 
@@ -319,7 +309,7 @@ CREATE POLICY admin_codes_read ON public.redemption_codes FOR SELECT
 ## 8. D1 设计级评审与实现前阻塞
 
 - **M1**：共同事务锁 + 修改后合格管理员非零；独立 Auth Admin 封禁不能绕过；审计成功原子。
-- **M2**：grant 与 issued code 均触发冻结、发码/授予和套餐修改同序锁；停用不使旧有效码失效。
+- **M2（修订）**：已提交 Pro 发码的期限、来源和 Grant 时段不可被运营快捷选项改写；同用户同产品 Pro 周期顺延必须在可信锁下串行，历史码仍按原授予期限兑现，明确撤销才阻止后续兑换。
 - **M3**：批次 request_id 幂等、只存哈希、明文只首次响应；重试不恢复。
 - **M4**：本人重复兑换判定先于码用尽/过期/撤销；失败计数在业务拒绝正常提交；多用户核销不超量。
 - **M5**（D2 交接）：数据库业务拒绝表达与对外 HTTP 状态不冲突，错误 503 不得冒充可信 deny。

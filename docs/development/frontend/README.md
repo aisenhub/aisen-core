@@ -1,19 +1,15 @@
 # 前端开发规范索引
 
-本 README **只负责导航，不复制规则正文**。需求见 [spec](../../spec/requirements.md)，业务与 RPC/权限见 [architecture](../../architecture/README.md)，全局 Theme/视觉唯一权威是 [UI-G0](../../architecture/applications/admin-ui-design-system.md)，页面行为参考 [D3-UI](../../Plans/aisencore-mvp/aisencore-mvp-d3-ui-admin-uiux-design.md)，交互网页统一放 [interaction-benchmarks](../../interaction-benchmarks/README.md)。
+本目录集中管理通用 Admin 开发原则与 AI 工作流。**正式业务、安全、数据库、RPC 仍以 [需求](../../spec/requirements.md)与[架构](../../architecture/README.md)为准。** 本 README 不重复规则正文，也不定义固定的导航、页面布局、主题或像素。
 
-> 当前：**交互优先方法已选，UI-G0A NOT APPROVED，Theme 未冻结，正式业务代码/SQL/云端施工未授权**。此目录文档不代表已建成前端、验收工具或 CI 门禁。
-
-## 按工作任务读取哪份规范
-
-| 遇到的问题 | 唯一执行规范入口 |
+| 工作任务 | 单一入口 |
 | --- | --- |
-| 需不需要原型？人怎样参与，哪一步才正式开发？ | [交互优先工作流](./interaction-benchmark-workflow.md) |
-| 原型具体要有哪些业务状态、跨模块路径、错误和视觉覆盖？怎样引导体验？ | [交互基准产物规范](./interaction-benchmark-spec.md) |
-| 哪些原型成果可复用？何时做轻量测试、何时做真实 E2E？ | [原型→正式实现与分级测试规则](./prototype-to-production-rules.md) |
-| Admin 当前技术约束、规则阅读顺序和例外？ | [Admin 开发设计使用指南](./admin-design-guide.md) |
-| 字体/布局的使用方法、组件如何复用？ | [设计基础](./admin-design-foundations.md)、[组件与页面模式](./admin-design-components-and-patterns.md) |
-| 有哪些通用 UX 规则？ | [规则适用性目录](./admin-design-rules.md)、[62 条机器规则](./admin-design-rules.json) |
-| UI-G0 签收与 UI-G3 真实浏览器该检查什么？ | [逐页面验证矩阵](./admin-design-verification.md) |
+| React-admin/MUI 技术框架、组件复用、通用前端实施规则 | [Admin 前端开发总纲](./admin-design-guide.md) |
+| 全局单 Theme、样式一致性、可访问性与设计自由度 | [Admin 统一 UI 质量规范](../../architecture/applications/admin-ui-design-system.md) |
+| 结构化通用 UX 审核 | [规则索引](./admin-design-rules.md)及 [62 条 JSON 规则](./admin-design-rules.json) |
+| 如何决定何时制作原型、怎样进行用户比选和 AI 开发交接 | [原型与 AI 开发工作流](./interaction-benchmark-workflow.md) |
+| 本次交互原型需要包含的最小验证场景和交付证据 | [原型产物规范](./interaction-benchmark-spec.md) |
+| 产品/权限/数据范围与前端可观察的业务行为 | [Admin 应用层架构及验收索引](../../architecture/applications/admin-console.md) |
+| 原型文件及版本入口 | [interaction-benchmarks](../../interaction-benchmarks/README.md) |
 
-**读法**：先查 [项目 AGENTS.md](../../../AGENTS.md) 与相关业务合同，再按本次任务选择上表**一两份**规范；不应为小任务全文加载全部规则。正式 React-admin/MUI 的组件、主题、版本和必要 Provider 仍遵循 [Admin 设计指南](./admin-design-guide.md) 与架构，不从 HTML 原型反向推导数据库/RPC。
+**权威边界**：旧 UI-G0A 原型尚未签收，历史固定色板、四主题、六模块、组件 1:1 映射、特定导航与抽屉样式等已取消为全局强制项。新的设计按任务审阅并明确决定；文档整理不自动授权正式前端、后端、SQL 或部署。

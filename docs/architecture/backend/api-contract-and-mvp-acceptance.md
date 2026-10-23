@@ -10,7 +10,7 @@
 | --- | --- | --- | --- | --- |
 | 产品目录 | `ListAvailableProducts` | 匿名/已登录 | Data API 读取 `active` 产品公开字段 | 否 |
 | 本人概览 | `GetMyProducts`（`get_my_products`） | 已登录用户 | RPC | 否 |
-| 公共准入 | `CheckAccess(product_key, capability?)`（`check_access`） | 用户本人或携带其 JWT 的 SaaS 后端 | RPC | 否 |
+| 会员/准入认证 | `CheckAccess(product_key)`（`check_access`，无 capability 参数） | 本人 JWT / 转发本人 JWT 的 SaaS 可信后端 | RPC | 否 |
 | 本人成员 | `EnsureMembership(product_key)` | 首次合法业务接入 | RPC | 仅无记录时创建 |
 | 本人成员 | `LeaveProduct` / `RejoinProduct` | 本人明确操作 | RPC | 是 |
 | 兑换 | `RedeemCode(product_key, code)` | 已登录用户 | RPC | 是 |
@@ -30,7 +30,7 @@
 - 目标产品以 `product_key` 传入，产品不能自行宣称管理权限；SaaS 可信后端代用户转发 JWT 不代表获得管理员或机器身份。
 - 管理员请求另经 `private.is_platform_admin()`（含 `aal2` 要求）检查。
 
-**统一检查顺序**（唯一权威，针对受保护产品业务）：认证 → 平台账号限制 → 产品存在且 `active` → 当前产品成员 `active` → 所需权益（capability）→ SaaS 自己的具体资源/业务权限 → 产品自身的计量与执行。**不带 capability 的 `CheckAccess` 只判断成员层准入**；带功能键时检查 Free 基础套餐与当前有效授权的布尔并集，带额度键时返回非负上限，`allowed` 表示是否具有正额度，**已用量/是否仍可消耗由 SaaS 自己再判断**。成员/授权历史查询不机械要求 active；用户主动兑换、管理员管理与产品首次 ensure 另按专项规定跳过不适用的检查步骤。前五步由公共函数完成，后两步属于 SaaS。无需为每步单独发请求，同一次可信请求可复用合理的新鲜结果。
+**统一检查顺序（公共 Core）**：JWT 身份 → 平台账号 blocked → 产品存在且 active → 本产品成员 active（不符合时返回对应稳定理由）→ 同产品 Pro Grant 的可信时间/撤销查询 → 返回当前会员资格。**至此公共 Core 结束**；SaaS 自己再校验对应功能规则、目标资源/文件属主、业务额度及执行。不能向 Core 传 `capability` 或请求它计算 Features/Limits。成员历史查询与本人兑换/首次 EnsureMembership 按既定特殊顺序，不机械要求 active。
 
 ### 2.1 错误优先级和拒绝时允许的副作用（X-01）
 
@@ -38,7 +38,7 @@
 
 | 操作 | 检查顺序与传输结果 | 被拒绝时可保留的副作用 |
 | --- | --- | --- |
-| `CheckAccess` | JWT 无效→401；可信计算时 blocked→产品不可用→none/left/suspended→缺权益，各自 HTTP 200 + `allowed=false/reason`；技术故障→503/5xx | **无**，查询必须无副作用 |
+| `CheckAccess` | JWT 无效→401；可信业务判断 blocked→产品不可用→none/left/suspended；业务拒绝 HTTP 200 + `allowed=false/reason`；成功附 Pro/Free **资格而非业务功能权限**；可信计算故障→503/5xx，不得伪装 Free | **无**，资格查询不得有副作用 |
 | `EnsureMembership` | 认证→blocked→产品 active→成员；none 首次合法创建，active 幂等；left/suspended 拒绝 | **无**；只有成功才创建成员和 join 事件 |
 | `LeaveProduct / RejoinProduct` | 认证→blocked→当前成员状态及合法转换；竞争/不合法状态返回冲突 | **无**；成功状态和事件同事务 |
 | `RedeemCode(product_key, code)`（批准合同） | 认证→blocked→本人限流→声明产品 active→**声明产品成员 left/suspended 先于查码一致拒绝**→none/active 才查询码及核对归属；跨产品/未知/撤销/过期/用尽统一失败；声明成员合法后本人已兑优先于随后码失效；技术故障 503/5xx | **仅约定的失败尝试/限流记录**；不写成员、grant、redemption、码次数或成功审计。**不应存在旧单参入口泄露真实码归属的旁路** |
@@ -50,16 +50,15 @@
 ## 3. 候选请求与响应语义
 
 - **`EnsureMembership(product_key)`**：返回 `membership_status=active` 与布尔 `created`；已 `left/suspended` 禁止隐式恢复。只在首次真正需登录的合法产品业务中调用，而非注册、登录、支付回调、产品展示或只读查询。
-- **`GetMyProducts()`**：返回本人已关联产品的 `product_key`、`product_status`、`membership_status`，以及当前有效权益摘要（套餐键、`ends_at`）。
-- **`CheckAccess(product_key, capability?)`**：
-  - 不带 `capability`：判断能否使用该产品需成员资格的服务；
-  - 带 `capability`：按该产品受控 `current_free_plan_id` 当前 Free 版本 + 有效未撤销授权引用的原套餐版本，功能取并集、同名额度取最大值；额度键返回 `limit`，`allowed` 只表示上限大于 0，**不替产品判断剩余额度**。无 Free 配置则无额外能力。
-  - 返回 `allowed`、稳定 `reason`、`product_status`、`membership_status`（未加入表示为 `none`，不是持久化状态）、可选 `entitlement`（有效套餐键与最晚 `ends_at`）、`evaluated_at`。
-  - **响应语义固定**：请求已认证且服务能够可信计算时，即使平台被限制、产品不可用、成员不是 `active` 或缺少权益，也返回 **HTTP 200 + `allowed=false` + 对应 `reason`**；`allowed=true` 同样为 200。无效/缺失认证返回 401，可信计算失败返回 5xx/503，不伪装成 `allowed=false`。调用 SaaS 据 `allowed` 决定禁止新的受保护业务操作。
-  - 无副作用；不返回订单秘密、管理员封禁原因或他人信息；`allowed=true` 不代表对任意项目/文件有权限，也**不**扣减额度。
-- **`RedeemCode(product_key, code)`**：成功返回产品、套餐、`starts_at`、`ends_at`、是否新建成员；预期业务失败返回 `ok=false` / `code` / 可选 `retry_after_seconds`，不提交成员/码/授权更改（限流尝试计数除外）。已通过身份、平台限制及限流检查后，**在声明产品/成员检查通过之后，本人已兑换**优先于该码后续用尽/过期/撤销，返回 `REDEEM_ALREADY_USED`；其他未兑换者只能得到统一的 `REDEEM_CODE_INVALID`。成员规则见[计费权益 §5](../domains/billing-and-entitlements.md#5-授权与产品成员状态的关系唯一权威)。
+- **`GetMyProducts()`**：返回本人可见产品的 `product_key/product_status/membership_status`、`tier=free|pro`、`pro_active`、`current_period_ends_at`、`effective_ends_at`、`is_lifetime` 等可信资格摘要；无 Pro Grant 派生 Free，不创建 Free Plan/Grant，不泄露其他产品数据。
+- **`CheckAccess(product_key)`**（唯一目标签名，**无 capability 参数**）：
+  - 返回公共准入 `allowed`、稳定 `reason`、`product_status`、`membership_status`、`tier=free|pro`、`pro_active`、可信 `evaluated_at` 和可用 Pro 期限摘要（`current_period_ends_at`、`effective_ends_at`、`is_lifetime`）。Free 只代表没有当前有效 Pro，并不代表 blocked/left/suspended 可以访问。
+  - 当前 Pro 的判断由同用户/同产品 `starts_at <= trusted_now`、未撤销、`ends_at IS NULL OR ends_at > trusted_now` 的 Grant 动态聚合；其他有效 Pro 存在时不因一条撤销误降级；未来授权不得提前生效。无任何授权不要求创建 Free Grant。
+  - **不再返回** Features/Limits、capability 权限、额度上限或业务消耗；业务功能和资源属主由 SaaS 的可信执行端决定。即使 `allowed=true` 也不代表可以导出 4K 或读取任何资源。纯本地匿名 Free 不调用此在线查询。
+  - 已认证且可以可信判定的允许/拒绝均 HTTP 200 + allowed/reason；无效令牌用 401，身份/授权查询故障用 5xx/503，**不可错误地把故障变成 `tier=free` 或业务拒绝**；本 RPC 无写入副作用。
+- **`RedeemCode(product_key, code)`**：仅兑现当前产品 `tier=pro` 与码发行时已经固定的授权期限；成功写 Grant 来源/可信区间，不能改用户等级或产品功能表。跨产品码、撤销/失效码、left/suspended、重复兑换与防枚举限流沿用原规则。
 - **上线前唯一新合同（项目根 `AGENTS.md` 强制规则）**：公开兑换只实现 `redeem_code(product_key,code)`；更新当前全部调用方及测试，**不实现/不保留旧 `redeem_code(code)` 的兼容入口、别名或灰度分支**。若本地草案已有旧签名，直接替换并确保其不可执行，不需要旧客户端版本发布序列；只针对当前接口执行错误侧信道与 RPC 权限负向验证。
-- **`GrantEntitlement`（DEC-05）**：必须带 `mode='duration'` + 正天数（同套餐可信顺延）或 `mode='explicit_window'` + 完整 starts_at/ends_at（显式 null 才永久），互斥且 request_id actor-scoped。首次持久化参数和时段，重试不能按新时钟再延长；同键异参 `STATE_CONFLICT`。上线前直接更新所有当前调用方为唯一新模式；**不保留旧显式接口兼容映射**，绝不能把遗漏 `ends_at` 当永久。
+- **`GrantEntitlement`（DEC-05）**：以当前产品 `tier=pro` + `mode=duration` 正天数（同用户同产品 Pro 周期可信续期）或 `mode=explicit_window` 完整起止/显式永久 + actor-scoped request_id 受控发放；不通过 plan_id/Features/Limits 执行发放，不默认把缺失结束时间设为永久。
 - **成员变更**：成功返回新状态；不向客户端透露 `pre_suspend_status` 或内部管理原因；重复无状态变化请求不重复写事件。
 - **`CreateCodes(request_id)`**：首次创建成功返回本次明文码列表，**仅此一次（可在该响应内复制/下载）**；重试同一 `request_id` 不重复发码且不返回明文，后续不存在明文导出接口。**`GrantEntitlement(request_id)`** 同样以独立幂等键防管理重试重复授权。
 - **`BlockAccount` / `RevokeAdmin`**：对目标操作使用共同的“至少保留一名 `active` 且未全局 `blocked` 的管理员”事务保护；违反或并发冲突返回 `STATE_CONFLICT`，不写变更。该约束仅用于防止管理入口被规则性锁死，不替代 MFA 设备丢失时的受控运维恢复。
@@ -148,15 +147,15 @@
 | R-04 | 两个用户并发兑换只剩 1 次的码 | 仅一人成功，`redeemed_count` 不超过上限 |
 | R-05 | 同一用户重复提交已成功兑换的单次码，后续该码已用尽/过期/撤销 | 只产生一条授权；**声明产品/成员 none 或 active 且身份、全局限制、限流通过之后**，已兑本人返回 `REDEEM_ALREADY_USED`；若已经 left/suspended 必须先拒绝且不查码，不能再次消费码次数 |
 | R-06 | 尚未兑换过该码的用户输入不存在/撤销/过期/用尽码 | 统一返回 `REDEEM_CODE_INVALID`，不泄露具体原因，失败计数保留 |
-| R-07 | 已有同套餐有效授权时再兑换周期码 | 新授权从现有最晚到期时间顺延 |
-| R-08 | 永久授权码 | `ends_at` 为空，`CheckAccess` 持续允许直至撤销 |
-| R-09 | 撤销兑换码 | 已产生的授权仍有效；撤销授权后 `CheckAccess` 立即拒绝对应能力 |
+| R-07 | 已有同产品 Pro 周期 Grant 再兑换正天数 Pro 码 | 新的 Pro Grant 从该用户同产品最远未撤销未来周期截止日可信顺延；不能错误重叠或更改已兑现的授权 |
+| R-08 | 管理员明确授予永久 Pro | `ends_at` 必须显式 NULL 且 Grant 当前有效；直到撤销或被产品/账号/成员限制，不能把永久当成免验证凭证 |
+| R-09 | 撤销兑换码 | 只阻止未来兑换，已产生 Pro Grant 仍有效；若要撤销既有 Pro 需明确撤 Grant，随后重新派生资格 |
 | R-10 | 产品 A 的码 | 不产生产品 B 的任何权益 |
 | R-11 | 同一用户连续提交无效随机码 | 每用户滚动 15 分钟失败次数达到 10 后返回 `RATE_LIMITED`；计数不因预期业务拒绝被回滚 |
 | R-12 | 明文丢失的 `CreateCodes(request_id)` 重试 | 不重复创建新码、不回显明文；可撤销原批次再以新 request_id 发码 |
-| R-13 | 两个设备并发续期同用户同套餐 | 周期授权从串行化后的最新最晚到期时间顺延，不错误重叠 |
-| R-14 | 套餐已有 grant **或已发行未兑 code** 时尝试修改原 features/limits（含与发码并发） | 拒绝就地修改；新建套餐版本，旧 grant/code 均引用冻结版本 |
-| R-15 | 套餐在发码后被停用，但已发行码未过期、未撤销且仍有次数 | 可继续按旧套餐版本兑换；新发码/管理员新授予被拒绝，显式撤码才阻止旧码后续兑换 |
+| R-13 | 两设备同时给同一用户同产品续 Pro 周期 | 经同产品 Pro 可信锁计算最远未来有效时段，两个周期授权的开始/截止不会错误覆盖或重复顺延 |
+| R-14 | 修改具体 SaaS 的 Pro 功能配置 | 不涉及 AisenCore schema/Admin/RPC；测试各 SaaS 自己执行权限/配额，Core 历史 Grant 和码不变 |
+| R-15 | 管理端移除/隐藏 30 天期限预设后，已发行同产品 Pro 码仍有效 | 按码首次保存的正授权天数兑现；新发行按当前有效预设，撤码才阻止旧码 |
 
 验收还应覆盖 401/403/404/409/429/503 区别、超时后的状态确认、资源不可枚举检查以及 RLS 正反向测试（推荐 pgTAP）；以上为**测试场景规格**，尚未创建自动测试或运行数据库。
 
@@ -167,7 +166,8 @@
 | REV-DEC01-01～08 | `redeem_code(product_key, code)` 对 left/suspended 输入随机码、真实码及跨产品码在码定位前相同拒绝；none/active 的未知/跨产品/撤销/过期/用尽码统一失败；本人历史已兑仅在成员准入通过后优先；失败计数可保存而不修改成员/grant/码次数，旧单参不可作为探针，双连接无死锁 |
 | REV-DEC02-01～08 | Edge 仅接收限定白名单小型 JSON，拒绝超体积、异常 schema、视频/API Key/Token；JWT/成员/Pro/属主无旁路；R2 final 唯一条件写，客户端不能写 final；DB pending 过期预留逻辑释放与 R2 物理清理分离，R2/DB 单侧成功、断线、同键并发、删除失败的对账与恢复可证实 |
 | REV-DEC03-G0/G3 | 项目所有者已删除原 G0B 真实 React-admin/MUI 视觉基础；**未来视觉载体、顺序及签收条件待重议，UI-G0A NOT APPROVED**。正式业务施工未获许可；UI-G3 真实页面截图、键盘、响应式、MFA、秘密和错误码 E2E 仍 NOT RUN |
-| REV-DEC04-01～05 | Free v1→v2 仅切换同产品 `current_free_plan_id` 且审计；现有/新用户下次可信读取使用新默认，不回写已发行 code/历史 grant；NULL 安全默认与指针回退、匿名本地 Free 不依赖网络 |
+| REV-FREEPRO-01～08（2026-10-23 最终修订） | 任何 Admin/公开写入不得生成 Free Code/Grant 或业务 Features/Limits；**Core 不创建 plans 表**，同产品 Pro 的每次成功兑换/直授才新增来源明确的 Grant，不修改用户永久等级；未来 Grant 不提前使 Pro 生效；最后一份 Pro 到期/撤销后只派生 Free 并保留历史，多份仍有效 Pro 不误降级；跨产品不串权，blocked/left/suspended 和 401/503 仍独立，匿名 AisenLens 本地 Free 不联网 |
+| REV-DEC04-01～05（2026-10-23 再修订） | AisenCore 无 `free_features/free_limits` 或公共功能版本；CheckAccess 只认证同产品 Pro 资格和可信有效期；免费/专业功能策略属于 SaaS；首发只有 Pro 码/Grant；产品功能更新不变更 Core 表/API/旧 Grant；本地匿名 Free 仍离线 |
 | REV-DEC05-01～07 | `duration` 与 `explicit_window` 完全互斥，永久必须显式 ends_at=null；首次可信时段保存，重试不按新时钟重复顺延；同 actor/request_id 相同输入幂等、异参冲突；空值/时区/未来生效与安全投影/RLS/GRANT 负向 |
 | REV-DEC06-01～06 | 仅当前真实 `aal2` 且 active Admin/非 blocked 可批量读必要邮箱，UUID[]/精确邮箱/分页/字段有界；anon/普通用户/撤权/过期拒绝；实际 auth.users SQL 权限、查询计划及 P50/P95 验证；SQL 不安全则一次受保护 Edge 聚合，本页失败只降级 UUID 并返回不完整标记 |
 
