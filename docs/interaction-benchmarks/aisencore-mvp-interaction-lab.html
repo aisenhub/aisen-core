@@ -1,0 +1,1582 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="description" content="AisenCore MVP — 本地离线交互与安全流程测试。">
+<title>AisenCore · MVP Interaction Lab</title>
+<style>
+:root{--bg:#f3f5f7;--surface:#fff;--ink:#1c263b;--muted:#8a94a3;--line:#e7ebf0;--accent:#6861ef;--pale:#f0efff;--navy:#182340;--lime:#dbf386;--mint:#daf4e9;--red:#c65a60;--amber:#ad7332;--r:18px;--shadow:0 12px 34px rgba(28,38,59,.035);--font:"Inter","Segoe UI","PingFang SC","Microsoft YaHei",sans-serif}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);font:14px/1.6 var(--font);color:var(--ink);-webkit-font-smoothing:antialiased}button,input,select,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.46}a{color:inherit}svg{height:18px;width:18px;flex-shrink:0}::selection{background:#d8d5ff}:focus-visible{outline:3px solid #9990f7;outline-offset:3px}
+.layout{min-height:100vh;display:grid;grid-template-columns:252px minmax(0,1fr)}.sidebar{height:100vh;position:sticky;top:0;display:flex;flex-direction:column;overflow-y:auto;background:#fff;border-right:1px solid var(--line);z-index:60;padding:28px 18px}.brand{display:flex;align-items:center;gap:11px;margin:0 8px 36px}.logo{width:42px;height:42px;border-radius:14px;background:var(--navy);color:var(--lime);display:grid;place-items:center}.logo svg{width:26px;height:26px}.brandword{font-size:20px;font-weight:850;letter-spacing:-.9px;line-height:1}.brandword span{font-weight:450}.brandword small{display:block;font-size:9px;letter-spacing:2px;color:#a2abb6;margin-top:8px;font-weight:800}.navtitle{color:#b0b9c6;font-size:10px;letter-spacing:1.5px;font-weight:820;margin:14px 12px 8px}.navlink{display:flex;align-items:center;gap:12px;border:0;background:transparent;color:#69778b;border-radius:11px;padding:10px 13px;margin:2px 0;width:100%;text-align:left;font-size:12px;font-weight:730;transition:.17s}.navlink:hover{background:#f5f5ff;color:#514bea}.navlink.active{background:#efeeff;color:#544de1;box-shadow:inset 3px 0 0 var(--accent)}.navlink svg{width:17px;height:17px}.navnum{margin-left:auto;font:10px Consolas,monospace;opacity:.55}.sidebar-foot{margin-top:auto;border-top:1px solid var(--line);padding:20px 9px 0;font-size:11px;color:#a1aab6}.sidebar-foot strong{display:flex;align-items:center;gap:8px;color:#48826a;font-size:10px;letter-spacing:1px}.online{height:7px;width:7px;display:inline-block;border-radius:50%;background:#61c08b;box-shadow:0 0 0 4px #e6f7ec}
+.main{min-width:0}.top{height:74px;display:flex;justify-content:space-between;align-items:center;gap:16px;background:rgba(255,255,255,.75);border-bottom:1px solid var(--line);padding:0 clamp(20px,3.8vw,57px);position:sticky;top:0;backdrop-filter:blur(16px);z-index:30}.crumb{display:flex;gap:10px;align-items:center;white-space:nowrap;min-width:0;font-size:11px;font-weight:780}.crumb .dim{color:#9da7b5}.crumb strong{overflow:hidden;text-overflow:ellipsis}.topright{display:flex;align-items:center;gap:10px}.select-mini{max-width:165px;border:1px solid var(--line);padding:9px 10px;border-radius:10px;background:#fff;color:#586278;font-size:11px}.session{padding:8px 11px;border-radius:10px;background:#e7f7ef;color:#30795b;font-size:10px;font-weight:800;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}.session.off{background:#fff0ec;color:#c16963}.session svg{width:14px;height:14px}.iconbtn{border:1px solid var(--line);background:#fff;color:#68758a;border-radius:10px;width:37px;height:37px;display:inline-grid;place-items:center}.iconbtn:hover{background:#f0efff;color:#564fd8}.avatar{background:#e8e6ff;color:#5752c6;font-weight:800;border-radius:11px;width:37px;height:37px;display:grid;place-items:center;font-size:11px}.mobile{display:none}.content{max-width:1570px;margin:auto;padding:36px clamp(20px,3.8vw,57px) 60px}.pagehead{display:flex;align-items:end;justify-content:space-between;gap:16px;margin:0 0 27px}.eyebrow{font-size:10px;font-weight:850;letter-spacing:2.2px;color:var(--accent);margin:0 0 7px;text-transform:uppercase}.pagehead h1{font-size:clamp(29px,3vw,40px);line-height:1.18;letter-spacing:-1.65px;margin:0;font-weight:850}.pagehead p{color:var(--muted);font-size:12px;max-width:700px;margin:10px 0 0}.secthead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:28px 0 15px}.secthead h2{font-size:17px;margin:0;letter-spacing:-.3px}.secthead p{margin:3px 0 0;color:var(--muted);font-size:11px}
+.btn{display:inline-flex;gap:8px;justify-content:center;align-items:center;border:1px solid #dfe4ec;background:#fff;color:#47546b;border-radius:11px;padding:10px 15px;min-height:39px;font-weight:800;font-size:12px;transition:transform .18s ease,box-shadow .18s,border-color .18s}.btn svg{height:15px;width:15px}.btn:hover{transform:translateY(-1px);border-color:#b4b0f8;box-shadow:0 6px 16px rgba(40,51,81,.06)}.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 8px 19px rgba(104,97,239,.15)}.btn.dark{background:var(--navy);border-color:var(--navy);color:#fff}.btn.warn{background:#fff4f2;border-color:#f6dddd;color:#b85e5d}.btn.soft{background:var(--pale);border-color:var(--pale);color:#5752cc}.btn.sm{min-height:32px;padding:7px 11px;font-size:11px;border-radius:9px}.btn.ghost{background:transparent;border:0;color:#8590a0}.btn:focus-visible{outline-offset:3px}.link{color:var(--accent);font-weight:800;background:transparent;border:0;padding:4px}
+.grid{display:grid;gap:18px}.four{grid-template-columns:repeat(4,minmax(0,1fr))}.three{grid-template-columns:repeat(3,minmax(0,1fr))}.two{grid-template-columns:repeat(2,minmax(0,1fr))}.wide{grid-template-columns:minmax(0,1.55fr) minmax(280px,1fr)}.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:24px;min-width:0}.card.compact{padding:18px}.card h3{font-size:14px;margin:0;font-weight:850}.row{display:flex;align-items:center;gap:12px}.between{display:flex;justify-content:space-between;align-items:center;gap:12px}.muted{color:var(--muted)}.tiny{font-size:11px}.mono{font-family:"SFMono-Regular",Consolas,monospace;font-size:.91em}.caps{font-size:10px;letter-spacing:1.45px;color:#8c99aa;font-weight:850}.kpi{font-size:39px;font-weight:850;letter-spacing:-2px;line-height:1;margin:21px 0 11px}.kpi-icon{display:grid;place-items:center;width:35px;height:35px;background:var(--pale);color:var(--accent);border-radius:11px}.metric-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;color:#9aa4b0;font-size:11px}
+.hero{min-height:272px;position:relative;overflow:hidden;background:var(--navy);border-radius:24px;border:1px solid #263254;color:#fff;padding:43px 48px;display:flex;align-items:center;box-shadow:0 24px 45px rgba(21,31,58,.13)}.hero:before{content:"";position:absolute;right:-160px;top:-190px;height:520px;width:520px;border-radius:50%;border:1px solid rgba(255,255,255,.11);box-shadow:0 0 0 62px rgba(255,255,255,.025),0 0 0 128px rgba(255,255,255,.022)}.hero .herotext{position:relative;z-index:2;max-width:580px}.hero .tag{font-size:10px;color:#b8c5dd;letter-spacing:2.4px;font-weight:850}.hero h2{font-size:clamp(32px,3.5vw,49px);line-height:1.17;font-weight:850;letter-spacing:-2.2px;margin:18px 0 14px}.hero h2 em{color:var(--lime);font-style:normal}.hero p{font-size:12px;line-height:1.85;color:#aebbdb;max-width:470px;margin:0 0 22px}.hero .btn{background:var(--lime);border-color:var(--lime);color:#24314e}.art{position:absolute;right:7%;top:50%;transform:translateY(-50%);width:200px;height:200px}.orb{position:absolute;inset:0;background:radial-gradient(circle at 28% 19%,#c8bffc 0,#8982fa 24%,#665fd2 52%,#273066 88%);border-radius:50%;box-shadow:inset -18px -18px 37px rgba(14,22,62,.35),0 22px 45px rgba(0,0,0,.25);animation:orb 6s ease-in-out infinite}.orb:after{content:"";position:absolute;inset:-21px;border:1px dashed rgba(255,255,255,.26);border-radius:50%;transform:rotate(-19deg)}.art-chip{position:absolute;font-size:10px;font-weight:850;padding:10px 13px;border-radius:11px;backdrop-filter:blur(8px);white-space:nowrap;box-shadow:0 8px 22px rgba(0,0,0,.12)}.chip-a{right:-40px;top:6px;background:#f6f5ff;color:#504caa;transform:rotate(7deg)}.chip-b{left:-55px;bottom:3px;background:var(--lime);color:#283642;transform:rotate(-8deg)}@keyframes orb{50%{transform:translateY(-11px)}}@keyframes appear{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.quick{border:1px solid var(--line);background:#fff;border-radius:17px;text-align:left;padding:21px;min-height:162px;display:flex;flex-direction:column;justify-content:space-between;transition:.2s}.quick:hover{transform:translateY(-3px);border-color:#c5c0fa;box-shadow:0 14px 25px rgba(40,41,98,.08)}.quick .qicon{background:var(--pale);color:var(--accent);width:37px;height:37px;display:grid;place-items:center;border-radius:11px}.quick strong{font-size:14px}.quick p{font-size:11px;color:var(--muted);margin:3px 0 0}.quick .qfoot{display:flex;align-items:center;justify-content:space-between;gap:8px}.quick .qfoot svg{color:var(--accent)}
+.tablewrap{width:100%;overflow:auto;border:1px solid #e9edf2;border-radius:13px}table{width:100%;border-collapse:collapse;min-width:630px;text-align:left}th{background:#f8fafc;color:#8e99a7;font-size:10px;letter-spacing:.65px;padding:12px 15px;white-space:nowrap}td{padding:14px 15px;border-top:1px solid #edf0f5;font-size:11px;color:#4b576e;vertical-align:middle}tbody tr:hover{background:#fcfcff}.tdmain{font-size:12px;font-weight:790;color:#273149}.tdsub{display:block;color:#a2abba;font-size:10px;margin-top:3px}.actions{display:flex;justify-content:flex-end;gap:6px;white-space:nowrap}.badge{font-size:10px;font-weight:850;display:inline-flex;align-items:center;gap:5px;background:#eaf8f0;color:#2d825d;padding:5px 9px;border-radius:9px;white-space:nowrap}.badge:before{content:"";background:currentColor;border-radius:50%;width:5px;height:5px}.badge.off{color:#8290a0;background:#f0f2f5}.badge.warn{color:#b47b39;background:#fff3e5}.badge.danger{color:#c25d62;background:#fff0ed}.badge.purple{color:#625cce;background:#f0efff}.badge.blue{color:#507fc1;background:#eff4ff}.badge.plain:before{display:none}.panel{background:#f2f1ff;border:1px solid #e6e3ff;color:#6863a1;padding:16px 18px;border-radius:13px;display:flex;gap:11px;font-size:11px;margin-bottom:18px}.panel svg{color:var(--accent);flex:none}.panel strong{display:block;font-size:12px;color:#504da4}.panel p{margin:4px 0 0;color:#8580b5}.panel.amber{background:#fff9ef;border-color:#f6e8d2}.panel.amber strong,.panel.amber svg{color:#ab7c42}.panel.amber p{color:#b29b7e}.panel.danger{background:#fff4f3;border-color:#fae1df}.panel.danger strong,.panel.danger svg{color:#b6545a}.panel.danger p{color:#bf8181}
+.field{display:flex;flex-direction:column;gap:7px;min-width:0}.field label{font-size:11px;font-weight:800;color:#566277}.field input,.field select,.field textarea,.filter{border:1px solid #e1e6ee;border-radius:10px;min-height:41px;background:#fff;padding:10px 12px;color:#37455a;outline:none;font-size:12px;width:100%}.field input:focus,.field select:focus,.field textarea:focus,.filter:focus{border-color:#a29afa;box-shadow:0 0 0 3px rgba(104,97,239,.11)}.field textarea{height:110px;resize:vertical;font-family:Consolas,monospace;font-size:12px}.field small{color:#9aa5b3;font-size:10px}.fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.full{grid-column:1/-1}.formfoot{display:flex;flex-wrap:wrap;align-items:center;gap:9px;margin-top:19px}.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:15px 0}.toolbar .filter{width:240px}.divider{height:1px;background:var(--line);margin:18px 0}.stack{display:grid;gap:14px}.softbox{border:1px solid #eef0f4;background:#f8fafb;border-radius:13px;padding:15px}.softbox h4{margin:0;font-size:12px}.softbox p{color:#909baa;font-size:11px;margin:5px 0 0}.miniicon{height:35px;width:35px;border-radius:11px;background:#ecebff;color:var(--accent);display:grid;place-items:center}.empty{min-height:150px;display:grid;place-content:center;justify-items:center;text-align:center;gap:7px;color:#9da7b5}.empty svg{width:28px;height:28px}.empty strong{color:#687385;font-size:12px}.timeline{display:grid;gap:14px}.event{display:flex;gap:12px}.event .eico{background:var(--pale);color:var(--accent);width:32px;height:32px;border-radius:10px;display:grid;place-items:center;flex:none}.event .eico svg{width:15px}.event strong{font-size:11px}.event p{color:#9aa5b3;font-size:10px;margin:3px 0 0}.secret{background:#182440;color:#fff;border-radius:16px;padding:22px;position:relative;overflow:hidden}.secret:before{content:"";position:absolute;width:220px;height:220px;right:-90px;top:-80px;background:radial-gradient(circle,#7269e9,transparent 75%);opacity:.5}.secret>*{position:relative}.secretcode{padding:11px 13px;border:1px solid #3a4965;border-radius:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;background:#23314e;color:#e5e9f7;font:12px Consolas,monospace;word-break:break-all}.secretcode button{color:var(--lime);background:none;border:0;font-weight:800}.secret p{font-size:11px;color:#aebcda}
+.progress{height:8px;background:#edeef5;border-radius:99px;overflow:hidden}.progress>span{display:block;height:100%;background:linear-gradient(90deg,#6861ef,#a59dff);transition:width .5s;border-radius:99px}
+.testcard{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:8px;min-height:198px;transition:.2s}.testcard:hover{border-color:#c8c3fb}.testcard h3{margin:0;font-size:13px}.testcard p{margin:0;color:#909bab;font-size:11px;line-height:1.75;flex:1}.teststatus{height:8px;width:8px;border-radius:50%;background:#bbc4d1}.teststatus.pass{background:#5dbc87}.teststatus.fail{background:#d66e75}.testtop{display:flex;justify-content:space-between;align-items:center;font:10px Consolas,monospace;color:#9da7b5}.testbottom{display:flex;justify-content:space-between;gap:9px;align-items:center}
+.overlay{position:fixed;inset:0;background:rgba(19,31,53,.47);backdrop-filter:blur(5px);z-index:160;display:grid;place-items:center;padding:16px}.dialog{background:#fff;width:min(520px,100%);border-radius:20px;max-height:calc(100vh - 32px);overflow:auto;box-shadow:0 25px 80px rgba(0,0,0,.22);padding:27px}.dialog h2{font-size:21px;letter-spacing:-.6px;margin:0}.dialog p{font-size:12px;color:#7d8999;line-height:1.8;margin:11px 0 18px}.dialog .dialogfoot{display:flex;justify-content:flex-end;gap:9px;margin-top:23px}.toastbox{position:fixed;right:25px;bottom:25px;z-index:260;display:grid;gap:8px;max-width:min(410px,calc(100vw - 35px))}.toast{background:#1b2944;color:#fff;border-radius:12px;padding:15px;box-shadow:0 15px 35px rgba(18,24,43,.23);display:flex;gap:12px;animation:appear .22s ease-out}.toast svg{color:var(--lime)}.toast.error svg{color:#ffa19b}.toast strong{font-size:12px}.toast p{margin:4px 0 0;color:#aebbd2;font-size:11px}.footer{margin-top:42px;border-top:1px solid var(--line);padding-top:20px;display:flex;justify-content:space-between;gap:15px;color:#a2acb8;font-size:10px}
+@media(max-width:1180px){.four{grid-template-columns:repeat(2,minmax(0,1fr))}.three{grid-template-columns:repeat(2,minmax(0,1fr))}.hero .art{right:3%}.content{padding:30px 25px 60px}.top{padding:0 25px}}@media(max-width:925px){.layout{display:block}.sidebar{position:fixed;top:0;left:0;width:264px;transform:translateX(-102%);transition:transform .23s;box-shadow:15px 0 40px rgba(12,25,48,.1)}.sidebar.open{transform:translateX(0)}.scrim{position:fixed;inset:0;background:rgba(19,29,47,.45);z-index:50}.mobile{display:inline-grid}.wide{grid-template-columns:1fr}.hero .art{right:12%}}@media(max-width:680px){.top{height:63px;padding:0 14px}.top .dim,.select-mini,.top .slash{display:none}.topright{gap:7px}.iconbtn,.avatar{width:33px;height:33px}.content{padding:24px 15px 40px}.pagehead{align-items:flex-start;flex-direction:column}.pagehead h1{font-size:31px}.three,.two,.four,.wide,.fields{grid-template-columns:1fr}.full{grid-column:auto}.hero{padding:28px;min-height:300px}.hero h2{font-size:33px}.hero .art{right:-50px;opacity:.27;pointer-events:none}.art{width:165px;height:165px}.card{padding:19px}.toolbar .filter{width:100%}.footer{flex-direction:column}.dialog{padding:23px}.session{font-size:9px;padding:7px}.secthead{align-items:flex-start}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation-duration:.01ms!important;transition-duration:.01ms!important;scroll-behavior:auto!important}}
+
+/* AisenCore Interaction Lab · Visual refinement 02
+   Editorial clarity, polished feedback, and a deliberately self-contained offline surface. */
+:root{
+  --bg:#f4f5f2;--surface:#ffffff;--ink:#1c2740;--muted:#6f7c90;
+  --line:#e5e9ee;--accent:#5951eb;--pale:#eeedff;--navy:#101d34;
+  --lime:#dffa84;--mint:#dff8e9;--r:20px;
+  --shadow:0 10px 35px rgba(27,39,65,.038);
+  --font:"Segoe UI Variable","Inter","SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif;
+}
+html{scroll-padding-top:96px}
+body{
+  background:
+    radial-gradient(circle at 83% -7%,rgba(204,202,255,.25),transparent 33rem),
+    radial-gradient(circle at 29% 77%,rgba(226,236,226,.42),transparent 38rem),
+    var(--bg);
+  color:var(--ink);font-size:14px;line-height:1.64;
+  font-feature-settings:"ss01" on,"cv11" on;
+}
+:focus-visible{outline:3px solid #7c77f3;outline-offset:3px}
+button,input,select,textarea{-webkit-tap-highlight-color:transparent}
+button{touch-action:manipulation}
+.layout{grid-template-columns:264px minmax(0,1fr)}
+.sidebar{
+  background:#111c32;color:#edf4ff;border-right:1px solid #21314c;
+  padding:27px 17px 18px;box-shadow:9px 0 34px rgba(12,21,41,.055);
+}
+.brand{margin:0 9px 25px;padding:0 0 24px;border-bottom:1px solid rgba(239,247,255,.12);gap:12px}
+.logo{
+  height:44px;width:44px;border-radius:13px;
+  color:#141f32;background:var(--lime);
+  transform:rotate(-6deg);box-shadow:0 8px 22px rgba(207,245,113,.12);
+}
+.logo svg{transform:rotate(6deg)}
+.brandword{font-size:23px;color:#f7f9ff;letter-spacing:-1.45px;font-weight:820}
+.brandword span{color:#d2f47f;font-weight:500}
+.brandword small{font-size:9px;color:#8fa1b9;letter-spacing:1.9px;margin-top:9px}
+.navtitle{
+  margin:23px 13px 10px;font-size:10px;color:#7f8da9;
+  letter-spacing:1.65px;font-weight:760;
+}
+.navlink{
+  min-height:42px;border-radius:10px;margin:2px 0;padding:10px 12px;
+  color:#acb9ce;font-size:12px;font-weight:650;gap:12px;
+  transition:background .18s,color .18s,transform .18s,box-shadow .18s;
+}
+.navlink svg{height:18px;width:18px;opacity:.85}
+.navlink:hover{background:rgba(255,255,255,.075);color:#fff;transform:translateX(2px)}
+.navlink.active{
+  background:#dffa84;color:#142035;
+  box-shadow:0 5px 19px rgba(200,238,116,.11);font-weight:800;
+}
+.navlink.active:hover{color:#142035;background:#e6ff9c;transform:none}
+.navlink.active svg{opacity:1}
+.navnum{
+  opacity:1;font-size:10px;padding:1px 7px;
+  border-radius:6px;background:rgba(255,255,255,.1);color:#cbd4e7
+}
+.navlink.active .navnum{color:#334129;background:rgba(22,40,34,.09)}
+.sidebar-foot{
+  position:relative;margin-top:auto;padding:19px 13px 3px;
+  border-top:1px solid rgba(239,247,255,.12);color:#8493ae;line-height:1.8;
+}
+.sidebar-foot strong{color:#d7f5a6;font-weight:760;letter-spacing:1.2px}
+.sidebar-foot p{font-size:11px;line-height:1.75}
+.online{background:#c4f77b;box-shadow:0 0 0 4px rgba(194,247,123,.12)}
+.top{
+  height:78px;background:rgba(251,252,250,.85);
+  border-bottom:1px solid #e3e8e9;
+  box-shadow:0 7px 28px rgba(41,55,78,.027);
+  padding:0 clamp(24px,3.5vw,58px);
+}
+.crumb{font-size:12px;font-weight:750;gap:11px}
+.crumb .dim{color:#9ba5b3;font-weight:550}
+.topright{gap:10px}
+.top-command{
+  display:inline-flex;align-items:center;gap:15px;min-height:36px;
+  border:1px solid #e2e6ee;background:#fff;color:#788498;
+  border-radius:10px;padding:0 9px 0 13px;font-size:11px;font-weight:620;
+  box-shadow:0 2px 5px rgba(13,28,51,.02);
+  transition:border .2s,transform .2s,box-shadow .2s;
+}
+.top-command:hover{border-color:#bab8ee;color:#3b4178;transform:translateY(-1px)}
+.top-command kbd,.shortcut{
+  border:1px solid #dde3eb;box-shadow:0 1px 0 #e4e7ee;
+  background:#f7f8fc;color:#647187;border-radius:5px;
+  padding:3px 6px;font:10px/1.25 Consolas,monospace;
+}
+.select-mini,.iconbtn{border:1px solid #e2e7ed;box-shadow:0 2px 5px rgba(13,28,51,.025)}
+.select-mini{max-width:180px;min-height:37px;font-size:12px}
+.iconbtn{width:38px;height:38px}
+.iconbtn:hover{background:#eae8ff;color:var(--accent)}
+.session{min-height:37px;padding:8px 11px;border-radius:9px;background:#e1f4e9;color:#28764e;font-size:10px;letter-spacing:.12px}
+.session.off{background:#fff0e9;color:#bc6a55}
+.avatar{border:1px solid #dfdce9;background:#eceaff;color:#4e47aa;border-radius:10px;width:38px;height:38px}
+.content{max-width:1540px;padding:43px clamp(24px,3.5vw,58px) 75px;animation:viewEnter .36s cubic-bezier(.22,1,.36,1)}
+.pagehead{margin-bottom:28px;align-items:flex-end}
+.eyebrow{
+  display:flex;align-items:center;gap:9px;color:#5951db;
+  font-size:10px;letter-spacing:2px;font-weight:860;margin:0 0 12px;
+}
+.eyebrow:before{content:"";width:18px;height:2px;display:inline-block;background:#8c88f5;border-radius:2px}
+.pagehead h1{font-size:clamp(32px,3.2vw,46px);line-height:1.12;letter-spacing:-2px;font-weight:820}
+.pagehead p{font-size:13px;line-height:1.85;color:#758197;max-width:760px;margin-top:13px}
+.secthead{margin:33px 0 17px}
+.secthead h2{font-size:18px;letter-spacing:-.55px;font-weight:830}
+.secthead p{font-size:12px;color:#8490a2;margin-top:4px;line-height:1.7}
+.grid{gap:19px}
+.card{
+  border:1px solid #e3e8ec;border-radius:21px;
+  box-shadow:0 3px 6px rgba(24,34,53,.015),0 19px 42px rgba(24,34,53,.024);
+  padding:26px;
+}
+.card.compact{padding:21px}
+.card h3{font-size:15px;font-weight:820;letter-spacing:-.3px}
+.caps{color:#7b899d;font-size:10px;letter-spacing:1.5px}
+.tiny{font-size:12px;line-height:1.7}
+.muted{color:#78879a}
+.kpi{font-size:clamp(38px,3.6vw,53px);margin:20px 0 15px;letter-spacing:-2.6px;font-weight:800}
+.kpi-icon{height:40px;width:40px;border-radius:12px;background:#f0eeff;color:#5751de}
+.metric-foot{font-size:11px;color:#8590a0}
+.four>.card{position:relative;overflow:hidden}
+.four>.card:before{content:"";position:absolute;width:120px;height:120px;right:-50px;top:-70px;border-radius:50%;background:rgba(92,83,233,.045)}
+.four>.card:nth-child(1){background:#1a2740;color:#f6f8ff;border-color:#1a2740}
+.four>.card:nth-child(1) .caps{color:#a8b7cc}
+.four>.card:nth-child(1) .metric-foot{color:#b6c3d5}
+.four>.card:nth-child(1) .kpi-icon{background:#35435e;color:#e1fa91}
+.four>.card:nth-child(2){background:#f4f1ff;border-color:#e8e3ff}
+.four>.card:nth-child(3){background:#edfad3;border-color:#e2edc8}
+.four>.card:nth-child(3) .kpi-icon{background:#d9edb9;color:#315b39}
+.hero{
+  border-radius:27px;min-height:345px; padding:52px clamp(35px,4.2vw,64px);
+  background:
+    radial-gradient(circle at 83% 30%,rgba(121,110,251,.38) 0%,transparent 33%),
+    radial-gradient(circle at 73% 79%,rgba(38,91,120,.18) 0%,transparent 36%),
+    linear-gradient(125deg,#17213a 0%,#1a2850 57%,#121c37 100%);
+  border:1px solid #2d3a60;box-shadow:0 23px 55px rgba(29,44,79,.15);
+}
+.hero:before{width:590px;height:590px;right:-105px;top:-218px;border-color:rgba(255,255,255,.095);box-shadow:0 0 0 62px rgba(238,249,255,.025),0 0 0 136px rgba(239,249,255,.018)}
+.hero:after{content:"";position:absolute;inset:0;pointer-events:none;
+  background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);
+  background-size:42px 42px;mask-image:linear-gradient(90deg,transparent 12%,#000 100%);opacity:.48;
+}
+.hero .herotext{max-width:635px;position:relative;z-index:3}
+.hero .tag{display:inline-flex;align-items:center;gap:10px;color:#bfd1e8;font-size:10px;letter-spacing:2.1px}
+.hero .tag:before{content:"";height:7px;width:7px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 5px rgba(223,250,132,.12)}
+.hero h2{font-size:clamp(38px,4.3vw,60px);line-height:1.16;letter-spacing:-2.9px;margin:24px 0 16px;font-weight:800}
+.hero h2 em{color:#ddff8f}
+.hero p{font-size:13px;line-height:1.9;color:#c0cde0;max-width:520px;margin-bottom:25px}
+.hero .btn{background:var(--lime);border-color:var(--lime);color:#243049;border-radius:11px;padding:12px 20px}
+.hero .btn:hover{background:#ecffbc;box-shadow:0 10px 22px rgba(223,250,132,.16)}
+.art{right:10%;width:212px;height:212px;z-index:2}
+.orb{animation:orb 8s ease-in-out infinite;
+  background:radial-gradient(circle at 30% 20%,#f8f3ff 0%,#b4acff 13%,#8e7ff0 31%,#4e54a5 66%,#202f60 93%);
+  box-shadow:inset -20px -25px 50px rgba(11,19,48,.44),0 25px 55px rgba(13,19,37,.4),0 0 80px rgba(156,133,250,.28)
+}
+.orb:after{inset:-29px;border-color:rgba(225,232,255,.29)}
+.art-chip{padding:11px 14px;border-radius:10px;letter-spacing:.4px}
+.chip-a{right:-50px;top:11px}.chip-b{left:-73px;bottom:7px}
+.quick{
+  border:1px solid #e0e6ed;min-height:170px;padding:23px;
+  border-radius:19px;box-shadow:0 7px 22px rgba(24,38,64,.025);
+  position:relative;isolation:isolate;overflow:hidden;
+}
+.quick:before{content:"";position:absolute;inset:0;background:linear-gradient(135deg,rgba(227,226,255,.57),transparent 62%);opacity:0;z-index:-1;transition:opacity .25s}
+.quick:hover{transform:translateY(-5px);border-color:#aeadff;box-shadow:0 17px 30px rgba(56,56,143,.095)}
+.quick:hover:before{opacity:1}
+.quick .qicon{height:43px;width:43px;border-radius:12px}
+.quick strong{font-size:14px;font-weight:800}
+.quick p{font-size:12px;line-height:1.6}
+.quick .qfoot svg{transition:transform .18s}
+.quick:hover .qfoot svg{transform:translateX(5px)}
+.btn{
+  border-radius:10px;min-height:42px;padding:10px 16px;
+  font-size:12px;font-weight:760;letter-spacing:.04px;
+  transition:transform .19s ease,box-shadow .19s ease,border-color .19s ease,background .19s ease;
+}
+.btn.primary{background:#5b52ec;border-color:#5b52ec;box-shadow:0 7px 17px rgba(91,82,236,.13)}
+.btn.primary:hover{background:#4940d6;border-color:#4940d6;box-shadow:0 11px 23px rgba(91,82,236,.22)}
+.btn.soft{background:#f0efff;border-color:#e8e6ff;color:#564dd3}
+.btn.warn{background:#fff6f3;border-color:#f6e2db;color:#aa595a}
+.btn.sm{font-size:11px;min-height:35px;padding:8px 12px}
+.btn:active,.iconbtn:active,.quick:active{transform:scale(.975)}
+.btn:disabled,.navlink:disabled{transform:none;box-shadow:none}
+.tablewrap{border:1px solid #e7ebf1;border-radius:14px;background:#fff;scrollbar-color:#cdd2ea transparent;scrollbar-width:thin}
+table{min-width:670px}
+th{background:#f6f8fa;color:#7d8999;font-size:11px;font-weight:760;letter-spacing:.6px;padding:14px 16px}
+td{font-size:12px;line-height:1.55;padding:16px;word-break:break-word}
+tbody tr{transition:background .18s}
+tbody tr:hover{background:#f9faff}
+.tdmain{font-size:13px;font-weight:775;color:#222f49}
+.tdsub{font-size:11px;color:#8593a7}
+.actions{gap:7px}
+.badge{border-radius:8px;padding:6px 10px;font-size:10px}
+.panel{
+  padding:18px 19px;border-radius:14px;
+  background:#f1f1ff;border-color:#e3e4ff;
+  border-left:3px solid #827cec;align-items:flex-start;margin-bottom:22px;
+  font-size:12px;line-height:1.7;
+}
+.panel strong{font-size:12px;font-weight:790}
+.panel p{font-size:12px;line-height:1.75}
+.panel.amber{border-left-color:#dfaa65}
+.panel.danger{border-left-color:#d8797d}
+.field{gap:8px}
+.field label{font-size:12px;color:#48566d;font-weight:730}
+.field input,.field select,.field textarea,.filter{
+  min-height:45px;border:1px solid #dfe5ed;border-radius:10px;
+  padding:11px 13px;color:#263449;font-size:13px;transition:border .18s,box-shadow .18s;
+}
+.field input:hover,.field select:hover,.field textarea:hover,.filter:hover{border-color:#bdc7d7}
+.field input:focus,.field select:focus,.field textarea:focus,.filter:focus{border-color:#8f89f3;box-shadow:0 0 0 4px rgba(94,83,232,.1)}
+.field small{font-size:11px;color:#7f8da0;line-height:1.65}
+.fields{gap:19px}
+.formfoot{gap:10px;margin-top:23px}
+.toolbar{gap:11px}
+.toolbar .filter{width:min(330px,100%)}
+.divider{background:#e8ecf0}
+.stack{gap:16px}
+.softbox{background:#f7f9fb;border:1px solid #e9edf2;border-radius:13px;padding:17px}
+.softbox h4{font-size:13px;color:#33415a}
+.softbox p{font-size:12px;line-height:1.7;color:#8391a2}
+.miniicon{height:40px;width:40px;border-radius:12px}
+.event{padding-bottom:4px}
+.event .eico{height:36px;width:36px;border-radius:10px}
+.event strong{font-size:12px}
+.event p{font-size:11px;line-height:1.7}
+.testcard{
+  border:1px solid #e2e7ed;border-radius:18px;
+  min-height:214px;padding:23px 21px;
+  box-shadow:0 7px 20px rgba(22,34,56,.026);
+  transition:transform .21s,border .21s,box-shadow .21s;
+}
+.testcard:hover{border-color:#bcb7f5;transform:translateY(-4px);box-shadow:0 14px 28px rgba(38,40,103,.07)}
+.testcard h3{font-size:15px;line-height:1.4;letter-spacing:-.25px}
+.testcard p{font-size:12px;line-height:1.75;color:#8390a1}
+.testtop{font-size:11px;color:#7b89a1}
+.teststatus{width:9px;height:9px;box-shadow:0 0 0 4px rgba(188,195,208,.13)}
+.teststatus.pass{box-shadow:0 0 0 4px rgba(93,188,135,.11)}
+.progress{height:9px}
+.progress>span{background:linear-gradient(90deg,#6259f4,#b6a6ff)}
+.secret{border-radius:18px;padding:25px;background:linear-gradient(125deg,#152440,#26375b)}
+.secretcode{font-size:12px;border-radius:9px;line-height:1.6}
+.overlay{background:rgba(10,21,39,.62);backdrop-filter:blur(8px)}
+.dialog{border:1px solid #e6e8f2;border-radius:23px;padding:29px;box-shadow:0 36px 90px rgba(12,22,47,.3);animation:dialogRise .22s ease}
+.dialog h2{font-size:23px}
+.dialog p{font-size:13px}
+.toastbox{right:26px;bottom:24px;max-width:min(425px,calc(100vw - 32px))}
+.toast{border-radius:14px;padding:17px;background:#16223a;border:1px solid rgba(255,255,255,.13)}
+.toast strong{font-size:13px}.toast p{font-size:12px;line-height:1.7}
+.footer{font-size:10px;letter-spacing:.25px}
+.palette{width:min(620px,100%);padding:0;overflow:hidden}
+.palette-head{display:flex;align-items:center;gap:12px;padding:20px 23px;border-bottom:1px solid var(--line)}
+.palette-head svg{color:var(--accent)}
+.palette-head input{border:0;outline:0;background:transparent;flex:1;min-width:0;font-size:16px;color:#24324b}
+.palette-head input::placeholder{color:#a1acbb}
+.palette-head .shortcut{white-space:nowrap}
+.palette-sub{padding:18px 23px 9px;font-size:10px;font-weight:760;letter-spacing:1.5px;color:#8a96a8}
+.palette-results{padding:0 12px 12px;display:grid;gap:3px;max-height:min(54vh,430px);overflow:auto}
+.palette-item{display:flex;align-items:center;gap:13px;text-align:left;border:0;background:transparent;border-radius:10px;padding:12px;color:#37445a;min-height:48px;width:100%;font-size:13px;font-weight:740}
+.palette-item svg{color:#6a61dc}
+.palette-item small{margin-left:auto;color:#909aaa;font-size:11px;font-weight:550}
+.palette-item:hover,.palette-item:focus-visible{background:#f1f0ff;color:#4f49d5}
+.palette-empty{padding:24px;text-align:center;color:#7f8da0;font-size:13px}
+.palette-foot{padding:12px 23px;background:#fafbfe;border-top:1px solid #edf0f5;color:#8a95a7;font-size:11px}
+@keyframes viewEnter{from{opacity:.65;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes dialogRise{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:1350px){.top-command{display:none}.art{right:5%}}
+@media(max-width:1180px){.content{padding:35px 27px 60px}.top{padding:0 27px}.hero h2{font-size:46px}}
+@media(max-width:925px){
+  .layout{display:block}.sidebar{width:270px;box-shadow:20px 0 60px rgba(6,14,31,.32)}
+  .sidebar.open{transform:translateX(0)}.top{height:69px}
+  .hero{min-height:310px}.hero .art{right:9%;opacity:.7}
+}
+@media(max-width:680px){
+  body{font-size:14px}
+  .top{height:64px;padding:0 15px}.topright{gap:7px}
+  .content{padding:27px 16px 55px}
+  .pagehead h1{font-size:34px;letter-spacing:-1.5px}
+  .pagehead p{font-size:12px}
+  .secthead{gap:13px;align-items:flex-start;flex-wrap:wrap}
+  .grid{gap:13px}.four,.three,.two,.wide,.fields{grid-template-columns:1fr}
+  .card{padding:21px;border-radius:18px}.card.compact{padding:16px}
+  .hero{min-height:345px;padding:32px 26px}
+  .hero h2{font-size:clamp(34px,8vw,42px);letter-spacing:-1.9px}
+  .hero p{font-size:12px}.hero .art{right:-56px;opacity:.22}
+  .quick{min-height:135px;padding:18px}
+  .quick .qicon{width:37px;height:37px}
+  .tablewrap{margin-inline:0}
+  .panel{padding:15px 14px}
+  .formfoot>.btn{flex-grow:0}
+  .toolbar .filter{width:100%}
+  .toastbox{right:14px;bottom:12px}
+  .session{max-width:127px;text-align:center;white-space:normal;line-height:1.1}
+  .dialog{padding:22px}
+  .palette{padding:0}.palette-head{padding:17px}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .content,.dialog{animation:none!important}
+  .orb{animation:none!important}
+  .navlink,.btn,.quick,.testcard,.quick .qfoot svg{transition:none!important}
+}
+
+
+/* Compact search affordance on laptops and narrow screens */
+@media(max-width:1350px){
+ .top-command{display:inline-flex;padding:0 10px;gap:0;min-height:36px}
+ .top-command .cmd-label,.top-command kbd{display:none}
+}
+.palette-head:focus-within{box-shadow:inset 0 -2px 0 var(--accent)}
+.skip-link{
+ position:fixed;left:16px;top:-90px;z-index:400;background:var(--lime);
+ color:#15223b;font-size:13px;font-weight:800;padding:10px 15px;
+ border-radius:9px;box-shadow:0 12px 25px rgba(0,0,0,.15);
+}
+.skip-link:focus{top:12px}
+@media(max-width:680px){
+ .top-command{padding:0 8px;width:35px;min-height:35px}
+ .top-command svg{height:17px;width:17px}
+}
+
+/* V3 / Operational surfaces — evidence-first diagnostic and safe issue flow */
+.diagnostic{scroll-margin-top:98px;padding:30px;border-color:#dce3f2;box-shadow:0 23px 55px rgba(28,45,77,.067)}
+.diagnostic-top{align-items:flex-start;flex-wrap:wrap;gap:16px}
+.diagnostic-top h2{font-size:clamp(24px,2.6vw,34px);letter-spacing:-1.4px;line-height:1.14;margin:0 0 7px}
+.diagnostic-top p{font-size:12px;margin:0;color:#8591a2}
+.scope-ribbon{padding:19px 0 22px;margin-top:23px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.scope-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.diagnostic-scope{text-align:left;display:flex;flex-direction:column;gap:3px;min-width:0;padding:13px 15px;border:1px solid #dce3ed;border-radius:12px;background:#fff;color:#33445e;transition:.2s}
+.diagnostic-scope strong{font-size:13px;line-height:1.4}.diagnostic-scope small{font-size:11px;color:#8894a6}
+.diagnostic-scope:hover{border-color:#9e98f1;background:#fbfaff;transform:translateY(-2px)}
+.diagnostic-scope.active{background:#eae9ff;border-color:#aca5fa;box-shadow:inset 0 0 0 1px #aca5fa;color:#493fc5}
+.diagnostic-scope.active small{color:#6662a4}
+.diagnosis-banner{padding:23px 24px;border-radius:16px;margin:23px 0 20px;border:1px solid #dcebdc}
+.diagnosis-banner.is-ok{background:linear-gradient(115deg,#f0fbf0,#f9fcf7);border-color:#d2ead9}
+.diagnosis-banner.is-blocked{background:linear-gradient(115deg,#fff3ec,#fffbf8);border-color:#f6d9ca}
+.diagnosis-banner h3{font-size:23px;letter-spacing:-.65px;line-height:1.2;margin:6px 0 0;font-weight:790}
+.diagnosis-banner p{font-size:13px;line-height:1.85;color:#4f5f74;margin:14px 0 10px}
+.diagnosis-banner small{display:block;font-size:11px;color:#788697;line-height:1.75}
+.chain-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px;margin-bottom:21px}
+.chain-step{display:flex;align-items:center;gap:13px;min-width:0;padding:17px 14px;border:1px solid #e3e9ef;border-radius:13px;background:#f8fafc}
+.chain-step>div{flex:1;min-width:0}.chain-step strong{display:block;font-size:13px;color:#304158}
+.chain-step small{display:block;font-size:11px;color:#8190a1;margin-top:3px;line-height:1.55;overflow-wrap:anywhere}
+.chain-step svg{height:16px;width:16px;color:#438a63}
+.chain-step.blocked{background:#fff6f2;border-color:#f0dbd3}.chain-step.blocked svg{color:#bb7960}
+.chain-number{font:700 11px Consolas,monospace;color:#7b8da4;padding:8px;border-radius:7px;background:#edf1f6}
+.chain-step.ok .chain-number{background:#e0f3e8;color:#357c59}
+.diagnostic-sections{gap:17px}
+.diagnostic-pane{padding:20px;border-radius:16px;border:1px solid #e6ebf0;background:#fbfcfe;min-width:0}
+.diagnostic-pane .secthead{margin:0 0 17px}
+.diagnostic-pane .secthead h2{font-size:16px}
+.diagnostic-pane .tablewrap{margin-top:13px}
+.detail-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 15px;border-radius:12px;background:#fff;border:1px solid #e4eaf0;flex-wrap:wrap}
+.detail-row p{margin:6px 0 0;font-size:12px}
+.trace-list{position:relative;margin:16px 0 0 7px;border-left:1px solid #d9e0ed;padding:0 0 0 17px;display:grid;gap:13px}
+.trace-item{position:relative;font-size:12px}
+.trace-item .trace-dot{position:absolute;left:-22px;top:5px;width:9px;height:9px;background:#7973eb;border:2px solid #fbfcfe;border-radius:50%;box-shadow:0 0 0 1px #bbb6eb}
+.trace-item strong{font-size:12px}.trace-item p{margin:4px 0 0;color:#8995a7;font-size:11px}
+.diagnostic-tier{font-size:32px;font-weight:800;letter-spacing:-1.4px;line-height:1.25;color:#5951eb;margin-top:8px}
+.empty-compact{padding:16px;color:#8591a1;font-size:12px;background:#fff;border:1px dashed #e2e7ed;border-radius:10px}
+.diagnostic .tablewrap table{min-width:510px}
+.code-guide .stack{gap:17px}
+.guide-index{font:700 12px Consolas,monospace;color:#5751d8;background:#f0efff;padding:9px;border-radius:9px}
+.code-metrics{margin-bottom:17px}
+.code-metrics .card{padding:18px 22px}
+.code-metrics .kpi{font-size:36px;margin:14px 0 2px}
+.code-ledger{padding:20px 21px}
+.code-tabs{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding:6px;margin-bottom:20px;background:#f3f5f8;border-radius:13px}
+.code-tabs button{border:1px solid transparent;border-radius:9px;padding:11px 16px;background:transparent;color:#68778d;font-size:12px;font-weight:740;min-height:41px;display:flex;gap:10px;align-items:center;transition:.2s}
+.code-tabs button:hover{color:#514be0;background:#fff}
+.code-tabs button.active{color:#534bd7;border-color:#e2e0fa;background:#fff;box-shadow:0 4px 12px rgba(19,30,61,.07)}
+.code-tabs button span{font:11px Consolas,monospace;background:#e5e8ed;color:#7a8393;border-radius:6px;padding:3px 7px}
+.code-tabs button.active span{background:#e9e8ff;color:#5750ce}
+.code-filter{width:min(365px,100%);margin:0 0 18px}
+.issue-preview{border-color:#bdb7f1;background:linear-gradient(140deg,#fff 0%,#faf9ff 100%)}
+.issue-preview .eyebrow{margin-bottom:16px}
+.review-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:21px 0}
+.review-grid>div{padding:13px 14px;background:#fff;border:1px solid #e7e9f1;border-radius:11px;min-width:0}
+.review-grid small{display:block;font-size:11px;color:#8a96a7;margin-bottom:5px}
+.review-grid strong{display:block;font-size:13px;font-weight:760;overflow-wrap:anywhere;color:#2d3954}
+.issue-preview .panel{margin-bottom:8px}
+.unknown-panel{border-color:#f0d3a7;background:linear-gradient(135deg,#fff9ed,#fffdfa)}
+.unknown-panel h3{margin:15px 0 9px;font-size:20px;line-height:1.35;letter-spacing:-.5px}
+.unknown-panel p{font-size:12px;color:#7a6e65;line-height:1.85}
+.unknown-panel .softbox{background:#fffdf8;border-color:#f2e5d6;overflow-wrap:anywhere}
+.unknown-panel .formfoot{margin-top:17px}
+@media(max-width:1180px){.chain-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.diagnostic-sections{grid-template-columns:1fr}}
+@media(max-width:680px){
+ .diagnostic{padding:18px;border-radius:17px;scroll-margin-top:76px}
+ .diagnostic-top{align-items:flex-start}
+ .scope-options{grid-template-columns:1fr;gap:8px}
+ .diagnostic-scope{padding:11px 13px}
+ .diagnosis-banner{padding:18px 16px}
+ .diagnosis-banner .between{align-items:flex-start;flex-wrap:wrap}
+ .diagnosis-banner h3{font-size:21px}
+ .chain-grid{gap:8px}
+ .chain-step{padding:13px 10px;gap:9px}
+ .chain-number{padding:6px}
+ .chain-step strong{font-size:12px}
+ .chain-step small{font-size:10px}
+ .chain-step svg{width:13px;height:13px}
+ .diagnostic-pane{padding:16px 12px}
+ .code-ledger{padding:14px}
+ .code-tabs{display:grid;grid-template-columns:1fr;gap:2px}
+ .code-tabs button{justify-content:space-between}
+ .review-grid{grid-template-columns:1fr}
+ .code-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .code-metrics .card{padding:13px 10px}
+ .code-metrics .caps{font-size:9px;letter-spacing:0}
+ .code-metrics .kpi{font-size:28px}
+ .code-metrics .kpi-icon{width:27px;height:27px}
+ .code-metrics .kpi-icon svg{width:14px;height:14px}
+}
+@media(max-width:360px){.code-metrics{grid-template-columns:1fr}.chain-grid{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.diagnostic-scope,.code-tabs button{transition:none!important}}
+
+
+/* V3 / Pro grant modes and live projection */
+.grant-modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:10px 0 0}
+.grant-mode-card{display:flex;flex-direction:column;align-items:flex-start;text-align:left;min-width:0;gap:6px;border:1px solid #dfe5ee;background:#fff;color:#3c4b63;border-radius:12px;padding:14px 12px;min-height:88px;transition:border .18s,box-shadow .18s,background .18s}
+.grant-mode-card strong{font-size:12px;font-weight:790;line-height:1.45}
+.grant-mode-card small{font-size:11px;color:#8693a5;line-height:1.55}
+.grant-mode-card:hover{border-color:#aca7ef;background:#fafaff}
+.grant-mode-card.active{border-color:#9790fa;box-shadow:inset 0 0 0 1px #a8a2ff;background:#f0eeff;color:#5249ce}
+.grant-mode-card.active small{color:#625ca2}
+.grant-projection{background:#f2f7f1;border:1px solid #d9e9d8;padding:16px;border-radius:12px}
+.grant-projection .caps{color:#45745b}
+.grant-projection p{font-size:12px;line-height:1.85;margin:7px 0 0;color:#48645a}
+.lifetime-check{display:flex;align-items:flex-start;gap:10px;font-size:12px;font-weight:760;color:#974c48;margin-top:13px;cursor:pointer}
+.lifetime-check input{width:17px;height:17px;margin-top:2px;flex:none;accent-color:#5c50e8}
+@media(max-width:680px){.grant-modes{grid-template-columns:1fr}.grant-mode-card{min-height:66px;padding:11px 13px;gap:3px}}
+
+
+/* V3 / Guided operation journeys — navigation only, never false acceptance */
+.guide-panel{padding:20px 23px;background:#172641;border:1px solid #2c4060;color:#eef4ff;border-radius:17px;box-shadow:0 15px 34px rgba(26,40,72,.13);margin-bottom:26px}
+.guide-head{gap:12px}.guide-head h2{margin:4px 0 0;font-size:17px;letter-spacing:-.4px}
+.guide-head .caps{color:#b4d5a0}
+.guide-track{height:5px;background:#35445f;border-radius:99px;margin:15px 0;overflow:hidden}
+.guide-track>span{display:block;height:100%;background:#dffa84;border-radius:99px;transition:width .2s}
+.guide-body{display:flex;justify-content:space-between;align-items:center;gap:20px;flex-wrap:wrap}
+.guide-body>strong{font-size:12px;color:#e5f69d}
+.guide-body>p{flex:1 1 270px;font-size:12px;line-height:1.7;color:#c8d4e4;margin:0}
+.guide-controls{display:flex;gap:7px;flex-wrap:wrap}
+.guide-cards{margin-bottom:18px}
+.guide-card{display:flex;flex-direction:column;align-items:flex-start}
+.guide-card h3{font-size:17px;letter-spacing:-.3px;margin:10px 0 6px}
+.guide-card p{font-size:12px;color:#7d8a9c;line-height:1.7;margin:0 0 15px}
+.guide-card .btn{margin-top:auto}
+.guide-mini-steps{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:21px}
+.guide-mini-steps span{font-size:10px;border-radius:7px;background:#f1f2f7;color:#768294;padding:6px 8px}
+@media(max-width:680px){.guide-panel{padding:16px}.guide-body{align-items:flex-start;flex-direction:column;gap:12px}.guide-body>p{flex:auto}.guide-controls{width:100%}.guide-controls .btn{flex-grow:1}}
+@media(prefers-reduced-motion:reduce){.guide-track>span{transition:none}}
+
+
+/* V4 · User feedback inbox. Dense information, clear case ownership, usable mobile workflow. */
+.feedback-kpis{margin:8px 0 24px}
+.feedback-kpi{position:relative;overflow:hidden;min-height:156px}
+.feedback-kpi.focus{background:linear-gradient(132deg,#fcf8ee,#fffdfb);border-color:#f0e1c7}
+.feedback-kpi .kpi{font-size:43px;letter-spacing:-1.8px;margin:9px 0 7px}
+.feedback-kpi .kpi-icon{width:36px;height:36px}
+.feedback-toolbar{display:flex;align-items:end;gap:10px;flex-wrap:wrap;padding:13px;background:#fff;border:1px solid #e3e8ed;border-radius:15px;margin:0 0 18px;box-shadow:0 4px 19px rgba(26,42,64,.025)}
+.feedback-toolbar .field{gap:5px;min-width:147px;flex:1 1 145px}
+.feedback-toolbar .field label{font-size:10px;letter-spacing:.6px;color:#78879a}
+.feedback-toolbar .field select{min-height:43px;background:#f9fafc;font-size:12px}
+.feedback-toolbar .btn{min-height:43px}
+.feedback-search-box{display:flex;align-items:center;gap:9px;background:#f6f8fb;border:1px solid #e2e8f0;border-radius:10px;padding:0 12px;flex:2 1 280px;min-height:43px}
+.feedback-search-box svg{width:19px;height:19px;color:#8794a9;flex:none}
+.feedback-search-box input{width:100%;min-width:0;outline:0;border:0;background:transparent;font:inherit;color:var(--ink);font-size:12px}
+.feedback-search-box:focus-within{border-color:#9e97f1;box-shadow:0 0 0 3px rgba(94,83,232,.10)}
+.feedback-workbench{display:grid;grid-template-columns:minmax(305px,.84fr) minmax(0,1.46fr);gap:18px;align-items:start}
+.feedback-inbox{border:1px solid #e3e8ee;border-radius:19px;overflow:hidden;background:#fff;min-width:0;box-shadow:0 5px 23px rgba(24,39,66,.028)}
+.feedback-inbox-header{display:flex;align-items:center;justify-content:space-between;gap:11px;padding:21px 20px;background:#f9fafc;border-bottom:1px solid #e5eaf0;flex-wrap:wrap}
+.feedback-inbox-header h3{font-size:16px;letter-spacing:-.4px;margin-top:4px}
+.feedback-ticket-list{max-height:860px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#d0d6e5 transparent}
+.feedback-ticket{display:block;width:100%;text-align:left;padding:19px 19px 17px;border:0;border-bottom:1px solid #ebeff4;background:#fff;color:#283850;transition:background .18s,box-shadow .18s;cursor:pointer}
+.feedback-ticket:hover{background:#f9f8ff}
+.feedback-ticket:focus-visible{position:relative;z-index:1;outline-offset:-3px}
+.feedback-ticket.active{background:#f0efff;box-shadow:inset 4px 0 0 #6256e9}
+.feedback-ticket:last-child{border-bottom:0}
+.feedback-ticket>.between{margin-bottom:9px}
+.feedback-id{font-size:11px;color:#6560c6;font-weight:780}
+.feedback-updated{font-size:11px;color:#95a0af}
+.feedback-ticket>strong{display:block;font-size:13px;font-weight:810;line-height:1.55;letter-spacing:-.15px}
+.feedback-ticket>p{margin:7px 0 13px;font-size:11px;color:#8090a3;line-height:1.75;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.feedback-ticket-foot{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.feedback-ticket-foot>span{font-size:10px;color:#77869b}
+.feedback-ticket-foot>div{display:flex;gap:6px;flex-wrap:wrap}
+.feedback-ticket-foot .badge{font-size:9px;padding:4px 7px}
+.feedback-detail{background:#fff;border:1px solid #e3e8ee;border-radius:19px;min-width:0;overflow:hidden;box-shadow:0 10px 38px rgba(25,38,63,.035)}
+.feedback-detail-head{padding:28px 29px 22px;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.feedback-detail-head .eyebrow{margin:0 0 12px}
+.feedback-detail-head h2{font-size:clamp(22px,2.1vw,29px);letter-spacing:-1.05px;line-height:1.3;font-weight:815;max-width:660px}
+.feedback-detail-sub{display:flex;align-items:center;gap:8px;margin-top:14px;flex-wrap:wrap}
+.feedback-detail-sub>span:last-child{font-size:11px;color:#8a96a8}
+.feedback-context{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:16px 28px;background:#f8fafc;border-top:1px solid #eef1f6;border-bottom:1px solid #e9edf2}
+.feedback-context>div{min-width:0}
+.feedback-context small{display:block;color:#8492a4;font-size:10px;letter-spacing:.5px;margin-bottom:6px}
+.feedback-context strong{display:block;color:#30445e;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+.feedback-description{margin:25px 28px;padding:18px 20px;border:1px solid #e6e9f0;border-left:3px solid #8d83eb;border-radius:12px;background:#fbfbff}
+.feedback-description .caps{color:#6864bf}
+.feedback-description p{font-size:13px;line-height:1.95;color:#34445c;margin:12px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.feedback-handler{padding:26px 28px 24px;border-top:1px solid #ebeff4}
+.feedback-handler>.between{margin-bottom:19px}
+.feedback-handler h3{font-size:17px;letter-spacing:-.35px}
+.feedback-handler .fields{gap:17px}
+.feedback-handler textarea{min-height:106px;resize:vertical}
+.feedback-handler .formfoot{justify-content:flex-end}
+.feedback-history{padding:23px 28px 27px;background:#fafbfe;border-top:1px solid #e8ecf2}
+.feedback-history h3{font-size:15px;letter-spacing:-.3px}
+.feedback-timelines{display:grid;grid-template-columns:1fr 1fr;gap:25px;margin-top:20px}
+.feedback-events{border-left:1px solid #d4dce9;padding-left:16px;margin:14px 0 0 8px;display:grid;gap:16px}
+.feedback-event{position:relative}
+.feedback-event .trace-dot{position:absolute;left:-22px;top:3px;width:10px;height:10px;background:#8981e8;border-radius:50%;border:2px solid #fafbfe;box-shadow:0 0 0 1px #c7c5ee}
+.feedback-event strong{font-size:12px;color:#34435a}
+.feedback-event p{font-size:11px;line-height:1.7;color:#8693a4;margin:4px 0 0;overflow-wrap:anywhere}
+.feedback-notes{display:grid;gap:9px;margin-top:14px}
+.feedback-note{padding:12px 14px;border-radius:10px;background:#fff;border:1px solid #e8edf1}
+.feedback-note strong{color:#5c569c;font-size:11px}
+.feedback-note small{font-size:10px;color:#95a0af}
+.feedback-note p{font-size:11px;line-height:1.8;color:#4b5a6d;margin:8px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.feedback-no-selection{text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;border:1px dashed #cdd5e1;border-radius:19px;padding:55px 28px;color:#7b879b;background:#fff}
+.feedback-no-selection svg{height:37px;width:37px;color:#8178dd}
+.feedback-no-selection h3{font-size:17px;color:#2b3950}.feedback-no-selection p{font-size:12px}
+.feedback-empty{text-align:center;font-size:12px;color:#8795a6;padding:50px 19px}
+#public-feedback{scroll-margin-top:98px}
+.public-feedback-list{display:grid;gap:10px}
+.public-feedback-item{padding:15px;background:#f8faff;border:1px solid #eaedf5;border-radius:11px}
+.public-feedback-item strong{font-size:12px;max-width:320px}
+.public-feedback-item>.between{gap:10px;flex-wrap:wrap;margin-bottom:8px}
+@media(max-width:1240px){
+ .feedback-workbench{grid-template-columns:minmax(260px,.86fr) minmax(0,1.14fr);gap:12px}
+ .feedback-context{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:15px}
+ .feedback-detail-head,.feedback-handler,.feedback-history{padding-left:21px;padding-right:21px}
+ .feedback-description{margin-left:21px;margin-right:21px}
+ .feedback-timelines{grid-template-columns:1fr}
+}
+@media(max-width:920px){
+ .feedback-workbench{grid-template-columns:1fr}
+ .feedback-ticket-list{max-height:365px;overflow-y:auto}
+ .feedback-inbox{max-width:none}
+ .feedback-context{grid-template-columns:repeat(4,minmax(0,1fr))}
+ .feedback-timelines{grid-template-columns:1fr 1fr}
+}
+@media(max-width:680px){
+ .feedback-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .feedback-kpi{min-height:128px}
+ .feedback-kpi .kpi{font-size:35px}
+ .feedback-toolbar{padding:11px;align-items:stretch}
+ .feedback-search-box{flex:1 1 100%}
+ .feedback-toolbar .field{flex:1 1 130px}
+ .feedback-toolbar .btn{flex:1}
+ .feedback-ticket{padding:16px}
+ .feedback-inbox-header{padding:16px}
+ .feedback-ticket-list{max-height:310px}
+ .feedback-detail-head{padding:20px 17px}
+ .feedback-detail-head h2{font-size:23px}
+ .feedback-context{padding:15px 16px;grid-template-columns:repeat(2,minmax(0,1fr))}
+ .feedback-description{margin:16px;padding:15px}
+ .feedback-handler,.feedback-history{padding:20px 16px}
+ .feedback-timelines{grid-template-columns:1fr}
+ #public-feedback{scroll-margin-top:76px}
+}
+
+
+/* Five priority journeys, with a calmer adaptive grid */
+.quick-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+.quick-grid .quick{min-width:0}
+@media(max-width:1450px){.quick-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:780px){.quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:680px){.quick-grid{grid-template-columns:1fr}}
+
+.feedback-public-answer{margin-top:11px;padding:11px 12px;border-radius:10px;border:1px solid #dce9df;background:#f2f9f4}
+.feedback-public-answer strong{font-size:11px;color:#40805b}
+.feedback-public-answer p{font-size:12px;line-height:1.8;color:#415e4d;margin:6px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+.feedback-public-reply{padding:15px 18px;margin:0 28px 23px;border-radius:12px;border:1px solid #d9eadd;background:#f2faf3}
+.feedback-public-reply .caps{color:#3f7855}
+.feedback-public-reply p{font-size:12px;line-height:1.8;color:#365745;margin:10px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+@media(max-width:680px){.feedback-public-reply{margin:0 16px 18px}}
+
+/* V5 / Global governance versus single-product operations */
+/* V6 / A compact workspace selector is a navigation control, not a dashboard panel. */
+.sidebar .brand{margin-bottom:13px;padding-bottom:17px}
+.workspace-picker{margin:0 9px 9px;padding:0;border:0;border-radius:0;background:none;display:block}
+.workspace-picker select{display:block;width:100%;min-width:0;height:42px;min-height:42px;margin:0;padding:0 34px 0 12px;border:1px solid rgba(191,206,230,.24);border-radius:10px;background:#263753;color:#eef3fe;box-shadow:none;font:650 12px/1.4 var(--font);letter-spacing:0;cursor:pointer}
+.workspace-picker select:hover{background:#2d4061;border-color:rgba(202,216,240,.45)}
+.workspace-picker select:focus-visible{outline:3px solid #c8d6ff;outline-offset:2px}
+.workspace-picker select option{color:#1c2b40;background:#fff}
+.product-space .workspace-picker select{background:#263753;color:#eef3fe;border-color:rgba(191,206,230,.24)}
+.product-space .workspace-picker select:hover{background:#2d4061;border-color:rgba(202,216,240,.45)}
+.member-filter-bar{display:flex;align-items:center;gap:5px;margin:0 0 18px;padding:5px;width:max-content;max-width:100%;flex-wrap:wrap;border:1px solid #e4e8f0;border-radius:13px;background:#f7f8fc}
+.member-filter{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:39px;padding:7px 12px;border:0;border-radius:9px;background:transparent;color:#637287;font:700 12px/1.5 var(--font);cursor:pointer;white-space:nowrap}
+.member-filter:hover{background:#fff;color:#504f9d}
+.member-filter.active{background:#eae7ff;color:#50429c;box-shadow:0 2px 6px rgba(42,38,91,.045)}
+.member-filter>span{display:inline-flex;align-items:center;justify-content:center;min-width:23px;height:22px;padding:0 6px;border-radius:7px;background:rgba(35,52,79,.055);font-size:10px}
+.member-filter.active>span{background:rgba(94,75,180,.10)}
+.member-list-note{margin-top:14px;line-height:1.75}
+@media(max-width:680px){.member-filter-bar{width:100%}.member-filter{flex:1 1 auto;padding:7px 9px;gap:6px;font-size:11px}}
+
+.product-space .sidebar{background:#162440;border-right-color:#303c57}
+.product-space .logo{background:#e7dfff;color:#4d399d}
+.product-space .navlink.active{background:#e3ddff;color:#382b7f}
+.product-space .navlink.active:hover{background:#efeaff;color:#382b7f}
+.product-space .brandword{font-size:20px;letter-spacing:-.85px}
+.product-space .brandword small{letter-spacing:1.4px}
+.global-identity{display:flex;align-items:center;justify-content:space-between;gap:25px;padding:30px 36px;margin:0 0 31px;border-radius:20px;background:linear-gradient(115deg,#16233e,#2d3b55);color:#f7f9ff;box-shadow:0 14px 37px rgba(15,26,51,.10)}
+.global-identity h2{font-size:clamp(25px,3vw,36px);letter-spacing:-1.25px;line-height:1.35;margin:8px 0}
+.global-identity .caps{color:#d8f69b}
+.global-identity p{font-size:12px;color:#bac8d9;line-height:1.9;max-width:650px}
+.global-identity>span{height:70px;width:70px;padding:21px;border-radius:20px;color:#dffa84;background:rgba(215,247,143,.13);flex:none}
+.global-identity>span svg{height:100%;width:100%}
+.workspace-products{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.workspace-product{background:#fff;border:1px solid #e2e7ee;border-radius:15px;padding:20px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.workspace-product>.row{gap:11px;flex-wrap:wrap}
+.workspace-product strong{font-size:14px}
+.workspace-product .miniicon{display:inline-flex;align-items:center;justify-content:center;background:#f0edff;color:#6658d2;width:40px;height:40px;border-radius:11px}
+.product-identity{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:28px 32px;margin-bottom:29px;border:1px solid #dedbf3;border-radius:20px;background:linear-gradient(115deg,#f4f1ff,#fdfdff)}
+.product-identity .row{gap:17px}
+.product-identity h2{font-size:clamp(23px,2.8vw,34px);line-height:1.3;letter-spacing:-1.1px;margin:6px 0 4px}
+.product-identity p{color:#8190a2;font-size:11px}
+.identity-mark{display:inline-flex;align-items:center;justify-content:center;width:68px;height:68px;flex:none;border-radius:18px;background:#e5defd;color:#6555af}
+.identity-mark svg{width:28px;height:28px}
+.scope-fixed-field{padding:13px 15px;border:1px solid #e3dfef;background:#f7f4ff;border-radius:12px}
+.scope-fixed-field small{display:block;color:#7e79ad;font-size:11px}
+.scope-fixed-field strong{display:block;color:#483b9c;font-size:14px;margin-top:5px}
+.scope-fixed-field input{display:none}
+.context-hint{border-left:3px solid #8a80db;background:#f6f4ff;border-radius:6px;padding:11px 14px;color:#5b5484;font-size:12px;line-height:1.7}
+@media(max-width:1150px){.scope-identity{font-size:0;padding:9px}.scope-identity svg{width:18px;height:18px}.top-return{font-size:0;padding:0 10px}.top-return svg{width:17px;height:17px}}
+@media(max-width:900px){.workspace-products{grid-template-columns:1fr}.global-identity{padding:26px}.product-identity{padding:23px}}
+@media(max-width:680px){.global-identity{padding:21px 19px}.global-identity>span{display:none}.product-identity{padding:19px 16px}.identity-mark{width:50px;height:50px;border-radius:14px}.identity-mark svg{height:22px;width:22px}.workspace-product{padding:16px}.workspace-product>.row:last-child{width:100%;justify-content:space-between}.scope-identity{padding:8px}.top-return{padding:0 8px}}
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="overlay"></div>
+<div id="toasts" class="toastbox" aria-live="polite"></div>
+<script>
+"use strict";
+(function(){
+/* All data and credentials below are fictitious; nothing connects to production. */
+const DAY=86400000,now=()=>Date.now(),date=t=>t==null?"永久":new Date(t).toLocaleDateString("zh-CN"),moment=t=>new Date(t).toLocaleString("zh-CN",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"});
+const escapeHTML=v=>String(v==null?"":v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const nid=x=>x+"-"+Math.random().toString(36).slice(2,8).toUpperCase();
+const paths={home:'<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><rect x="14" y="14" width="7" height="7" rx="2"/>',box:'<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 10h18M9 10v10"/>',users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3a4 4 0 0 1 0 8"/>',user:'<circle cx="12" cy="8" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',shield:'<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/>',key:'<circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 9-9M16 5l3 3M14 7l3 3"/>',ticket:'<path d="M2 9V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a3 3 0 0 0 0 6v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a3 3 0 0 0 0-6Z"/><path d="M13 5v2M13 11v2M13 17v2"/>',gift:'<rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13M3 12h18M12 8H7a2.5 2.5 0 1 1 2.5-2.5L12 8ZM12 8h5a2.5 2.5 0 1 0-2.5-2.5L12 8Z"/>',pulse:'<path d="M3 12h4l3-8 4 16 3-8h4"/>',history:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>',flask:'<path d="M9 3h6M10 3v7L4 20a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1l-6-10V3M7 16h10"/>',arrow:'<path d="M5 12h14m-7-7 7 7-7 7"/>',plus:'<path d="M12 5v14M5 12h14"/>',search:'<circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/>',check:'<path d="m5 12 4 4L19 6"/>',close:'<path d="M18 6 6 18M6 6l12 12"/>',alert:'<path d="m12 3 10 18H2L12 3Z"/><path d="M12 9v4M12 17h.01"/>',info:'<circle cx="12" cy="12" r="10"/><path d="M12 11v6M12 7h.01"/>',copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',download:'<path d="M12 3v12m-4-4 4 4 4-4M4 17v3h16v-3"/>',menu:'<path d="M4 7h16M4 12h16M4 17h16"/>',eye:'<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',lock:'<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>',mail:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',refresh:'<path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.5 9a7 7 0 0 1 12-3l2.5 2M4 16l2.5 2a7 7 0 0 0 12-3"/>',pause:'<path d="M9 5v14M15 5v14"/>',play:'<path d="m8 5 12 7-12 7V5Z"/>',spark:'<path d="m12 2 2.2 7.8L22 12l-7.8 2.2L12 22l-2.2-7.8L2 12l7.8-2.2L12 2Z"/>',cloud:'<path d="M20 16.6a5 5 0 0 0-1.4-9.7A7 7 0 0 0 5 9a4 4 0 0 0-.8 8H20Z"/>',database:'<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.7 4 3 9 3s9-1.3 9-3V5M3 12c0 1.7 4 3 9 3s9-1.3 9-3"/>',bolt:'<path d="m13 2-9 12h7l-1 8 10-12h-7l0-8Z"/>'};
+paths.message='<path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5 9 9 0 0 1-4.3-1.1L3 21l1.4-4.5A8.5 8.5 0 1 1 21 11.5Z"/><path d="M8 11h9M8 14h6"';
+const ico=n=>'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(paths[n]||paths.home)+'</svg>';
+const GLOBAL_NAV=[["PLATFORM / 全平台治理",[["home","平台总览","home"],["products","产品管理","box"],["users","全局用户","users"],["security","平台安全","shield"],["audit","全局审计","history"]]],["LAB / 独立测试区",[["lab","全功能测试","flask"],["auth","注册与登录","mail"],["join","加入与退出","arrow"],["redeem","兑换码核销","key"],["access","在线资格检查","shield"],["backup","AisenLens 备份","cloud"]]]];
+const PRODUCT_NAV=[["PRODUCT / 当前产品",[["producthome","产品概览","home"],["users","用户管理","users"],["grants","Pro 授权","gift"],["codes","兑换码","ticket"],["feedback","反馈管理","message"]]],["OPERATIONS / 追溯",[["audit","产品操作记录","history"]]]];
+const NAV=[...GLOBAL_NAV,...PRODUCT_NAV];
+const visibleNav=()=>S.scope==="all"?GLOBAL_NAV:PRODUCT_NAV;
+const platformPages=new Set(["home","products","security","lab","auth","join","redeem","access","backup"]);
+const productPages=new Set(["producthome","grants","codes","feedback"]);
+const label={home:"平台总览",products:"产品管理",users:"用户管理",feedback:"反馈管理",grants:"Pro 授权",codes:"兑换码",auth:"注册与登录",join:"加入与退出",redeem:"兑换码核销",access:"在线资格检查",backup:"AisenLens 备份",security:"平台安全",audit:"操作审计",lab:"全功能测试",producthome:"产品概览"};
+const isProduct=()=>S.scope!=="all"&&!!P(S.scope);
+const currentProduct=()=>isProduct()?P(S.scope):null;
+function guardProduct(product,verb){if(!requireAdmin())return false;if(!isProduct()||(product&&product!==S.scope)){toast("工作空间范围不匹配","请先进入正确的产品管理空间，再执行"+(verb||"该操作")+"。",true);return false}return true}
+function guardGlobal(verb){if(!requireAdmin())return false;if(S.scope!=="all"){toast("请返回全平台空间","「"+(verb||"平台治理")+"」是全平台操作，不能从单产品空间执行。",true);return false}return true}
+function auditProduct(action,target){for(const rows of [DB.members,DB.grants,DB.codes,DB.batches,DB.feedback,DB.redemptions]){const found=rows.find(x=>x.id===target);if(found)return found.product}if(action.startsWith("product."))return target;return null}
+
+const seed=()=>{const t=now();return {memberEvents:[],feedback:[
+{id:"FB-1042",user:"mia",product:"lens",category:"bug",priority:"high",status:"new",assignee:null,title:"导出完成后进度提示一直停留在 99%",body:"演示场景：AisenLens 导出完成后，进度提示没有自动消失。希望能给出明确的完成反馈。",created:t-2*3600000,updated:t-2*3600000,notes:[],events:[{actor:"合成用户",action:"提交反馈",detail:"创建工单",time:t-2*3600000}]},
+{id:"FB-1041",user:"june",product:"lens",category:"account",priority:"urgent",status:"in_progress",assignee:"owner",title:"已有 Pro 授权但无法进入产品",body:"账号有过 Pro 兑换记录，但页面显示无法使用；希望协助确认成员状态。",created:t-2*DAY,updated:t-7*3600000,notes:[{actor:"owner",text:"已确认该成员被暂停，原状态为 left。建议先说明重新加入的步骤。",time:t-7*3600000}],events:[{actor:"合成用户",action:"提交反馈",detail:"创建工单",time:t-2*DAY},{actor:"owner",action:"开始处理",detail:"指派给平台管理员",time:t-7*3600000}]},
+{id:"FB-1040",user:"leo",product:"note",category:"suggestion",priority:"normal",status:"triaged",assignee:"alex",title:"建议知识卡片支持更灵活的整理方式",body:"希望在未来版本中能更方便地组织卡片和章节，这只是产品建议。",created:t-4*DAY,updated:t-3*DAY,notes:[],events:[{actor:"合成用户",action:"提交反馈",detail:"创建工单",time:t-4*DAY},{actor:"alex",action:"完成分类",detail:"进入产品建议池",time:t-3*DAY}]},
+{id:"FB-1039",user:"alex",product:"lens",category:"experience",priority:"low",status:"waiting_user",assignee:"owner",publicReply:"请补充具体使用的系统，以及希望改进的快捷键场景。",title:"快捷键提示是否可以更醒目？",body:"第一次使用时不容易知道常用快捷键，希望在设置里添加简短提示。",created:t-6*DAY,updated:t-5*DAY,notes:[{actor:"owner",text:"待确认具体系统和快捷键场景。",time:t-5*DAY}],events:[{actor:"owner",action:"等待用户补充",detail:"已标记待反馈",time:t-5*DAY}]},
+{id:"FB-1038",user:"mia",product:"note",category:"suggestion",priority:"low",status:"resolved",assignee:"alex",publicReply:"感谢建议，这项体验改善已列入模拟产品待办清单。",title:"笔记搜索时希望保留最近筛选条件",body:"在切换页面后保留刚才的搜索条件，可以减少重复操作。",created:t-8*DAY,updated:t-2*DAY,notes:[],events:[{actor:"alex",action:"标记已解决",detail:"演示已处理反馈",time:t-2*DAY}]},
+{id:"FB-1037",user:"leo",product:"board",category:"other",priority:"normal",status:"closed",assignee:"owner",title:"测试版入口说明比较难找",body:"在测试版首页找不到如何获得帮助的入口。",created:t-12*DAY,updated:t-7*DAY,notes:[],events:[{actor:"owner",action:"归档关闭",detail:"演示工单已完成",time:t-7*DAY}]}
+],products:[{id:"lens",key:"aisenlens",name:"AisenLens",status:"active",desc:"本地优先视频工作流"},{id:"note",key:"aisennote",name:"AisenNote",status:"active",desc:"创意与知识的组织空间"},{id:"board",key:"aisenboard",name:"AisenBoard",status:"paused",desc:"早期产品概念实验"}],users:[{id:"owner",name:"平台所有者",email:"owner@demo.test",verified:true,blocked:false},{id:"mia",name:"林沐",email:"mia@demo.test",verified:true,blocked:false},{id:"alex",name:"Alex Chen",email:"alex@demo.test",verified:true,blocked:false},{id:"june",name:"June Wu",email:"june@demo.test",verified:true,blocked:false},{id:"leo",name:"Leo Yang",email:"leo@demo.test",verified:true,blocked:false},{id:"new",name:"待验证示例",email:"pending@demo.test",verified:false,blocked:false}],members:[{id:"MB-001",user:"mia",product:"lens",status:"active",before:null},{id:"MB-002",user:"mia",product:"note",status:"left",before:null},{id:"MB-003",user:"alex",product:"lens",status:"active",before:null},{id:"MB-004",user:"june",product:"lens",status:"suspended",before:"left"},{id:"MB-005",user:"leo",product:"note",status:"active",before:null},{id:"MB-006",user:"leo",product:"lens",status:"active",before:null}],grants:[{id:"GR-001",user:"mia",product:"lens",start:t-14*DAY,end:t+16*DAY,revoked:false,source:"code"},{id:"GR-002",user:"alex",product:"lens",start:t-100*DAY,end:null,revoked:false,source:"direct"},{id:"GR-003",user:"mia",product:"note",start:t-90*DAY,end:t-2*DAY,revoked:false,source:"direct"}],batches:[{id:"BAT-018",product:"lens",duration:30,qty:2,request:"SEED-18",time:t-DAY,revoked:false}],codes:[{id:"CD-001",batch:"BAT-018",product:"lens",duration:30,max:3,used:0,expiry:t+30*DAY,revoked:false},{id:"CD-002",batch:"BAT-018",product:"lens",duration:30,max:1,used:1,expiry:t+30*DAY,revoked:false}],redemptions:[{id:"RD-001",code:"CD-002",user:"june",product:"lens",time:t-9*DAY,grant:"GR-ARCHIVE"}],admins:[{user:"owner",active:true},{user:"alex",active:false}],audit:[{id:"AU-002",actor:"owner",action:"codes.issue",target:"BAT-018",product:"lens",detail:"初始测试数据",time:t-1200000},{id:"AU-001",actor:"owner",action:"product.create",target:"lens",product:"lens",detail:"初始测试数据",time:t-3600000}],backup:[],deletionRequests:[],issueReq:{},grantReq:{},attempts:{} }};
+let DB=seed(),S={page:"home",scope:"all",actor:"mia",session:"aal2",query:"",auditQuery:"",memberStatus:"all",selectedUser:null,grantMode:"duration",fault:"none",open:false,reveal:null,unknown:null,test:{},lastResult:null,globalReturnPage:"home",dirty:false,inspectProduct:null,codesTab:'batches',codesBatch:'all',issueDraft:null,issueEdit:null,guide:null,guideStep:0,feedbackQuery:'',feedbackStatus:'all',feedbackPriority:'all',feedbackSelected:'FB-1042'};
+const SECRET=new Map([["LENS-DEMO-2026","CD-001"]]);let modalConfirm=null,modalTrigger=null;
+const U=id=>DB.users.find(x=>x.id===id),P=id=>DB.products.find(x=>x.id===id),M=(u,p)=>DB.members.find(x=>x.user===u&&x.product===p),un=id=>U(id)?.name||id,pn=id=>P(id)?.name||id;
+const adminOK=()=>S.session==="aal2"&&DB.admins.some(x=>x.user==="owner"&&x.active)&&!U("owner").blocked;
+const proActive=(uid,pid,t)=>DB.grants.filter(g=>g.user===uid&&g.product===pid&&!g.revoked&&g.start<=t&&(g.end===null||g.end>t));
+const qualified=(uid,pid,t)=>{t=t||now();const u=U(uid),p=P(pid),m=M(uid,pid);if(!u||!u.verified)return {ok:false,reason:"401 / SESSION_REQUIRED",text:"邮箱身份未验证或不存在",tier:"—"};if(u.blocked)return {ok:false,reason:"ACCOUNT_BLOCKED",text:"账号被全平台阻止",tier:"—"};if(!p||p.status!=="active")return {ok:false,reason:"PRODUCT_UNAVAILABLE",text:"产品不可用",tier:"—"};if(!m)return {ok:false,reason:"MEMBERSHIP_REQUIRED",text:"未加入产品；资格查询不产生新成员",tier:"—"};if(m.status!=="active")return {ok:false,reason:"MEMBERSHIP_"+m.status.toUpperCase(),text:"成员当前为 "+m.status,tier:"—"};const active=proActive(uid,pid,t);return {ok:true,reason:"ALLOWED",text:active.length?"有 "+active.length+" 条当前有效 Pro 授权":"无当前有效 Pro，派生 Free",tier:active.length?"Pro":"Free"}};
+const auditPush=(action,target,detail)=>DB.audit.unshift({id:nid("AU"),actor:"owner",action,target,product:auditProduct(action,target),detail:detail||"演示写操作",time:now()});
+const badge=(txt,kind)=>'<span class="badge '+(kind||"")+'">'+escapeHTML(txt)+'</span>';
+const stateBadge=state=>{const dict={active:["正常",""],paused:["已暂停","warn"],left:["已退出","off"],suspended:["已暂停成员","danger"],blocked:["全局封禁","danger"],revoked:["已撤销","danger"],Free:["Free","off"],Pro:["Pro","purple"]};const a=dict[state]||[state,"off"];return badge(a[0],a[1])};
+const btn=(txt,action,cls,extra)=>'<button type="button" class="btn '+(cls||"")+'" data-action="'+action+'" '+(extra||"")+'>'+txt+'</button>';
+const navbtn=(page,txt,cls)=>btn(txt||"前往","nav",cls||"",'data-page="'+page+'"');
+const sect=(title,desc,right)=>'<div class="secthead"><div><h2>'+title+'</h2>'+(desc?'<p>'+desc+'</p>':"")+'</div>'+(right||"")+'</div>';
+const head=(tag,title,desc,action)=>'<div class="pagehead"><div><div class="eyebrow">'+tag+'</div><h1>'+title+'</h1><p>'+desc+'</p></div><div>'+(action||"")+'</div></div>';
+const panel=(name,txt,cls)=>'<div class="panel '+(cls||"")+'">'+ico(cls==="danger"?"alert":"info")+'<div><strong>'+name+'</strong><p>'+txt+'</p></div></div>';
+const options=(items,value)=>items.map(x=>'<option value="'+escapeHTML(x[0])+'" '+(x[0]===value?"selected":"")+'>'+escapeHTML(x[1])+'</option>').join("");
+const productOptions=(all)=>[...(all?[["all","全部产品"]]:[]),...DB.products.map(p=>[p.id,p.name])];
+const userOptions=()=>DB.users.filter(x=>x.verified).map(u=>[u.id,u.name+" · "+u.email]);
+let fieldSequence=0;
+const field=(name,key,type,setting)=>{
+ setting=setting||{};
+ const value=setting.value==null?"":setting.value;
+ const id="fld-"+key+"-"+(++fieldSequence),hint=id+"-hint";
+ const required=setting.required?" required":"",described=setting.help?' aria-describedby="'+hint+'"':"";
+ let inside="";
+ if(type==="select")inside='<select id="'+id+'" name="'+key+'"'+required+described+'>'+options(setting.items||[],value)+'</select>';
+ else if(type==="textarea")inside='<textarea id="'+id+'" name="'+key+'"'+required+described+'>'+escapeHTML(value)+'</textarea>';
+ else inside='<input id="'+id+'" name="'+key+'" type="'+(type||"text")+'" value="'+escapeHTML(value)+'"'+required+described+
+  (setting.min!=null?' min="'+setting.min+'"':"")+(setting.max!=null?' max="'+setting.max+'"':"")+
+  ' placeholder="'+escapeHTML(setting.placeholder||"")+'">';
+ return '<div class="field '+(setting.full?"full":"")+'"><label for="'+id+'">'+name+'</label>'+inside+
+  (setting.help?'<small id="'+hint+'">'+setting.help+'</small>':"")+'</div>';
+};
+const table=(heads,rows)=>'<div class="tablewrap"><table><thead><tr>'+heads.map(x=>'<th>'+x+'</th>').join("")+'</tr></thead><tbody>'+(rows||'<tr><td colspan="'+heads.length+'"><div class="empty">'+ico("search")+'<strong>暂无匹配记录</strong></div></td></tr>')+'</tbody></table></div>';
+function toast(title,text,error){const h=document.getElementById("toasts"),n=document.createElement("div");n.className="toast"+(error?" error":"");n.innerHTML=ico(error?"alert":"check")+'<div><strong>'+escapeHTML(title)+'</strong><p>'+escapeHTML(text||"")+'</p></div>';h.appendChild(n);setTimeout(()=>n.remove(),4800)}
+function requireAdmin(){if(adminOK())return true;toast("403 / AAL2_REQUIRED","受保护管理操作被拒绝，请检查 AAL2 与当前管理员资格。",true);return false}
+function simulatedFault(type){const fault=S.fault;S.fault="none";if(fault==="none")return false;if(type==="issue"&&(fault==="timeout"||fault==="timeout_empty"))return fault;if(fault==="401")S.session="out";if(fault==="403")S.session="aal1";toast("注入错误 "+fault,"请求未提交；请检查错误语义，不要显示虚假成功。",true);return "blocked"}
+function closeSecrets(){S.reveal=null}
+function clearContextState(){
+ S.selectedUser=null;S.inspectProduct=null;S.query="";S.memberStatus="all";S.auditQuery="";
+ S.feedbackQuery="";S.feedbackStatus="all";S.feedbackPriority="all";S.feedbackSelected=null;
+ S.codesBatch="all";S.codesTab="batches";S.issueDraft=null;S.issueEdit=null;S.dirty=false;S.lastResult=null;S.grantReq=null;S.issueReq=null;
+}
+function switchWorkspace(scope,page){
+ const target=scope==="all"?"all":P(scope)?.id;
+ if(!target){toast("工作空间不存在","无法进入未注册的产品。",true);paint();return}
+ const picker=document.getElementById("workspace-select");if(picker)picker.value=S.scope;
+ const dest=page||(target==="all"?(platformPages.has(S.globalReturnPage)?S.globalReturnPage:"home"):"producthome");
+ if(target===S.scope){go(dest);return}
+ if(S.unknown){toast("请先完成发码 UNKNOWN 恢复","在 "+pn(S.scope)+" 中仍有未完成的 Request ID："+S.unknown.request+"，不能丢失恢复上下文。",true);paint();return}
+ const proceed=()=>{if(S.scope==="all"&&platformPages.has(S.page))S.globalReturnPage=S.page;closeSecrets();clearContextState();S.scope=target;S.page=dest;S.open=false;paint();window.scrollTo({top:0,behavior:"smooth"})};
+ if(S.reveal){ask("离开将销毁一次性明文","切换至 "+(target==="all"?"全平台":pn(target))+" 后本次发行明文不可恢复。请先妥善保存再确认。",proceed,true);return}
+ if(S.issueDraft||S.issueEdit||S.dirty){ask("放弃未保存的产品操作？","切换管理空间会清除未提交的参数与编辑，不会生成新的后台写入。",proceed,true);return}
+ proceed()
+}
+function go(page){
+ if(page==="members")page="users";
+ if(productPages.has(page)&&!isProduct()){toast("请先选择要管理的产品","全平台以观察和治理为主；业务发码、成员、Pro 和反馈操作须进入目标产品。",true);return}
+ if(platformPages.has(page)&&S.scope!=="all"){switchWorkspace("all",page);return}
+ if(S.scope!=="all"&&page==="products"){switchWorkspace("all","products");return}
+ if(S.page!==page&&S.unknown){toast("UNKNOWN 尚未关闭","请先返回当前产品兑换码页面，完成原请求的安全恢复。",true);return}
+ if(S.page!==page&&S.reveal){ask("确认销毁当前批次明文？","导航离开后首次明文不可恢复，请先复制或下载本次合成码。",()=>{S.reveal=null;go(page)},true);return}
+ if(S.page!==page&&(S.issueDraft||S.issueEdit||S.dirty)){ask("离开未保存的操作？","尚有未提交的表单或预览，切换模块会放弃这些输入。",()=>{S.issueDraft=null;S.issueEdit=null;S.dirty=false;go(page)},true);return}
+ closeSecrets();S.page=page;S.query="";S.selectedUser=null;S.dirty=false;S.open=false;paint();window.scrollTo({top:0,behavior:"smooth"})
+}
+function layout(){
+ const nav=visibleNav().map(group=>'<div class="navtitle">'+group[0]+'</div>'+group[1].map(x=>'<button class="navlink '+(S.page===x[0]?"active":"")+'" data-action="nav" data-page="'+x[0]+'" '+(S.page===x[0]?'aria-current="page"':'')+'>'+ico(x[2])+'<span>'+x[1]+'</span>'+(x[0]==="lab"?'<span class="navnum">'+TESTS.length+'</span>':"")+'</button>').join("")).join("");
+ const product=currentProduct(),global=!product,items=[["all","全平台控制台"],...DB.products.map(x=>[x.id,x.name])];
+ const ws='<div class="workspace-picker"><select id="workspace-select" data-change="workspace" aria-label="切换管理空间：全平台或单产品">'+options(items,S.scope)+'</select></div>';
+ return '<a class="skip-link" href="#view">跳至主内容</a><div class="layout '+(global?"global-space":"product-space")+'">'+(S.open?'<div class="scrim" data-action="mobile"></div>':"")+
+ '<aside class="sidebar '+(S.open?"open":"")+'"><div class="brand"><div class="logo">'+ico(global?"spark":"box")+'</div><div class="brandword">'+(global?'aisen<span>core</span>':escapeHTML(product.name))+'<small>'+(global?"PLATFORM CONSOLE":"PRODUCT OPERATIONS")+'</small></div></div>'+ws+
+ '<nav aria-label="'+(global?"全平台导航":"当前产品导航")+'">'+nav+'</nav><div class="sidebar-foot"><strong><span class="online"></span> LOCAL / MEMORY ONLY</strong><p>合成状态 · 完全离线 · 不连接生产服务。<br>工作空间不构成后端授权。</p></div></aside>'+
+ '<div class="main"><header class="top"><div class="crumb"><button class="iconbtn mobile" aria-label="打开导航" data-action="mobile">'+ico("menu")+'</button><span class="dim">'+(global?"AisenCore":"产品运营")+'</span><span class="dim slash">/</span><strong>'+escapeHTML(global&&S.page==="users"?"全局用户":label[S.page])+'</strong></div><div class="topright">'+
+ '<button class="top-command" type="button" data-action="command" aria-label="快速跳转当前空间模块（Ctrl 或 Command 加 K）">'+ico("search")+'<span class="cmd-label">快速跳转</span><kbd>⌘ K</kbd></button>'+
+ (global?'<button class="iconbtn" aria-label="测试实验室" title="测试实验室" data-action="nav" data-page="lab">'+ico("flask")+'</button>':"")+
+ '<span class="session '+(adminOK()?"":"off")+'">'+ico("shield")+(adminOK()?"AAL2 · 演示管理":S.session==="aal1"?"AAL1 · 待验证":"NOT AUTHORIZED")+'</span><div class="avatar">AC</div></div></header><main id="view" class="content" tabindex="-1"></main></div></div>'
+}
+function paint(){document.getElementById("app").innerHTML=layout();document.getElementById("view").innerHTML=page();document.getElementById("overlay").innerHTML="";grantPreview()}
+function refresh(){document.getElementById("view").innerHTML=page();const x=document.querySelector(".session");if(x){x.className="session "+(adminOK()?"":"off");x.innerHTML=ico("shield")+(adminOK()?"AAL2 · 演示管理":S.session==="aal1"?"AAL1 · 待验证":"NOT AUTHORIZED")}grantPreview()}
+function page(){
+ const pages={home:home,producthome:producthome,products:products,users:users,feedback:feedback,grants:grants,codes:codes,auth:auth,join:join,redeem:redeem,access:access,backup:backup,security:security,audit:audit,lab:lab};
+ const restricted=["home","producthome","products","users","feedback","grants","codes","audit"].includes(S.page);
+ const illegal=isProduct()?platformPages.has(S.page):productPages.has(S.page);
+ if(illegal)return head("SCOPE / INVALID","工作空间不匹配","该页面不属于当前空间，请从工作空间菜单重新选择。",btn("返回空间首页","nav","primary",'data-page="'+(isProduct()?"producthome":"home")+'"'));
+ return (S.guide?guidePanel():"")+(restricted&&!adminOK()?head("ACCESS / DENIED","管理权限受限","需要当前模拟 AAL2、有效管理员资格且未被全局封禁。",navbtn("security","前往 MFA 验证","primary"))+panel("此处仅为本地模拟","正式服务必须由真实 JWT、RLS 与管理 RPC 判权，不能靠 UI 隐藏实现授权。","danger"):pages[S.page]())+'<div class="footer"><span>AISENCORE / MVP INTERACTION LAB — OFFLINE PROTOTYPE</span><span>真实 Auth / RLS / RPC / Edge / R2 / E2E 均 NOT RUN</span></div>'
+}
+function home(){
+ const act=DB.grants.filter(g=>!g.revoked&&g.start<=now()&&(g.end===null||g.end>now()));
+ const metrics=[["接入产品",DB.products.length,"全部公共产品目录","box"],["公共身份",DB.users.length,"全局账号与限制","users"],["当前 Pro 组合",new Set(act.map(g=>g.user+"/"+g.product)).size,"按用户 × 产品统计","gift"],["待处理反馈",DB.feedback.filter(x=>!["resolved","closed"].includes(x.status)).length,"跨产品待受理与处理中","message"]];
+ const cards=metrics.map(m=>'<div class="card"><div class="between"><span class="caps">'+m[0]+'</span><span class="kpi-icon">'+ico(m[3])+'</span></div><div class="kpi">'+String(m[1]).padStart(2,"0")+'</div><div class="metric-foot"><span>'+m[2]+'</span>'+badge("全平台","off")+'</div></div>').join("");
+ const products=DB.products.map(x=>'<div class="workspace-product"><div class="row"><span class="miniicon">'+ico("box")+'</span><div><strong>'+escapeHTML(x.name)+'</strong><div class="tiny muted mono">'+escapeHTML(x.key)+'</div></div></div><div class="row">'+stateBadge(x.status)+btn("进入产品管理 "+ico("arrow"),"enterproduct","primary sm",'data-id="'+x.id+'"')+'</div></div>').join("");
+ return head("PLATFORM / READ-ORIENTED","全平台总览","这里只观察 AisenCore 的公共事实和各产品状态；日常业务处理需要进入目标产品。",navbtn("products","产品管理 · 全局治理","soft"))+
+ '<div class="global-identity"><div><span class="caps">GLOBAL CONTROL PLANE</span><h2>先看全局，再进入产品。</h2><p>全局主要承担跨产品观察与公共平台治理；成员、Pro、兑换码和反馈的写操作属于单产品空间。</p></div><span>'+ico("database")+'</span></div>'+
+ sect("平台概况","所有指标均为本地合成数据，不是实际运营表现。")+'<div class="grid four">'+cards+'</div>'+
+ sect("选择要管理的产品","进入后整个导航、用户、授权与反馈都会固定在这个产品；全局产品管理入口保留在本空间。")+'<div class="workspace-products">'+products+'</div>'+
+ '<div class="grid two" style="margin-top:20px"><div class="card">'+sect("近期全局管理事件","不在这里直接发起跨产品批量写入。")+timeline(5)+'</div><div class="card">'+sect("平台级管理","以下属于全局而非产品内部。")+'<div class="stack">'+[["products","产品注册与公共状态","box"],["users","全局账号与身份","users"],["security","管理员与全局限制","shield"],["audit","跨产品审计","history"]].map(x=>'<div class="between">'+navbtn(x[0],ico(x[2])+' '+x[1],"soft sm")+'</div>').join("")+'</div></div></div>';
+}
+function producthome(){
+ const pid=S.scope,p=P(pid);if(!p)return "";
+ const members=DB.members.filter(x=>x.product===pid),grants=DB.grants.filter(g=>g.product===pid&&!g.revoked&&g.start<=now()&&(g.end===null||g.end>now())),codes=DB.codes.filter(c=>c.product===pid),pending=DB.feedback.filter(f=>f.product===pid&&!["resolved","closed"].includes(f.status));
+ const met=[["产品成员",members.length,"该产品的成员事实","users"],["当前 Pro",new Set(grants.map(g=>g.user)).size,"只来自该产品 Grant","gift"],["自有兑换码",codes.length,"批次与安全元数据","ticket"],["待跟进反馈",pending.length,"当前产品的处理队列","message"]];
+ const card=met.map(x=>'<div class="card"><div class="between"><span class="caps">'+x[0]+'</span><span class="kpi-icon">'+ico(x[3])+'</span></div><div class="kpi">'+String(x[1]).padStart(2,"0")+'</div><p class="tiny muted">'+x[2]+'</p></div>').join("");
+ const quick=[["users","用户管理","搜索、成员筛选与暂停/恢复","users"],["grants","Pro 授权","直授、续期及撤销","gift"],["codes","兑换码","发行、核查及撤销","ticket"],["feedback","反馈管理","受理、分配与公开答复","message"]];
+ return head("PRODUCT / OPERATIONS",p.name+" 概览","当前所有业务操作限定为 "+p.name+"；其他 SaaS 的成员、授权、兑换和反馈不在此空间展示。")+
+ '<div class="product-identity"><div class="row"><span class="identity-mark">'+ico("box")+'</span><div><span class="caps">ACTIVE WORKSPACE / 独立产品管理</span><h2>'+escapeHTML(p.name)+'</h2><p>产品 Key：'+escapeHTML(p.key)+' · '+(p.status==="active"?"正常运行":"已暂停")+'</p></div></div>'+stateBadge(p.status)+'</div>'+
+ sect("当前产品的数据概况","仅当前产品的合成数据；不包含其他 SaaS，也不暴露该 SaaS 私有业务文件。")+'<div class="grid four">'+card+'</div>'+
+ sect("常用产品任务","进入业务模块时无需重复选择目标产品。")+'<div class="grid four">'+quick.map(x=>'<button class="quick" data-action="nav" data-page="'+x[0]+'"><div class="qicon">'+ico(x[3])+'</div><div class="qfoot"><div><strong>'+x[1]+'</strong><p>'+x[2]+'</p></div>'+ico("arrow")+'</div></button>').join("")+'</div>'+
+ '<div class="card" style="margin-top:21px">'+sect("操作范围","该产品的管理入口与全平台治理明确分离。")+'<p class="tiny muted">公共账号全局封禁、产品注册与运行状态、管理员名册等操作必须返回全平台。产品内只负责 AisenCore 公共成员和 Pro 事实；不默认读取 '+escapeHTML(p.name)+' 的私有项目或文件。</p></div>';
+}
+function products(){
+const matches=DB.products;
+const rows=matches.map(p=>'<tr><td><span class="tdmain">'+escapeHTML(p.name)+'</span><span class="tdsub mono">'+escapeHTML(p.key)+'</span></td><td>'+stateBadge(p.status)+'</td><td>'+DB.members.filter(x=>x.product===p.id).length+'</td><td>'+DB.grants.filter(x=>x.product===p.id).length+'</td><td><div class="actions">'+btn("进入管理","enterproduct","primary sm",'data-id="'+p.id+'"')+btn("编辑公共信息","editproduct","sm",'data-id="'+p.id+'"')+btn(p.status==="active"?"暂停产品":"恢复产品","toggleproduct",(p.status==="active"?"warn ":"soft ")+"sm",'data-id="'+p.id+'"')+'</div></td></tr>').join("");
+return head("OPERATIONS / PRODUCTS","产品管理","管理公共产品身份、运行状态和边界。暂停不删除产品成员，也不撤销历史 Pro。",btn(ico("plus")+" 创建产品","newproduct","primary"))+
+panel("只管理产品的公共事实","30 / 365 / 永久是授予时长，而非产品功能版本。Core 不提供 SaaS 功能开关与业务额度编辑。")+
+'<div class="card compact">'+table(["产品与标识","运行状态","成员","授权历史","操作"],rows)+'</div>';
+}
+function globalUserDetails(id){
+ const u=U(id);if(!u)return "";
+ const products=DB.products.map(p=>{const m=M(id,p.id),pro=proActive(id,p.id,now());return '<div class="workspace-product"><div><strong>'+escapeHTML(p.name)+'</strong><div class="tiny muted">'+(m?escapeHTML(m.status):"尚未加入")+' · '+(pro.length?"持有生效 Pro":"未持有生效 Pro")+'</div></div>'+btn("进入该产品","enterproduct","soft sm",'data-id="'+p.id+'" data-page="users"')+'</div>'}).join("");
+ return '<div class="card diagnostic" id="user-diagnostic"><div class="between"><div><div class="eyebrow">GLOBAL IDENTITY / READ ONLY</div><h2>'+escapeHTML(u.name)+'</h2><p class="tiny muted">'+escapeHTML(u.email)+' · '+escapeHTML(u.id)+'</p></div>'+btn("关闭","closeinspect","sm")+'</div>'+
+ panel("平台公共身份 · 只读","跨产品成员和 Pro 摘要用于诊断。具体成员暂停、授权与兑换必须先进入相应产品；全局封禁在平台安全独立处理。")+
+ '<div class="workspace-products">'+products+'</div></div>';
+}
+function users(){
+ const global=S.scope==="all",q=S.query.trim().toLocaleLowerCase(),pid=S.scope,allMembers=global?[]:DB.members.filter(m=>m.product===pid);
+ const status=S.memberStatus||"all",statusItems=[["all","全部成员"],["active","正常"],["suspended","已暂停"],["left","已退出"]];
+ const counts={all:allMembers.length,active:allMembers.filter(m=>m.status==="active").length,suspended:allMembers.filter(m=>m.status==="suspended").length,left:allMembers.filter(m=>m.status==="left").length};
+ const matches=DB.users.filter(u=>{
+  const m=global?null:M(u.id,pid);
+  return (global||m&&(status==="all"||m.status===status))&&(!q||[u.id,u.email,u.name,m?.id||""].some(v=>v.toLocaleLowerCase().includes(q)))
+ });
+ const memberFilters=global?"":'<div class="member-filter-bar" role="group" aria-label="按成员状态筛选">'+statusItems.map(item=>
+  '<button type="button" class="member-filter '+(status===item[0]?"active":"")+'" data-action="memberfilter" data-status="'+item[0]+'" aria-pressed="'+(status===item[0])+'">'+item[1]+'<span>'+counts[item[0]]+'</span></button>').join("")+'</div>';
+ const rows=matches.map(u=>{
+  const m=global?null:M(u.id,pid),active=global?[]:proActive(u.id,pid,now()),allowed=global?false:qualified(u.id,pid,now()).ok;
+  const memberStatus=m?stateBadge(m.status)+(m.before?'<span class="tdsub">暂停前 '+escapeHTML(m.before)+'</span>':""):"—";
+  const level=active.length?badge("Pro",allowed?"purple":"off"):badge("Free","off");
+  const actions=global?btn("查看公共摘要","inspect","soft sm",'data-id="'+u.id+'"'):
+   btn("查看详情","inspect","soft sm",'data-id="'+u.id+'"')+
+   btn(m.status==="suspended"?"恢复":"暂停",m.status==="suspended"?"restore":"suspend",(m.status==="suspended"?"soft ":"warn ")+"sm",'data-id="'+m.id+'"');
+  return '<tr><td><span class="tdmain">'+escapeHTML(u.name)+'</span><span class="tdsub">'+escapeHTML(u.email)+'</span></td>'+
+   '<td class="mono">'+escapeHTML(u.id)+'</td>'+
+   '<td>'+(u.blocked?badge("平台级限制","danger"):u.verified?badge("已验证"):badge("待验证","warn"))+'</td>'+
+   (global?'<td>'+DB.members.filter(x=>x.user===u.id).length+'</td>':
+    '<td>'+memberStatus+'</td><td>'+level+(active.length&&!allowed?'<span class="tdsub">当前准入受限</span>':"")+'</td>')+
+   '<td><div class="actions">'+actions+'</div></td></tr>'
+ }).join("");
+ return head(global?"PLATFORM / PUBLIC IDENTITY":"PRODUCT / USERS",global?"全局用户目录":"用户管理",global?
+  "查看公共账号和跨产品关系摘要；具体成员处理需要进入目标产品。":
+  "查看当前产品用户、筛选成员状态，并在列表或用户详情中直接暂停、恢复成员。")+
+ (global?panel("全局身份只读","跨产品信息仅供参考；产品成员操作需要先切换管理空间。平台级账号封禁在「平台安全」中处理。"):"")+
+ memberFilters+
+ '<form class="toolbar" id="search-users"><input class="filter" name="q" aria-label="搜索邮箱、姓名、用户 ID 或成员 ID" placeholder="'+(global?"搜索姓名 / 邮箱 / 用户 ID":"搜索用户、邮箱或成员 ID")+'" value="'+escapeHTML(S.query)+'">'+
+ '<button class="btn sm" type="submit">'+ico("search")+' 查询</button>'+
+ (global?btn("模拟查询不完整","incomplete","sm"):"")+
+ '<span class="muted tiny">显示 '+matches.length+' 条'+(global?"公共身份":"当前产品成员")+'记录</span></form>'+
+ (S.selectedUser?(global?globalUserDetails(S.selectedUser):userDetails(S.selectedUser)):"")+
+ '<div class="card compact">'+table(global?["用户","标识","平台身份","涉及产品数","详情"]:["用户","标识","平台身份","成员状态","Pro 资格","操作"],rows)+'</div>'+
+ (!global?'<p class="tiny muted member-list-note">成员被暂停后，恢复时会返回暂停前的 active 或 left；这里不会自动替用户重新加入。平台 blocked 与成员状态相互独立。</p>':"");
+}
+function userDetails(id){
+ const u=U(id);if(!u)return "";
+ const pid=S.scope,p=P(pid),m=M(id,pid),t=now();
+ const gr=DB.grants.filter(g=>g.user===id&&g.product===pid),reds=DB.redemptions.filter(r=>r.user===id&&r.product===pid),active=proActive(id,pid,t),q=qualified(id,pid,t);
+ const until=active.some(g=>g.end===null)?"永久":active.length?date(Math.max(...active.map(g=>g.end))):"—";
+ const reason=u.blocked?"平台账号被封禁；此限制影响所有 SaaS，不删除历史 Pro。":!u.verified?"邮箱尚未确认。":p.status!=="active"?"产品已暂停；仅影响此产品的在线准入。":!m?"尚未加入此产品，诊断不会自动创建成员。":m.status==="left"?"用户主动退出；须由本人明确重新加入，不应补发 Pro。":m.status==="suspended"?"管理员暂停；恢复时应返回暂停前的 "+escapeHTML(m.before||"状态")+"，而非默认 active。":active.length?"身份、产品、成员与 Pro 均有效。":"在线准入正常；无当前 Pro，按规则派生 Free。";
+ const scopes='<div class="context-hint">当前只诊断 <strong>'+escapeHTML(p.name)+'</strong>。切换其他产品须通过工作空间菜单，避免跨产品操作。</div>';
+ const facts=[["账号",u.verified&&!u.blocked,u.blocked?"BLOCKED":u.verified?"已验证":"未确认"],["产品",p.status==="active",p.status],["成员",m?.status==="active",m?m.status+(m.before?" · 原 "+m.before:""):"未加入"],["Pro",!!active.length,active.length+" 条生效 · "+until]];
+ const chain=facts.map((x,i)=>'<div class="chain-step '+(x[1]?"ok":"blocked")+'"><span class="chain-number">0'+(i+1)+'</span><div><strong>'+x[0]+'</strong><small>'+escapeHTML(x[2])+'</small></div>'+ico(x[1]?"check":"alert")+'</div>').join("");
+ const histories=(DB.memberEvents||[]).filter(e=>e.user===id&&e.product===pid).slice().reverse();
+ const eventList=histories.map(e=>'<div class="trace-item"><span class="trace-dot"></span><div><strong>'+escapeHTML(e.from)+' → '+escapeHTML(e.to)+'</strong><p>'+escapeHTML(e.actor)+' · '+moment(e.time)+'</p></div></div>').join("");
+ const grantRows=gr.map(g=>'<tr><td><b class="mono">'+escapeHTML(g.id)+'</b><span class="tdsub">'+escapeHTML(g.source)+'</span></td><td>'+date(g.start)+' → '+date(g.end)+'</td><td>'+grantBadge(g)+'</td></tr>').join("");
+ const redRows=reds.map(r=>'<tr><td class="mono">'+escapeHTML(r.id)+'</td><td class="mono">'+escapeHTML(r.code)+'</td><td class="mono">'+escapeHTML(r.grant||"—")+'</td><td>'+moment(r.time)+'</td></tr>').join("");
+ return '<section id="user-diagnostic" class="card diagnostic"><div class="between diagnostic-top"><div><div class="eyebrow">USER 360 / DIAGNOSTICS</div><h2>'+escapeHTML(u.name)+'</h2><p>'+escapeHTML(u.email)+' · <span class="mono">'+escapeHTML(u.id)+'</span></p></div>'+btn(ico("close")+" 关闭","closeinspect","sm")+'</div>'+
+ '<div class="scope-ribbon">'+scopes+'</div>'+
+ '<div class="diagnosis-banner '+(q.ok?"is-ok":"is-blocked")+'"><div class="between"><div><span class="caps">TRUSTED FACTS / '+escapeHTML(p.key)+'</span><h3>'+(q.ok?q.tier+" · 在线准入允许":"在线准入受限")+'</h3></div>'+badge(q.ok?q.tier:q.reason,q.ok?"purple":"danger")+'</div><p>'+reason+'</p><small>来自管理员可见的合成公共事实；不是代用户调用 CheckAccess，也不读取 SaaS 私有数据。</small></div>'+
+ '<div class="chain-grid">'+chain+'</div><div class="grid two diagnostic-sections"><div class="diagnostic-pane">'+sect("成员关系与事件","产品局部限制不等于全局封禁。")+
+ (m?'<div class="detail-row"><div><strong>'+escapeHTML(m.id)+'</strong><p>'+stateBadge(m.status)+' '+(m.before?"暂停前 "+escapeHTML(m.before):"")+'</p></div>'+btn(m.status==="suspended"?"恢复原状态":"暂停成员",m.status==="suspended"?"restore":"suspend","warn sm",'data-id="'+m.id+'"')+'</div>':'<div class="empty-compact">尚无此产品的成员关系；只能由本人明确加入。</div>')+
+ '<div class="trace-list">'+(eventList||'<p class="tiny muted">尚无新状态转移；操作后将显示在这里。</p>')+'</div></div><div class="diagnostic-pane">'+sect("当前 Pro 与授予历史","只针对所选产品、按可信起止时间计算。")+
+ '<div class="between softbox"><div><span class="caps">DERIVED TIER</span><div class="diagnostic-tier">'+(q.ok?q.tier:"—")+'</div></div><span class="tiny muted">'+active.length+' 条有效 · '+until+'</span></div>'+
+ table(["授权 ID / 来源","开始 → 结束","状态"],grantRows)+
+ '<div class="formfoot">'+btn(ico("plus")+" 为此用户直授 Pro","grantforuser","soft sm",'data-id="'+id+'" data-product="'+pid+'"')+'</div></div></div>'+
+ '<div class="diagnostic-pane" style="margin-top:18px">'+sect("核销记录追溯","展示核销与 Grant 引用，不提供历史明文。",navbtn("codes","查看兑换码运营中心","sm"))+
+ table(["核销 ID","码 ID","Grant 引用","完成时间"],redRows)+'</div></section>';
+}
+function grantFields(){
+ if(S.grantMode==="permanent")return '<div class="full softbox"><h4>永久 Pro · 显式 ends_at = null</h4><p>仍受管理员撤销、产品状态、成员限制和账号封禁控制。</p><label class="lifetime-check"><input type="checkbox" name="confirmLifetime" value="yes" required> 我确认这是没有自然截止日期的永久 Pro 授权</label></div>';
+ if(S.grantMode==="window"){const t=now();return field("生效时间","start","datetime-local",{value:localDateTime(t),required:true})+field("截止时间","end","datetime-local",{value:localDateTime(t+30*DAY),required:true})}
+ return field("时长","duration","select",{items:[["30","30 天"],["365","365 天"],["14","14 天（演示）"]],value:"30",full:true});
+}
+function grantPreview(){
+ const form=document.getElementById("form-grant"),output=document.getElementById("grant-preview");if(!form||!output)return;
+ const f=new FormData(form),uid=String(f.get("user")||""),pid=String(f.get("product")||""),mode=String(f.get("mode")||""),user=U(uid),product=P(pid);
+ if(!user||!product){output.textContent="请选择有效的演示用户与产品。";return}
+ if(mode==="permanent"){output.textContent="拟授予 "+user.name+" 在 "+product.name+" 的永久 Pro；必须单独勾选确认。最终仍以可信服务端响应为准。";return}
+ if(mode==="window"){const start=new Date(String(f.get("start")||"")).getTime(),end=new Date(String(f.get("end")||"")).getTime();output.textContent=Number.isFinite(start)&&Number.isFinite(end)&&end>start?"拟指定 "+date(start)+" → "+date(end)+" 的时间窗；服务端仍需校验冲突、幂等。":"指定时段尚未合法填写；截止必须晚于开始。";return}
+ const permanent=DB.grants.some(g=>g.user===uid&&g.product===pid&&!g.revoked&&g.end===null&&g.start<=now());
+ const latest=DB.grants.filter(g=>g.user===uid&&g.product===pid&&!g.revoked&&g.end!==null).reduce((v,g)=>Math.max(v,g.end),now()),days=Number(f.get("duration"));
+ output.textContent=permanent?"已有生效的永久 Pro，不应再次自动顺延。":"预计从 "+date(latest)+" 起顺延 "+days+" 天，截止 "+date(latest+days*DAY)+"。仅为本地预估，正式结果必须由可信服务端计算。";
+}
+function localDateTime(t){const d=new Date(t);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")+"T"+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0")}
+function fixedProductField(){return '<div class="field full scope-fixed-field"><small>当前产品 / 操作范围固定</small><strong>'+escapeHTML(pn(S.scope))+'</strong><input type="hidden" name="product" value="'+escapeHTML(S.scope)+'"></div>'}
+function grants(){
+if(!S.grantReq)S.grantReq=nid("GRANTREQ");
+const form='<form id="form-grant" class="card"><div class="between"><h3>创建人工 Pro Grant</h3>'+badge("管理 RPC 模拟","purple")+'</div><div class="fields" style="margin-top:19px">'+
+field("目标用户","user","select",{items:userOptions(),value:S.actor})+
+fixedProductField()+
+'<div class="full"><div class="field"><label>授权期限模式</label></div><div class="grant-modes" role="group" aria-label="选择授权期限模式">'+
+ [["duration","按天数顺延","接续当前截止"],["window","指定时间窗","开始与截止均必填"],["permanent","永久 Pro","显式永久 · 二次确认"]].map(x=>'<button type="button" class="grant-mode-card '+(S.grantMode===x[0]?"active":"")+'" data-action="grantmodecard" data-mode="'+x[0]+'" aria-pressed="'+(S.grantMode===x[0])+'"><strong>'+x[1]+'</strong><small>'+x[2]+'</small></button>').join("")+
+ '</div><input type="hidden" id="grantmode" name="mode" value="'+S.grantMode+'"></div><div class="full fields" id="grantFields">'+grantFields()+'</div>'+
+ '<div class="full grant-projection" role="status" aria-live="polite"><div class="caps">BEFORE SUBMIT / IMPACT PREVIEW</div><p id="grant-preview">等待参数...</p></div>'+
+field("Request ID / 幂等键","request","text",{value:S.grantReq,required:true,full:true,help:"提交相同 requestId 和参数：返回原 Grant；改变参数：409 冲突。"})+
+field("原因","reason","text",{value:"人工运营授权",required:true,full:true})+'</div><div class="formfoot"><button class="btn primary" type="submit">'+ico("gift")+' 确认并授予</button>'+btn("新 Request ID","freshgrant","sm")+'</div></form>';
+const rules=[["01 / 期限顺延","按同用户同产品最远未来 Pro 截止日计算新周期。"],["02 / 显式生效窗口","starts_at 与 ends_at 必须明确且合法。"],["03 / 永久授权","只有主动选择才能使用 NULL 结束时间。"],["04 / 请求幂等","强类型比较同请求参数；异参重放不允许。"]];
+const rows=DB.grants.filter(x=>S.scope==="all"||x.product===S.scope).map(g=>'<tr><td><span class="tdmain mono">'+escapeHTML(g.id)+'</span><span class="tdsub">'+escapeHTML(g.source)+'</span></td><td>'+escapeHTML(un(g.user))+'</td><td>'+escapeHTML(pn(g.product))+'</td><td>'+date(g.start)+' → '+date(g.end)+'</td><td>'+grantBadge(g)+'</td><td><div class="actions">'+(g.revoked?"—":btn("撤销","revokegrant","warn sm",'data-id="'+g.id+'"'))+'</div></td></tr>').join("");
+return head("ENTITLEMENTS / PRO","Pro 授权","资格是产品独立、时间明确、来源可追溯的 Grant；Free 是无当前 Pro 的派生结果。")+
+panel("Core 不定义业务 Features / Limits","授予只影响所选产品的 Pro 资格及期限，不能设置 AI 次数、导出功能、R2 业务额度或套餐版本。")+
+'<div class="grid wide">'+form+'<div class="card">'+sect("授权约束","每项都可以在实验室验证。")+'<div class="stack">'+rules.map(r=>'<div class="softbox"><h4>'+r[0]+'</h4><p>'+r[1]+'</p></div>').join("")+'</div></div></div>'+
+sect("Grant 记录","撤销一条授权不会删除历史或自动撤销其他有效授权。")+'<div class="card compact">'+table(["授权编号","用户","产品","可信生效区间","状态","操作"],rows)+'</div>';
+}
+function grantBadge(g){return g.revoked?badge("已撤销","danger"):g.start>now()?badge("待生效","warn"):g.end!=null&&g.end<=now()?badge("已过期","off"):badge("生效中","purple")}
+function issueFields(){
+ if(!S.issueReq)S.issueReq=nid("ISSUE");
+ if(S.issueDraft){
+  const d=S.issueDraft;
+  return '<section class="card issue-preview" aria-label="提交前核对"><div class="eyebrow">ISSUE / REVIEW BEFORE SUBMIT</div><div class="between"><h3>请核对本次发行</h3>'+badge("尚未提交","warn")+'</div><div class="review-grid">'+[
+    ["目标产品",pn(d.product)],["Pro 授予期限",d.duration==="permanent"?"永久":d.duration+" 天"],
+    ["发行数量",d.qty+" 张"],["每码使用上限",d.max+" 次"],["兑换截止",d.expiry||"长期有效"],["幂等请求 ID",d.request]
+   ].map(x=>'<div><small>'+x[0]+'</small><strong>'+escapeHTML(x[1])+'</strong></div>').join("")+'</div>'+
+   '<div class="panel amber">'+ico("alert")+'<div><strong>一次性明文 / UNKNOWN 风险</strong><p>确认提交后，明文仅在首次成功响应中可复制或下载；超时不等于失败，需先按同一 Request ID 核查。</p></div></div>'+
+   '<div class="formfoot">'+btn("返回修改参数","cancelissue","sm")+btn(ico("check")+" 确认发行本批次","confirmissue","primary")+'</div></section>';
+ }
+ const d=S.issueEdit||{},initial=S.scope==="all"?"lens":S.scope;
+ return '<form id="form-issue" class="card"><div class="between"><h3>发行一批自有兑换码</h3>'+badge("首次响应含明文","warn")+'</div><div class="fields" style="margin-top:19px">'+
+ fixedProductField()+
+ field("Pro 授予时长","duration","select",{items:[["30","30 天"],["365","365 天"],["permanent","永久 Pro"]],value:d.duration||"30"})+
+ field("生成数量","qty","number",{value:d.qty||3,min:1,max:24,required:true,help:"24 仅为本地演示上限"})+
+ field("单码可兑换次数","max","number",{value:d.max||1,min:1,max:20,required:true})+
+ field("兑换截止日期","expiry","date",{value:d.expiry||new Date(now()+60*DAY).toISOString().slice(0,10)})+
+ field("Request ID / 幂等键","request","text",{value:d.request||S.issueReq,required:true})+
+ '</div><div class="formfoot"><button class="btn primary" type="submit">'+ico("arrow")+' 下一步：核对参数</button>'+
+ btn("模拟超时：已创建","setunknown","soft sm")+btn("模拟超时：未创建","setunknownnone","soft sm")+btn("新 Request ID","freshissue","sm")+'</div></form>';
+}
+function previewIssue(form){
+ if(!requireAdmin())return;
+ if(S.unknown){toast("先完成 UNKNOWN 安全恢复","未完成核查与处置前，不允许新的发行请求。",true);return}
+ const d=Object.fromEntries(new FormData(form));if(!guardProduct(d.product,"预览发码"))return;
+ const qty=Number(d.qty),max=Number(d.max);
+ if(!P(d.product)||P(d.product).status!=="active"||!["30","365","permanent"].includes(d.duration)||!Number.isInteger(qty)||qty<1||qty>24||!Number.isInteger(max)||max<1||max>20||!String(d.request||"").trim()||d.expiry&&new Date(d.expiry+"T23:59:59").getTime()<=now()){
+  toast("参数不合法","请检查目标产品、数量、期限、兑换截止与幂等键。",true);return
+ }
+ S.issueDraft=d;refresh();
+}
+function revealCard(){if(!S.reveal)return "";const r=S.reveal;return '<section class="secret" aria-label="临时明文，仅当前响应可查看"><div class="between"><div><div class="caps" style="color:#a9b5d2">ONE-TIME RESPONSE · '+escapeHTML(r.batch)+'</div><h3 style="font-size:18px;margin:6px 0">这批新码，仅本次可见</h3></div>'+badge("FIRST RESPONSE","purple")+'</div><div class="stack" style="margin-top:17px">'+r.codes.map((c,k)=>'<div class="secretcode"><span>'+escapeHTML(c)+'</span><button data-action="copysecret" data-index="'+k+'">复制</button></div>').join("")+'</div><p>离开、重载或销毁后不能从 Admin 历史读取。请安全保存，不要当真实码使用。</p><div class="formfoot">'+btn(ico("download")+" 本次下载 TXT","downloadsecret","sm")+btn(ico("close")+" 销毁明文","destroysecret","warn sm")+'</div></section>'}
+function unknownCard(){
+ if(!S.unknown)return "";
+ const u=S.unknown,b=DB.batches.find(x=>x.id===u.batch),checked=!!u.checked,created=u.mode!=="not_created",revoked=!!b?.revoked;
+ const state=!checked?"01 / UNKNOWN · 待核查":!created?"02 / 服务端确定未创建":revoked?"03 / 旧批次已安全撤销":"02 / 已创建但明文丢失";
+ const explanation=!checked?"模拟网络超时并不等于发行失败。先用原 Request ID 核查服务端事实；核查前禁止再次发行。":!created?"模拟可信查询确认：该 Request ID 未落库。可以按原参数及原 Request ID 显式重放；不需要更换请求键。":revoked?"旧批次已撤销，不会自动再发行。若仍需发码，请使用新 Request ID 独立提交。":"已确认旧批次存在，首次明文不可恢复。若要重新发行，必须先单独撤销旧批次。";
+ return '<section class="card unknown-panel"><div class="between"><span class="caps">SAFE RECOVERY / RESUMABLE INTENT</span>'+badge(state,checked&&!created?"purple":"warn")+'</div><h3>'+(!checked?"发码结果未知 · 停止重复写入":!created?"可按原请求安全重放":revoked?"已进入安全终态":"已创建，但明文永久丢失")+'</h3><p>'+explanation+'</p>'+
+ '<div class="softbox"><span class="caps">REQUEST ID</span><div class="mono">'+escapeHTML(u.request)+'</div></div><div class="formfoot">'+
+ (!checked?btn(ico("search")+" 按原请求核查","lookupunknown","primary sm"):"")+
+ (checked&&!created?btn(ico("refresh")+" 使用原请求重放","replayunknown","primary sm"):"")+
+ (checked&&created&&!revoked?btn(ico("pause")+" 单独撤销旧批次","revokeunknown","warn sm"):"")+
+ (checked&&created&&revoked?btn(ico("plus")+" 新建独立请求","freshissue","primary sm"):"")+
+ (checked&&(!created||revoked)?btn("结束恢复","clearunknown","sm"):"")+'</div></section>';
+}
+function codes(){
+ const visible=DB.codes.filter(c=>S.scope==="all"||c.product===S.scope);
+ const batches=DB.batches.filter(b=>S.scope==="all"||b.product===S.scope);
+ const status=c=>{const b=DB.batches.find(x=>x.id===c.batch);return c.revoked||b?.revoked?"revoked":c.expiry&&c.expiry<=now()?"expired":c.used>=c.max?"exhausted":"available"};
+ const stats={batches:batches.length,available:visible.filter(c=>status(c)==="available").length,redeemed:DB.redemptions.filter(r=>S.scope==="all"||r.product===S.scope).length};
+ const tabs=[["batches","发行批次",stats.batches],["single","单码安全检索",visible.length],["redemptions","核销记录",stats.redeemed]];
+ const tabbar='<div class="code-tabs" role="group" aria-label="兑换码运营视图">'+tabs.map(x=>'<button type="button" class="'+(S.codesTab===x[0]?"active":"")+'" data-action="codestab" data-tab="'+x[0]+'" aria-pressed="'+(S.codesTab===x[0])+'">'+x[1]+' <span>'+x[2]+'</span></button>').join("")+'</div>';
+ let rows="",heads=[];
+ if(S.codesTab==="single"){
+  heads=["码 ID / 批次","产品","授予期限","已兑 / 上限","状态","操作"];
+  rows=visible.filter(c=>S.codesBatch==="all"||c.batch===S.codesBatch).map(c=>'<tr><td><strong class="tdmain mono">'+escapeHTML(c.id)+'</strong><span class="tdsub mono">'+escapeHTML(c.batch)+'</span></td><td>'+escapeHTML(pn(c.product))+'</td><td>'+escapeHTML(c.duration===null?"永久 Pro":c.duration+" 天")+'</td><td>'+c.used+" / "+c.max+'</td><td>'+badge({revoked:"已撤销",expired:"已过期",exhausted:"已用尽",available:"可用"}[status(c)],status(c)==="revoked"?"danger":status(c)==="available"?"":"off")+'</td><td>'+ (status(c)==="available"?btn("撤销此码","revokecode","warn sm",'data-id="'+c.id+'"'):"—")+'</td></tr>').join("");
+ }else if(S.codesTab==="redemptions"){
+  heads=["核销记录 ID","用户","产品 / 码 ID","产生的 Grant","核销时间"];
+  rows=DB.redemptions.filter(r=>(S.scope==="all"||r.product===S.scope)&&(S.codesBatch==="all"||DB.codes.find(c=>c.id===r.code)?.batch===S.codesBatch)).map(r=>'<tr><td class="mono">'+escapeHTML(r.id)+'</td><td>'+escapeHTML(un(r.user))+'</td><td>'+escapeHTML(pn(r.product))+'<span class="tdsub mono">'+escapeHTML(r.code)+'</span></td><td class="mono">'+escapeHTML(r.grant||"—")+'</td><td>'+moment(r.time)+'</td></tr>').join("");
+ }else{
+  heads=["批次 / 幂等请求","目标产品 / 授予期限","已兑 / 可用 / 总量","批次状态","操作"];
+  rows=batches.map(b=>{const codes=visible.filter(c=>c.batch===b.id),available=codes.filter(c=>status(c)==="available").length,used=codes.reduce((sum,c)=>sum+c.used,0),isUnknown=S.unknown?.batch===b.id&&!S.unknown?.checked;
+   return '<tr><td><span class="tdmain mono">'+escapeHTML(b.id)+'</span><span class="tdsub mono">'+escapeHTML(b.request)+'</span></td><td>'+escapeHTML(pn(b.product))+'<span class="tdsub">'+(b.duration===null?"永久 Pro":b.duration+" 天")+'</span></td><td>'+used+' 已兑 / '+available+' 可用 / '+b.qty+' 张</td><td>'+(b.revoked?badge("已撤销","danger"):available?badge("发行有效"):badge("无可兑码","off"))+'</td><td><div class="actions">'+btn("查看单码","showbatch","soft sm",'data-id="'+b.id+'"')+(!b.revoked&&available&&!isUnknown?btn("撤销整批","revokebatch","warn sm",'data-id="'+b.id+'"'):"")+'</div></td></tr>'
+  }).join("");
+ }
+ const select=S.codesTab!=="batches"?'<div class="field code-filter"><label for="codes-batch-filter">按批次关联查看</label><select id="codes-batch-filter" data-change="codesbatch">'+options([["all","所有批次"],...batches.map(b=>[b.id,b.id+" · "+pn(b.product)])],S.codesBatch)+'</select></div>':"";
+ return head("ISSUANCE / TRACEABILITY","兑换码运营中心","从批次到单码，再追溯至核销与 Grant；所有历史查询仅包含非秘密元数据。")+
+ panel("历史明文永不回显","首次成功响应之外，只能查看码 ID、批次、核销与审计记录。同 Request ID 重放不能重新导出秘密。","amber")+
+ '<div class="grid wide"><div class="stack">'+issueFields()+revealCard()+unknownCard()+'</div><div class="card code-guide">'+sect("高风险操作如何完成","先确认，再提交；发生未知结果时先核查。")+'<div class="stack">'+
+ [["01","填写目标产品与 Pro 时长"],["02","核对数量、次数、截止日期及 Request ID"],["03","确认提交；首次响应保存一次性明文"],["04","按批次 → 单码 → 核销追踪安全事实"]].map(x=>'<div class="row"><span class="guide-index">'+x[0]+'</span><span class="tiny">'+x[1]+'</span></div>').join("")+
+ '<div class="divider"></div><div class="tiny muted">故障测试：已创建但响应丢失 / 未创建但响应超时，两种路径均需要先核查，不能自动双写。</div></div></div></div>'+
+ sect("运营数据与关联检索","这里统计的是本地合成状态，不是生产发行量。")+
+ '<div class="grid three code-metrics">'+[["批次记录",stats.batches,"database"],["目前可兑换",stats.available,"ticket"],["历史核销",stats.redeemed,"check"]].map(x=>'<div class="card compact"><div class="between"><span class="caps">'+x[0]+'</span><span class="kpi-icon">'+ico(x[2])+'</span></div><div class="kpi">'+x[1]+'</div></div>').join("")+'</div>'+
+ '<div class="card code-ledger">'+tabbar+select+table(heads,rows)+'<p class="tiny muted" style="margin:16px 0 0">只读安全投影 · 不包含历史码明文、hash 或外部密钥。批次撤销仅阻止后续兑换，不回滚已有 Grant。</p></div>';
+}
+
+
+/* Feedback is an in-memory prototype domain, not a production Core RPC contract. */
+const FEEDBACK_STATES=[["new","新反馈"],["triaged","已分诊"],["in_progress","处理中"],["waiting_user","待用户补充"],["resolved","已解决"],["closed","已关闭"]];
+const FEEDBACK_PRIORITIES=[["low","低"],["normal","普通"],["high","高"],["urgent","紧急"]];
+const FEEDBACK_CATEGORIES=[["bug","问题报告"],["account","账号与 Pro"],["experience","体验问题"],["suggestion","产品建议"],["other","其他"]];
+const FEEDBACK_NEXT={new:["triaged","in_progress"],triaged:["in_progress","waiting_user"],in_progress:["waiting_user","resolved"],waiting_user:["in_progress","resolved"],resolved:["closed","in_progress"],closed:["in_progress"]};
+const feedbackName=(values,key)=>values.find(x=>x[0]===key)?.[1]||key;
+const feedbackState=x=>feedbackName(FEEDBACK_STATES,x),feedbackPriority=x=>feedbackName(FEEDBACK_PRIORITIES,x),feedbackCategory=x=>feedbackName(FEEDBACK_CATEGORIES,x);
+const feedbackBadge=x=>badge(feedbackState(x),x==="new"?"purple":x==="waiting_user"?"warn":x==="resolved"?"":x==="closed"?"off":x==="in_progress"?"purple":"off");
+const feedbackPriorityBadge=x=>badge(feedbackPriority(x),x==="urgent"?"danger":x==="high"?"warn":"off");
+const feedbackOwner=id=>id==="owner"?"平台管理员":id==="alex"?"Alex / 演示协作":"未分配";
+function publicFeedbackRows(user,data=DB.feedback){
+ return data.filter(f=>f.user===user).slice().sort((a,b)=>b.created-a.created).map(f=>({
+  id:f.id,title:f.title,product:pn(f.product),status:f.status,updated:f.updated,reply:f.publicReply||""
+ }));
+}
+function feedbackPublic(){
+ const u=U(S.actor),mine=publicFeedbackRows(S.actor),eligible=!!u?.verified&&!u.blocked;
+ const cards=mine.map(f=>'<div class="public-feedback-item"><div class="between"><strong>'+escapeHTML(f.title)+'</strong>'+feedbackBadge(f.status)+'</div><div class="tiny muted">'+escapeHTML(f.id)+' · '+escapeHTML(f.product)+' · 更新于 '+moment(f.updated)+'</div>'+(f.reply?'<div class="feedback-public-answer"><strong>团队公开答复</strong><p>'+escapeHTML(f.reply)+'</p></div>':"")+'</div>').join("");
+ return sect("用户反馈 · 合成提交","此处代表登录用户的提交入口。用户只能查看自己的反馈、处理状态及团队公开答复，不显示内部备注。")+
+ '<div class="grid wide" id="public-feedback"><form id="form-feedback-public" class="card"><div class="between"><h3>向产品团队发送反馈</h3><span class="kpi-icon">'+ico("message")+'</span></div>'+
+ '<p class="tiny muted">仅保存本次浏览器内存中的演示信息。不发送通知、电子邮件或真实工单，请勿填写真实个人信息。</p>'+
+ '<div class="fields" style="margin-top:17px">'+
+ field("关联产品","product","select",{items:productOptions(false),value:"lens"})+
+ field("反馈类型","category","select",{items:FEEDBACK_CATEGORIES,value:"bug"})+
+ field("简要标题","title","text",{required:true,placeholder:"用一句话描述遇到的问题",full:true})+
+ field("详细说明","body","textarea",{required:true,full:true,help:"建议描述操作步骤和预期结果；不要填入真实账号、密码、兑换码或隐私信息。"})+
+ '</div><div class="formfoot"><button class="btn primary" type="submit" '+(eligible?"":"disabled")+'>'+ico("arrow")+' 提交模拟反馈</button></div>'+
+ (!eligible?panel("当前身份不可提交","邮箱须已确认且账号未被全平台限制；管理员端也无法代替此身份提交。","amber"):"")+'</form>'+
+ '<div class="card">'+sect("我的反馈","仅当前合成身份 · "+escapeHTML(u?.name||"未知身份"))+
+ (cards?'<div class="public-feedback-list">'+cards+'</div>':'<div class="empty">'+ico("message")+'<strong>尚未提交反馈</strong><span class="tiny">提交后可在此查看工单状态。</span></div>')+
+ '<div class="divider"></div><p class="tiny muted">此处显示团队明确发布的公开答复，不显示受理人、内部备注和管理审计，也不会发送真实通知或邮件。</p></div></div>';
+}
+function feedback(){
+ const all=DB.feedback.filter(f=>S.scope==="all"||f.product===S.scope),
+ query=S.feedbackQuery.toLocaleLowerCase();
+ const matches=all.filter(f=>(S.feedbackStatus==="all"||f.status===S.feedbackStatus)&&
+ (S.feedbackPriority==="all"||f.priority===S.feedbackPriority)&&
+ (!query||[f.id,f.title,f.body,pn(f.product),U(f.user)?.email||""].some(x=>x.toLocaleLowerCase().includes(query))))
+ .sort((a,b)=>b.updated-a.updated);
+ const selected=matches.find(f=>f.id===S.feedbackSelected)||matches[0]||null;
+ const metrics=[
+ ["全部反馈",all.length,"message","all"],
+ ["待受理",all.filter(x=>x.status==="new"||x.status==="triaged").length,"pulse","open"],
+ ["处理中",all.filter(x=>x.status==="in_progress"||x.status==="waiting_user").length,"history","processing"],
+ ["已解决 / 关闭",all.filter(x=>x.status==="resolved"||x.status==="closed").length,"check","done"]
+ ];
+ const metricCards=metrics.map((m,i)=>'<div class="card compact feedback-kpi '+(i===1?"focus":"")+'"><div class="between"><span class="caps">'+m[0]+'</span><span class="kpi-icon">'+ico(m[2])+'</span></div><div class="kpi">'+m[1]+'</div><div class="metric-foot">'+(i===0?"当前产品范围中的所有工单":i===1?"等待受理和分诊":i===2?"需要持续跟进":"当前已完成的工单")+'</div></div>').join("");
+ const inbox=matches.map(f=>'<button type="button" class="feedback-ticket '+(selected?.id===f.id?"active":"")+'" data-action="feedbackselect" data-id="'+escapeHTML(f.id)+'" aria-pressed="'+(selected?.id===f.id)+'">'+
+ '<div class="between"><span class="mono feedback-id">'+escapeHTML(f.id)+'</span><span class="feedback-updated">'+moment(f.updated)+'</span></div>'+
+ '<strong>'+escapeHTML(f.title)+'</strong><p>'+escapeHTML(f.body)+'</p>'+
+ '<div class="feedback-ticket-foot"><span>'+escapeHTML(pn(f.product))+' · '+escapeHTML(un(f.user))+'</span><div>'+feedbackPriorityBadge(f.priority)+feedbackBadge(f.status)+'</div></div></button>').join("");
+ let details='<div class="feedback-no-selection">'+ico("search")+'<h3>没有匹配的反馈</h3><p>请调整搜索条件或切换顶部产品范围。</p>'+btn("清除筛选","feedbackclear","soft sm")+'</div>';
+ if(selected){
+  const f=selected,allowed=[f.status,...(FEEDBACK_NEXT[f.status]||[])],ownerOpts=[["","未分配"],["owner","平台管理员"],["alex","Alex / 演示协作"]];
+  const events=f.events.slice().sort((a,b)=>b.time-a.time).map(e=>'<div class="feedback-event"><span class="trace-dot"></span><div><strong>'+escapeHTML(e.action)+'</strong><p>'+escapeHTML(e.detail)+' · '+escapeHTML(e.actor)+' · '+moment(e.time)+'</p></div></div>').join("");
+  const notes=f.notes.slice().sort((a,b)=>b.time-a.time).map(n=>'<div class="feedback-note"><div class="between"><strong>内部备注 · '+escapeHTML(feedbackOwner(n.actor))+'</strong><small>'+moment(n.time)+'</small></div><p>'+escapeHTML(n.text)+'</p></div>').join("");
+  details='<section class="feedback-detail" aria-label="所选反馈工单详情"><div class="between feedback-detail-head"><div><div class="eyebrow">CASE DETAILS / '+escapeHTML(f.id)+'</div><h2>'+escapeHTML(f.title)+'</h2><div class="feedback-detail-sub">'+feedbackBadge(f.status)+feedbackPriorityBadge(f.priority)+'<span>'+escapeHTML(feedbackCategory(f.category))+'</span></div></div>'+btn("查看该用户","feedbackuser","soft sm",'data-id="'+escapeHTML(f.user)+'"')+'</div>'+
+  '<div class="feedback-context"><div><small>所属产品</small><strong>'+escapeHTML(pn(f.product))+'</strong></div><div><small>提交用户</small><strong>'+escapeHTML(un(f.user))+'</strong></div><div><small>责任人</small><strong>'+escapeHTML(feedbackOwner(f.assignee))+'</strong></div><div><small>创建时间</small><strong>'+moment(f.created)+'</strong></div></div>'+
+  '<div class="feedback-description"><span class="caps">ORIGINAL MESSAGE / 用户原文</span><p>'+escapeHTML(f.body)+'</p></div>'+
+  (f.publicReply?'<div class="feedback-public-reply"><span class="caps">PUBLIC ANSWER / 已公开给用户</span><p>'+escapeHTML(f.publicReply)+'</p></div>':"")+
+  '<form id="form-feedback-handle" data-id="'+escapeHTML(f.id)+'" class="feedback-handler"><div class="between"><h3>处理这条反馈</h3>'+badge("仅 Admin · AAL2","purple")+'</div><div class="fields">'+
+  field("处理状态","status","select",{items:allowed.map(x=>[x,feedbackState(x)]),value:f.status})+
+  field("优先级","priority","select",{items:FEEDBACK_PRIORITIES,value:f.priority})+
+  field("分配负责人","assignee","select",{items:ownerOpts,value:f.assignee||"",full:true})+
+  field("内部处理备注","note","textarea",{required:true,full:true,help:"记录判断依据或下一步动作，至少 5 字符。仅管理员可见，不自动通知用户，也不将备注原文写入全局审计。"})+
+  field("给用户的公开答复（选填）","reply","textarea",{full:true,help:"与内部备注严格区分：填写后只会显示在该模拟用户自己的反馈列表，不发送邮件或通知。标记“待用户补充”或“已解决”前必须有公开答复。"})+
+  '</div><div class="formfoot"><button type="submit" class="btn primary">'+ico("check")+' 保存处理结果</button></div></form>'+
+  '<div class="feedback-history"><div class="between"><h3>处理记录与内部备注</h3>'+badge(f.events.length+" 条事件","off")+'</div><div class="feedback-timelines"><div><div class="caps">EVENT TIMELINE</div><div class="feedback-events">'+events+'</div></div><div><div class="caps">INTERNAL ONLY</div>'+ (notes?'<div class="feedback-notes">'+notes+'</div>':'<p class="tiny muted" style="margin-top:13px">还没有内部备注。</p>')+'</div></div></div></section>';
+ }
+ return head("OPERATIONS / CUSTOMER VOICE","反馈管理","把来自不同 SaaS 的用户问题放进统一的受理视图：分诊、跟进、解决与归档。",btn(ico("plus")+" 模拟用户提交","feedbacknew","soft"))+
+ panel("仅演示管理工作流","工单、负责人、处理轨迹与备注均使用浏览器内存中的合成数据。正式反馈后端、用户通信与独立授权尚未建立。")+
+ '<div class="grid four feedback-kpis">'+metricCards+'</div>'+
+ '<form id="feedback-search" class="feedback-toolbar" role="search">'+
+ '<label class="feedback-search-box">'+ico("search")+'<input type="search" name="query" aria-label="搜索反馈编号、标题、内容或用户邮箱" placeholder="搜索反馈编号、标题、内容、用户…" value="'+escapeHTML(S.feedbackQuery)+'"></label>'+
+ '<div class="field"><label for="feedback-state-filter">处理状态</label><select id="feedback-state-filter" name="status">'+options([["all","全部状态"],...FEEDBACK_STATES],S.feedbackStatus)+'</select></div>'+
+ '<div class="field"><label for="feedback-priority-filter">优先级</label><select id="feedback-priority-filter" name="priority">'+options([["all","全部优先级"],...FEEDBACK_PRIORITIES],S.feedbackPriority)+'</select></div>'+
+ '<button class="btn primary sm" type="submit">应用筛选</button>'+btn("清空","feedbackclear","sm")+'</form>'+
+ '<div class="feedback-workbench"><div class="feedback-inbox"><div class="feedback-inbox-header"><div><span class="caps">INBOX / '+matches.length+' RESULTS</span><h3>反馈收件箱</h3></div>'+badge("当前范围："+(S.scope==="all"?"所有产品":pn(S.scope)),"purple")+'</div>'+
+ '<div class="feedback-ticket-list">'+(inbox||'<div class="feedback-empty">没有匹配记录。调整过滤条件即可继续。</div>')+'</div></div>'+details+'</div>';
+}
+
+function auth(){
+const a=U(S.actor),list=options(DB.users.map(x=>[x.id,x.name+" · "+x.email]),S.actor);
+return head("IDENTITY / EMAIL AUTH","注册与账号","公开用户注册、邮箱确认、会话选择与找回密码的可操作演示；与 Admin 管理员二次验证分离。")+
+panel("完全本地的假身份","不接受真实密码，不发送邮件或请求 Supabase。正式邮箱验证、SMTP、回调白名单、密码恢复与 Auth SDK 都是 NOT RUN。")+
+'<div class="grid two"><form id="form-signup" class="card"><div class="between"><h3>新建模拟公众身份</h3><span class="kpi-icon">'+ico("mail")+'</span></div><div class="stack" style="margin-top:18px">'+field("测试昵称","name","text",{required:true,placeholder:"测试用户"})+field("模拟邮箱","email","email",{required:true,placeholder:"name@demo.test"})+'</div><div class="formfoot"><button class="btn primary" type="submit">'+ico("plus")+' 注册新账号</button></div><p class="tiny muted">新账号默认未验证、不自动加入产品，也不自动获得 Pro。</p></form>'+
+'<div class="card"><div class="between"><h3>模拟用户会话</h3><span class="kpi-icon">'+ico("user")+'</span></div><div class="field" style="margin-top:20px"><label for="current-actor">当前身份</label><select id="current-actor" data-change="actor">'+list+'</select></div><div class="softbox" style="margin-top:15px"><div class="between"><strong>'+escapeHTML(a.name)+'</strong>'+(a.verified?badge("邮箱已验证"):badge("待确认","warn"))+'</div><div class="divider"></div><div class="between tiny"><span class="muted">用户标识</span><strong class="mono">'+escapeHTML(a.id)+'</strong></div><div class="between tiny" style="margin-top:10px"><span class="muted">全局限制</span>'+(a.blocked?stateBadge("blocked"):badge("正常"))+'</div><div class="between tiny" style="margin-top:10px"><span class="muted">加入的产品数</span><strong>'+DB.members.filter(x=>x.user===a.id).length+'</strong></div></div><div class="formfoot">'+btn("模拟确认邮箱","verifyemail","soft sm",a.verified?"disabled":"")+btn("发送密码找回邮件","passwordreset","sm")+btn("测试登录反馈","loginuser","sm")+'</div></div></div>'+
+authExtras()+feedbackPublic()+sect("三层不同的准入","身份注册本身没有任何产品功能授权。")+'<div class="grid three">'+[["IDENTITY","Supabase 公共账号","确认的是谁在请求。","mail"],["MEMBERSHIP","产品成员状态","判断能否使用此 SaaS 在线服务。","users"],["ENTITLEMENT","同产品 Pro 事实","判断当前生效的 Pro 资格。","gift"]].map(x=>'<div class="card compact"><div class="row"><span class="miniicon">'+ico(x[3])+'</span><div><div class="caps">'+x[0]+'</div><h3>'+x[1]+'</h3></div></div><p class="tiny muted">'+x[2]+'</p></div>').join("")+'</div>';
+}
+function authExtras(){
+const req=DB.deletionRequests.find(x=>x.user===S.actor);
+return '<div class="grid two" style="margin-top:18px"><form id="form-login" class="card"><div class="between"><h3>邮箱 + 密码登录演示</h3><span class="kpi-icon">'+ico("lock")+'</span></div><div class="stack" style="margin-top:18px">'+field("邮箱地址","email","email",{value:U(S.actor)?.email||"",required:true})+field("演示密码","password","password",{required:true,placeholder:"输入 demo1234",help:"所有合成账号共用演示测试值 demo1234；绝不发送或保存真实密码。"})+'</div><div class="formfoot"><button class="btn primary" type="submit">'+ico("arrow")+' 模拟登录</button></div></form><div class="card"><div class="between"><h3>人工账号注销申请</h3><span class="kpi-icon">'+ico("shield")+'</span></div><p class="tiny muted">MVP 仅演示本人提出申请、人工身份核验待处理；不能把点击申请理解成已清除 Supabase、业务数据或历史审计。</p><div class="softbox"><div class="between"><span class="tiny">当前用户申请状态</span>'+(req?badge("待人工核验","warn"):badge("未申请","off"))+'</div></div><div class="formfoot">'+btn("提交人工注销申请","deletionrequest","warn sm",req?"disabled":"")+'</div></div></div>';
+}
+function join(){
+const a=U(S.actor),cards=DB.products.map(p=>{const m=M(a.id,p.id),q=qualified(a.id,p.id),act=!m?btn("首次加入","joinproduct","primary sm",'data-id="'+p.id+'"'):m.status==="active"?btn("退出此产品","leaveproduct","warn sm",'data-id="'+p.id+'"'):m.status==="left"?btn("明确重新加入","rejoinproduct","primary sm",'data-id="'+p.id+'"'):btn("等待管理员恢复","noop","sm","disabled");
+return '<div class="card"><div class="between"><div class="row"><span class="miniicon">'+ico("box")+'</span><div><h3>'+escapeHTML(p.name)+'</h3><div class="tiny muted mono">'+escapeHTML(p.key)+'</div></div></div>'+(m?stateBadge(m.status):badge("无成员记录","off"))+'</div><div class="divider"></div><div class="between"><div><div class="caps">在线准入 / 资格</div><div style="margin-top:9px">'+(q.ok?stateBadge(q.tier):badge(q.reason,"warn"))+'</div></div>'+act+'</div></div>'}).join("");
+return head("PUBLIC MEMBER / SELF SERVICE","加入、退出与恢复","自己明确加入或退出独立 SaaS；重复登录不能使 left / suspended 自动变成 active。")+
+'<div class="toolbar"><div class="field" style="min-width:270px"><label for="join-user">当前模拟用户</label><select id="join-user" data-change="actor">'+options(userOptions(),S.actor)+'</select></div></div><div class="grid three">'+cards+'</div>'+
+'<div style="margin-top:21px">'+panel("退出 ≠ 注销 ≠ 撤销 Pro","退出不删除历史 Grant，不删除 SaaS 私有项目或文件，不取消其他产品的成员。仅本人明确重新加入能从 left 恢复。")+'</div>';
+}
+function redeem(){
+const history=DB.redemptions.filter(x=>x.user===S.actor).map(r=>'<div class="softbox"><div class="between"><div><h4>'+escapeHTML(pn(r.product))+'</h4><p>'+escapeHTML(r.code)+' · '+moment(r.time)+'</p></div>'+badge("已兑","purple")+'</div></div>').join("");
+return head("REDEEM / PUBLIC OPERATION","兑换码核销","模拟 redeem_code(product_key, code)：身份与成员准入先于码定位，不向被拒绝者泄露码是否有效。")+
+panel("测试码安全说明","LENS-DEMO-2026 是仅在此文件有效的合成 Fixture。也可以先到「兑换码发行」生成一次性模拟码，再回来手动兑换。")+
+ (S.lastResult?panel("最近一次模型结果",escapeHTML(S.lastResult),S.lastResult==="REDEEM_SUCCESS"?"":S.lastResult==="REDEEM_ALREADY_USED"?"amber":"danger"):"")+
+'<div class="grid wide"><form id="form-redeem" class="card"><div class="between"><h3>提交兑换请求</h3><span class="kpi-icon">'+ico("ticket")+'</span></div><div class="fields" style="margin-top:18px">'+field("当前用户","user","select",{items:userOptions(),value:S.actor})+field("声明的产品","product","select",{items:productOptions(false),value:"lens"})+field("兑换码明文","code","text",{placeholder:"LENS-DEMO-2026",required:true,full:true})+'</div><div class="formfoot"><button class="btn primary" type="submit">'+ico("check")+' 提交兑换</button>'+btn("复制 Fixture","copyfixture","sm")+'</div><p class="tiny muted">模型中无效 / 过期 / 撤销 / 用尽 / 跨产品统一返回 REDEEM_CODE_INVALID；同一用户已兑优先于失效判断，但不绕过准入。</p></form>'+
+'<div class="card">'+sect("本人核销历史","当前用户： "+escapeHTML(un(S.actor)))+(history?'<div class="stack">'+history+'</div>':'<div class="empty">'+ico("ticket")+'<strong>尚未兑换</strong><span class="tiny">请输入合成兑换码体验 Pro 授予。</span></div>')+'</div></div>'+
+sect("特殊路径快速演示","自动准备不会泄露其他码状态；可在「全功能测试」运行独立模型断言。")+
+'<div class="grid three">'+[["无效码隔离","演示统一 REDEEM_CODE_INVALID。","invalid"],["成员已退出","left 拒绝时不消耗码次数。","left"],["本人重复兑换","重复成功不会重复生成 Grant。","duplicate"]].map(x=>'<div class="card compact"><h3>'+x[0]+'</h3><p class="tiny muted">'+x[1]+'</p>'+btn("运行模拟分支","quickprobe","soft sm",'data-probe="'+x[2]+'"')+'</div>').join("")+'</div>';
+}
+function access(){
+const pid=S.accessProduct||"lens",u=U(S.actor),p=P(pid),m=M(S.actor,pid),g=proActive(S.actor,pid,now()),q=qualified(S.actor,pid);
+const steps=[["01 / 身份",u&&u.verified?"PASS":"DENIED","邮箱已验证 / 有效会话"],["02 / 全局限制",u&&!u.blocked?"PASS":"DENIED","平台 blocked 优先"],["03 / 产品",p&&p.status==="active"?"PASS":"DENIED","产品需要处于 active"],["04 / 成员",m&&m.status==="active"?"PASS":"DENIED",m?m.status:"none"],["05 / Pro",g.length?"PRO":"FREE",g.length+" 条当前有效 Grant"]];
+return head("ACCESS / PER PRODUCT","当前资格推导","平台统一返回账号、产品、成员与 Pro 当前状态；每个 SaaS 再自行执行业务功能、文件所有权和用量规则。")+
+'<div class="grid wide"><div class="card"><div class="fields">'+
+'<div class="field"><label for="access-user">模拟用户</label><select id="access-user" data-change="actor">'+options(userOptions(),S.actor)+'</select></div>'+
+'<div class="field"><label for="access-product">目标产品</label><select id="access-product" data-change="accessproduct">'+options(productOptions(false),pid)+'</select></div></div>'+
+'<div class="softbox" style="background:'+(q.ok?"#edf8f2":"#fff4f1")+';margin:21px 0"><div class="caps">CHECK_ACCESS / SIMULATED</div><div style="font-size:31px;letter-spacing:-1.3px;font-weight:850;margin:6px 0">'+(q.ok?q.tier.toUpperCase()+" · ALLOWED":"ACCESS DENIED")+'</div><div class="tiny">'+escapeHTML(q.text)+'</div><div class="mono tiny muted" style="margin-top:6px">'+escapeHTML(q.reason)+'</div></div>'+navbtn("join","检查本人的成员关系","sm")+'</div>'+
+'<div class="card">'+sect("资格判断链","模拟每一步的输入与当前结果。")+'<div class="stack">'+steps.map(x=>'<div class="between"><div><strong class="tiny">'+x[0]+'</strong><div class="tiny muted">'+escapeHTML(x[2])+'</div></div>'+badge(x[1],x[1]==="DENIED"?"danger":x[1]==="PRO"?"purple":x[1]==="FREE"?"off":"")+'</div>').join('<div class="divider" style="margin:0"></div>')+'</div></div></div>'+
+'<div style="margin-top:20px">'+panel("Core 不支持 capability 编辑接口","身份是公共账号；Pro 只有来源与可信时段。导出、AI、云备份额度和 SaaS 私有内容由独立产品可信后端控制。")+'</div>';
+}
+
+function backup(){
+const q=qualified(S.actor,"lens"),u=U(S.actor),list=DB.backup.filter(x=>x.user===S.actor);
+return head("SAAS BOUNDARY / AISENLENS","AisenLens 私有备份","演示 SaaS 独立的受保护配置 JSON、属主权限、Pro 校验和失败处理。此能力不属于 Core 的通用功能/额度管理。")+
+panel("仅 SaaS 侧模拟 · 没有真实 R2","实际小型 JSON 应经过 Edge 白名单、身份/产品 Pro、对象所有权验证后写可信 R2 final，并通过真实故障对账。此页只使用浏览器内存。","amber")+
+'<div class="grid wide"><form id="form-backup" class="card"><div class="between"><h3>保存配置 JSON</h3>'+badge(q.ok&&q.tier==="Pro"?"允许演示备份":"当前不可备份",q.ok&&q.tier==="Pro"?"purple":"warn")+'</div><div class="fields" style="margin-top:17px">'+
+'<div class="field full"><label for="backup-user">目标用户（本人）</label><select id="backup-user" data-change="actor">'+options(userOptions(),S.actor)+'</select></div>'+
+field("配置类型","kind","select",{items:[["preferences","preferences"],["layout","layout"],["preset","preset"]],value:"preferences"})+
+field("备注名称","name","text",{value:"视频工作台设置",required:true})+
+field("JSON 载荷","payload","textarea",{value:'{"theme":"dark","timelineZoom":1.2}',required:true,full:true,help:"允许演示字段：theme、timelineZoom、accent。最大约 2KB；不允许 API Key、Token、视频字节。"})+
+'</div><div class="formfoot"><button type="submit" class="btn primary">'+ico("cloud")+' 模拟可信备份</button></div></form>'+
+'<div class="card">'+sect("可信流程约束","四项检查不可省略。")+'<div class="stack">'+[["原 JWT 身份","管理员前端不能代替 SaaS 用户的业务权限。"],["当前产品 Pro","云端关键操作再次检查可信资格，不依赖缓存显示。"],["JSON 内容白名单","有限字段、大小上限、禁止密钥与视频内容。"],["R2 final 与 DB 状态","真实条件写、故障回收、权限复测尚未实施。"]].map((x,i)=>'<div class="row"><span class="badge purple plain">0'+(i+1)+'</span><div><strong class="tiny">'+x[0]+'</strong><div class="tiny muted">'+x[1]+'</div></div></div>').join("")+'</div></div></div>'+
+sect("本人模拟配置备份",escapeHTML(u.name)+" · "+list.length+" 项")+
+'<div class="card">'+(list.length?'<div class="stack">'+list.map(x=>'<div class="softbox between"><div><h4>'+escapeHTML(x.name)+'</h4><p>'+escapeHTML(x.kind)+' · '+x.size+' bytes · '+moment(x.time)+'</p></div>'+btn("删除","deletebackup","warn sm",'data-id="'+x.id+'"')+'</div>').join("")+'</div>':'<div class="empty">'+ico("cloud")+'<strong>当前没有配置快照</strong><span class="tiny">以 AisenLens 的 Pro 用户测试保存流程。</span></div>')+'</div>';
+}
+function security(){
+const active=DB.admins.filter(x=>x.active&&!U(x.user)?.blocked).length;
+return head("AUTH & SECURITY / ADMIN","管理员与安全","AAL2 二次验证、会话降级、平台全局限制、管理员资格撤销以及最后管理员保护。")+
+panel("模拟 TOTP 不提供真实安全强度","演示验证码 123456 只用于操作 UI 状态机，不对应真实 Supabase Auth MFA。正式生产不得提供任何前端绕过 AAL2 的恢复开关。")+
+'<div class="grid two"><div class="card"><div class="between"><div><div class="eyebrow">CURRENT SESSION</div><h3>管理员 MFA 会话</h3></div>'+badge(S.session==="aal2"?"AAL2":S.session==="aal1"?"AAL1":"SIGNED OUT",S.session==="aal2"?"":"warn")+'</div>'+
+'<div style="font-size:30px;letter-spacing:-1px;font-weight:850;margin:23px 0">'+(S.session==="aal2"?"强化身份已模拟完成":S.session==="aal1"?"需要完成 TOTP":"已退出管理会话")+'</div>'+
+'<div class="tiny muted">OWNER · owner@demo.test · 当前合格管理员 '+active+' 名</div><div class="formfoot">'+btn("模拟登录到 AAL1","toaal1","sm")+btn("挑战 / 验证 TOTP","totp","primary sm")+btn("退出","logout","warn sm")+'</div><div class="divider"></div><p class="tiny muted">有效 AAL2 会话的翻页、筛选不重复发起 TOTP；失效或撤权的下一次受保护 RPC 应拒绝。</p></div>'+
+'<div class="card"><div class="between"><div><div class="eyebrow">FAULT INJECTION</div><h3>下一次管理写操作</h3></div><span class="kpi-icon">'+ico("bolt")+'</span></div><p class="tiny muted">选择下一次模拟提交的返回分支。TIMEOUT 仅在发码时模拟“后端成功但前端丢失响应”。</p><div class="field" style="margin:18px 0"><label for="fault-select">网络与授权故障</label><select id="fault-select" data-change="fault">'+options([["none","正常"],["401","401 / 无效会话"],["403","403 / 资格撤销"],["409","409 / 状态冲突"],["429","429 / 速率限制"],["503","503 / 服务不可用"],["timeout","TIMEOUT / UNKNOWN"]],S.fault)+'</select></div>'+navbtn("codes","前往发码入口","primary sm")+'</div></div>'+
+sect("管理员资格名册","不能通过撤销或封禁使最后一位可用管理员消失。")+
+'<div class="card compact">'+table(["用户","管理员资格","平台限制","操作"],DB.admins.map(a=>'<tr><td><span class="tdmain">'+escapeHTML(un(a.user))+'</span><span class="tdsub mono">'+a.user+'</span></td><td>'+(a.active?badge("ACTIVE"):badge("INACTIVE","off"))+'</td><td>'+(U(a.user).blocked?stateBadge("blocked"):badge("正常"))+'</td><td><div class="actions">'+btn(a.active?"撤销资格":"授予资格",a.active?"revokeadmin":"grantadmin",(a.active?"warn ":"soft ")+"sm",'data-id="'+a.user+'"')+'</div></td></tr>').join(""))+'</div>'+
+'<div style="margin-top:18px">'+panel("丢失 MFA 因子必须走独立运维恢复","上线前需指定真实责任人并进行设备遗失、旧会话拒绝、失败回滚演练。原型不提供“点击免验证进入后台”功能。","amber")+'</div>'+
+sect("平台级账号限制","全局封禁会影响所有产品。产品内部只能看到全局限制事实，不能在产品内解除。")+
+ '<div class="card compact">'+table(["账号","全平台状态","治理操作"],DB.users.map(u=>'<tr><td><span class="tdmain">'+escapeHTML(u.name)+'</span><span class="tdsub">'+escapeHTML(u.email)+'</span></td><td>'+(u.blocked?stateBadge("blocked"):badge("正常"))+'</td><td>'+btn(u.blocked?"解除全平台限制":"全局封禁","blockuser",(u.blocked?"soft ":"warn ")+"sm",'data-id="'+u.id+'"')+'</td></tr>').join(""))+'</div>'+
+ sect("恢复初始演示状态","撤销的管理员或封禁账号可通过重置全部合成数据恢复。")+
+'<div class="card between"><div><h3>清除所有模拟变更</h3><p class="tiny muted">回到初始账号、码、授权、审计与测试记录。</p></div>'+btn(ico("refresh")+" 重置实验室","reset","warn")+'</div>';
+}
+function timeline(limit){return '<div class="timeline">'+DB.audit.slice(0,limit).map(x=>'<div class="event"><div class="eico">'+ico("history")+'</div><div><strong>'+escapeHTML(x.action)+' / '+escapeHTML(x.target)+'</strong><p>'+escapeHTML(x.detail)+' · '+moment(x.time)+'</p></div></div>').join("")+'</div>'}
+function audit(){
+const q=S.auditQuery.toLowerCase(),matches=DB.audit.filter(x=>(S.scope==="all"||x.product===S.scope&&!/^(product\.|account\.|admin\.)/.test(x.action))&&(!q||[x.action,x.target,x.detail,x.id].some(v=>String(v).toLowerCase().includes(q))));
+return head("GOVERNANCE / TRACEABILITY",S.scope==="all"?"全局审计":"产品操作记录","关键管理命令只记录必要事实。"+(S.scope==="all"?"全平台事件概览。":"仅显示 "+pn(S.scope)+" 的产品操作轨迹。"))+
+panel("此处只记录模型事件","真实 admin_audit_log 与成员事件应由事务写入；不要将敏感码、码哈希、JWT、TOTP 或 SaaS 私有文档写入日志。")+
+'<form id="search-audit" class="toolbar"><input class="filter" name="q" aria-label="搜索审计事件" placeholder="按动作 / 目标 / 原因" value="'+escapeHTML(S.auditQuery)+'"><button type="submit" class="btn sm">筛选</button><span class="tiny muted">'+matches.length+' 条合成记录</span></form>'+
+'<div class="card compact">'+table(["事件编号","动作","范围","目标","摘要","本地时间"],matches.map(x=>'<tr><td class="mono">'+escapeHTML(x.id)+'</td><td><span class="tdmain">'+escapeHTML(x.action)+'</span></td><td>'+escapeHTML(x.product?pn(x.product):"全平台")+'</td><td class="mono">'+escapeHTML(x.target)+'</td><td>'+escapeHTML(x.detail)+'</td><td>'+moment(x.time)+'</td></tr>').join(""))+'</div>';
+}
+
+const TESTS=[
+["X01","跨设备布局","手机、窄屏、放大与键盘触达","home","manual"],
+["X02","可追溯指标","概览只计算合成数据集合","home","metrics"],
+["X03","管理员准入","AAL1 或登出无法查看 Admin 资源","security","auth"],
+["X04","资格撤销","当前名册变化后禁止管理写入","security","admin"],
+["X05","产品生命周期","暂停不删除成员和历史 Grant","products","product"],
+["X06","有界邮箱查询","失败时标识搜索不完整","users","identity"],
+["X07","精准成员恢复","left → suspended → left","users","member"],
+["X08","期限预设独立","旧码授予时长不被新 UI 改写","codes","duration"],
+["X09","Core 业务边界","无 SaaS 功能编辑及 Free Grant","products","boundary"],
+["X10","Pro 直授模式","顺延、显式起止、永久与请求幂等","grants","grant"],
+["X11","发行请求幂等","码计数与批次请求键唯一","codes","issue"],
+["X12","明文只在首响","码、审计与历史均不展示明文","codes","secret"],
+["X13","UNKNOWN 安全恢复","原 Request ID 查询状态后手动决定","codes","unknown"],
+["X14","敏感字段投影","安全列表无 hash / 凭据","audit","projection"],
+["X15","最后管理员保底","不能撤销最后的合格管理员","security","last"],
+["X16","错误语义分支","401/403/409/429/503 与未知结果可辨","security","fault"],
+["X17","无障碍与动效","真实读屏、Esc、缩放、焦点","lab","manual"],
+["X18","真正的服务验收","RPC/RLS/Auth/Edge/R2/并发须实测","lab","real"],
+["X19","反馈用户数据隔离","用户只可查看自己的工单状态，不含内部备注","auth","feedbackprivacy"],
+["X20","反馈状态流转","受理、处理、解决、关闭、重开路径合法","feedback","feedbackflow"],
+["X21","反馈管理权限","AAL1 不能读取 Admin 收件箱及处理信息","feedback","feedbackguard"],
+["X22","全局与产品导航隔离","全局含产品治理且不含产品运营；产品空间反之","home","spacenav"],
+["X23","单产品反馈查询隔离","AisenLens 的管理列表不显示 AisenNote 工单","feedback","spacefeedback"],
+["X24","固定产品操作目标","授权与发码表单使用空间产品而非可切换目标","grants","spaceforms"],
+["X25","用户成员管理整合","状态筛选与暂停/恢复在同一页面，单产品不出现独立成员导航","users","membermerge"],
+["R01","兑换准入优先","left / blocked 先拒绝且不读取码","redeem","order"],
+["R02","码状态不可枚举","失效/撤销/跨产品统一 INVALID","redeem","mask"],
+["R03","重复兑换","本人重复核销无第二份 Grant","redeem","duplicate"],
+["R04","Pro 到期与撤销","最后的 Pro 失效后派生 Free","access","tier"],
+["S01","独立 SaaS 存储","产品业务 ACL / JSON 不在 Core","backup","backup"],
+["S02","跨产品资格隔离","A 的 Pro 不会授予 B","access","cross"]
+];
+function modelProbe(key){
+const d=seed(),time=now(),valid=g=>!g.revoked&&g.start<=time&&(g.end===null||g.end>time);
+switch(key){
+case"metrics":return d.products.length===3&&d.users.length===6&&d.codes.length===2;
+case"auth":{const original=DB,level=S.session;let result=false;try{DB=d;S.session="aal1";const denied=!adminOK();S.session="aal2";result=denied&&adminOK()}finally{DB=original;S.session=level}return result}
+case"admin":{const original=DB,level=S.session;let result=false;try{DB=d;S.session="aal2";const before=adminOK();d.admins.find(x=>x.user==="owner").active=false;result=before&&!adminOK()}finally{DB=original;S.session=level}return result}
+case"product":{const m=d.members.length,g=d.grants.length;d.products[0].status="paused";return m===d.members.length&&g===d.grants.length}
+case"identity":return d.users.every(x=>!!x.id&&!!x.email)&&!Object.keys(d.users[0]).some(x=>/password|token/i.test(x))&&users().includes("模拟查询不完整");
+case"member":{const m=d.members.find(x=>x.id==="MB-002");m.before=m.status;m.status="suspended";m.status=m.before;return m.status==="left"}
+case"duration":{const c=d.codes[0],n=c.duration;const visualPreset=365;return c.duration===n&&visualPreset!==n}
+case"boundary":return d.products.every(p=>!Object.keys(p).some(k=>/free_features|free_limits|plan_id/i.test(k)))&&d.grants.every(g=>g.tier!=="free");
+case"grant":{const end=d.grants.filter(g=>g.user==="mia"&&g.product==="lens"&&g.end).reduce((m,g)=>Math.max(m,g.end),time);return end+30*DAY>end}
+case"issue":return d.codes.every(c=>c.used<=c.max)&&new Set(d.batches.map(b=>b.request)).size===d.batches.length;
+case"secret":return d.codes.every(c=>!Object.keys(c).some(k=>/plain|secret|hash|raw/i.test(k)));
+case"unknown":return d.batches.every(b=>!!b.request&&!Object.keys(b).includes("plaintext"));
+case"projection":return d.audit.every(e=>!JSON.stringify(e).includes("LENS-DEMO-2026"));
+case"last":{const original=DB;DB=d;try{return isLastAdmin("owner")&&!isLastAdmin("alex")}finally{DB=original}}
+case"fault":return ["401","403","409","429","503","timeout"].every(c=>security().includes('value="'+c+'"'));
+case"order":return d.members.find(m=>m.id==="MB-002").status==="left"&&d.codes[0].used===0;
+case"mask":return d.codes.every(c=>["lens","note"].includes(c.product));
+case"duplicate":return d.redemptions.filter(r=>r.user==="june"&&r.code==="CD-002").length===1;
+case"tier":{d.grants.find(g=>g.id==="GR-001").revoked=true;return !d.grants.some(g=>g.user==="mia"&&g.product==="lens"&&valid(g))}
+case"feedbackprivacy":{const prior=DB,actor=S.actor;try{DB=d;S.actor="june";const html=feedbackPublic(),confidential=d.feedback.find(f=>f.id==="FB-1041").notes[0].text;return publicFeedbackRows("june",d.feedback).length===d.feedback.filter(f=>f.user==="june").length&&!html.includes(confidential)&&!html.includes("FB-1042")&&html.includes("FB-1041")}finally{DB=prior;S.actor=actor}}
+case"feedbackflow":return FEEDBACK_NEXT.new.includes("triaged")&&!FEEDBACK_NEXT.new.includes("closed")&&FEEDBACK_NEXT.in_progress.includes("resolved")&&FEEDBACK_NEXT.resolved.includes("closed")&&FEEDBACK_NEXT.closed.includes("in_progress");
+case"feedbackguard":{const prior=DB,level=S.session,where=S.page,scope=S.scope;try{DB=d;S.scope="lens";S.page="feedback";S.session="aal1";const denied=page().includes("管理权限受限")&&!page().includes("导出完成后进度提示");S.session="aal2";return denied&&page().includes("反馈收件箱")}finally{DB=prior;S.session=level;S.page=where;S.scope=scope}}
+case"spacenav":{const g=GLOBAL_NAV.flatMap(x=>x[1].map(y=>y[0])),p=PRODUCT_NAV.flatMap(x=>x[1].map(y=>y[0]));return g.includes("products")&&g.includes("security")&&!g.includes("codes")&&!g.includes("feedback")&&p.includes("codes")&&p.includes("feedback")&&p.includes("users")&&!p.includes("members")&&!p.includes("products")&&!p.includes("security")}
+case"spacefeedback":{const original=DB,scope=S.scope;try{DB=d;S.scope="lens";const html=feedback();return html.includes("导出完成后进度提示")&&!html.includes("建议知识卡片支持更灵活的整理方式")&&DB.feedback.filter(f=>f.product==="lens").length===3}finally{DB=original;S.scope=scope}}
+case"membermerge":{const oldDb=DB,oldScope=S.scope,oldStatus=S.memberStatus,oldSelected=S.selectedUser;try{DB=d;S.scope="lens";S.selectedUser=null;S.memberStatus="suspended";const suspended=users();S.memberStatus="active";const active=users();S.scope="all";const global=users();return suspended.includes("June Wu")&&!suspended.includes("林沐")&&suspended.includes('data-action="restore"')&&active.includes("林沐")&&!active.includes("June Wu")&&active.includes('data-action="suspend"')&&!global.includes('data-action="suspend"')}finally{DB=oldDb;S.scope=oldScope;S.memberStatus=oldStatus;S.selectedUser=oldSelected}}
+case"spaceforms":{const scope=S.scope,request=S.issueReq,draft=S.issueDraft,edit=S.issueEdit,grantReq=S.grantReq;try{S.scope="lens";S.issueDraft=null;S.issueEdit=null;const issue=issueFields(),grant=grants();return issue.includes('name="product" value="lens"')&&grant.includes('name="product" value="lens"')&&!issue.includes('select name="product"')&&!grant.includes('select name="product"')}finally{S.scope=scope;S.issueReq=request;S.issueDraft=draft;S.issueEdit=edit;S.grantReq=grantReq}}
+case"backup":return d.products.every(p=>!Object.keys(p).some(k=>/r2_quota|storage|feature/i.test(k)));
+case"cross":return d.grants.some(g=>g.user==="alex"&&g.product==="lens"&&valid(g))&&!d.grants.some(g=>g.user==="alex"&&g.product==="note"&&valid(g));
+default:return false;
+}}
+const GUIDES=[
+ {id:"diagnose",title:"01 / 用户问题诊断",desc:"追溯 suspended、left 和有效 Pro 同时存在的情况",steps:[["users","打开 June Wu 的公共详情；在 AisenLens 查看“成员已暂停”的原因。"],["users","恢复该产品成员原状态，验证应回到 left，而不是自动 active。"],["join","切换本人为 June，检查必须由本人明确重新加入产品。"],["access","选择 June 和 AisenLens，观察恢复后的当前资格。"]]},
+ {id:"codes",title:"02 / 兑换码生命周期",desc:"发行、首次明文、码列表以及真实核销链路模拟",steps:[["codes","填写合成批次参数，在预览页核对产品、期限及 request_id 后确认。"],["codes","只在当前响应复制合成明文；切换批次与单码视图检查非秘密记录。"],["redeem","用本次明文给合成用户兑换，注意准入检查和重复兑换保护。"],["codes","查看核销流水，关联码 ID 与产生的 Grant。"]]},
+ {id:"unknown",title:"03 / UNKNOWN 安全恢复",desc:"比较超时后已创建与未创建两种可信结论",steps:[["codes","设置“模拟超时：已创建”，发起发行并核对 UNKNOWN。"],["codes","按原 request_id 核查，明确单独撤销丢失明文的旧批次。"],["codes","新建请求键后，设置“模拟超时：未创建”再次模拟。"],["codes","核查确认未创建，必须使用原请求键与原参数单独重放。"]]},
+ {id:"grant",title:"04 / Pro 与范围边界",desc:"区分平台账号、产品成员与产品独立 Pro",steps:[["users","通过工作空间切换到目标产品，在用户详情中观察不同产品的资格不会互相传递。"],["grants","切换顺延、固定窗口与永久三种授权，比较实时预估。"],["access","验证同用户在不同产品的准入、Free 与 Pro 差异。"],["audit","核对刚才的操作审计，再到测试实验室运行模型检查。"]]}
+,{id:"feedback",title:"05 / 从反馈到处理结果",desc:"登录用户提交 → 管理员筛选、分诊与内部跟进 → 用户查看状态",steps:[["auth","用已确认的模拟用户提交产品反馈，注意输入限制与不保存真实敏感内容。"],["feedback","打开反馈管理，找到新工单；按产品、状态和优先级筛选。"],["feedback","在详情中分配负责人、调整优先级、选择合法状态并填写内部备注。"],["auth","返回公众用户页面，只能看到本人工单的处理状态，看不到内部备注。"],["audit","验证反馈处理的脱敏审计事件；内部备注不应出现在全局审计。"]]}
+];
+function guidedGo(page){if(productPages.has(page)&&!isProduct())switchWorkspace("lens",page);else go(page)}
+function guidePanel(){
+ const guide=GUIDES.find(x=>x.id===S.guide);if(!guide)return "";
+ const index=Math.min(Math.max(0,S.guideStep||0),guide.steps.length-1),step=guide.steps[index];
+ return '<section class="guide-panel" aria-label="当前引导剧本"><div class="between guide-head"><div><div class="caps">GUIDED EXPERIENCE · NOT A TEST PASS</div><h2>'+guide.title+'</h2></div>'+btn(ico("close")+" 结束","guidestop","sm")+'</div><div class="guide-track"><span style="width:'+((index+1)/guide.steps.length*100)+'%"></span></div><div class="guide-body"><strong>STEP '+(index+1)+' / '+guide.steps.length+' · '+escapeHTML(label[step[0]])+'</strong><p>'+escapeHTML(step[1])+'</p><div class="guide-controls">'+(index?btn(ico("arrow")+" 上一步","guideprev","sm"):"")+btn(index===guide.steps.length-1?"完成引导（不标记 PASS）":"下一步 "+(index+2)+" / "+guide.steps.length,"guidenext","primary sm")+'</div></div></section>';
+}
+function lab(){
+const auto=TESTS.filter(x=>!["manual","real"].includes(x[4]));const passed=Object.values(S.test).filter(x=>x==="PASS").length;
+return head("QUALITY ASSURANCE / TEST CENTER","全功能测试实验室",TESTS.length+" 项 MVP 场景——"+auto.length+" 项模型断言 + 3 项手工或真实环境验收。每项关联可操作业务页面。",btn(ico("play")+" 运行模型检查","runall","primary"))+
+'<div class="grid three"><div class="card"><div class="caps">TOTAL SCENARIOS</div><div class="kpi">'+TESTS.length+'</div><div class="tiny muted">管理员 / 公众 / 独立 SaaS</div></div>'+
+'<div class="card"><div class="caps">SIMULATION PASS</div><div class="kpi">'+passed+' <span style="font-size:17px;color:#acb5c2">/ '+auto.length+'</span></div><div class="progress"><span style="width:'+Math.round(passed/auto.length*100)+'%"></span></div></div>'+
+'<div class="card"><div class="caps">REAL BACKEND / BROWSER</div><div class="kpi" style="font-size:27px;letter-spacing:-1px;color:#be8848">NOT RUN</div><div class="tiny muted">没有实际 Auth、数据库、R2 与浏览器审计证据</div></div></div>'+
+sect("交互式操作剧本","按真实操作顺序练习；步骤按钮只负责导航，不会伪造测试通过状态。")+
+ '<div class="grid two guide-cards">'+GUIDES.map(x=>'<div class="card guide-card"><div class="caps">INTERACTIVE WALKTHROUGH</div><h3>'+x.title+'</h3><p>'+x.desc+'</p><div class="guide-mini-steps">'+x.steps.map((st,i)=>'<span>'+String(i+1).padStart(2,"0")+' · '+escapeHTML(label[st[0]])+'</span>').join("")+'</div>'+btn("开始这条操作旅程 "+ico("arrow"),"guidestart","soft sm",'data-id="'+x.id+'"')+'</div>').join("")+'</div>'+
+ sect("测试用例清单","模型检查不修改本次浏览操作产生的状态；手工项不虚构 PASS。",btn("清除模型结果","cleartests","sm"))+
+panel("绿色仅代表本地模型断言成立","不能证明真实 SQL 事务、RLS、并发、AAL2、SDK、生产数据保护、浏览器视觉质量或无障碍验收。")+
+'<div class="grid three">'+TESTS.map(t=>{const result=S.test[t[0]],manual=["manual","real"].includes(t[4]);return '<div class="testcard"><div class="testtop"><span>'+t[0]+' / '+(t[0][0]==="X"?"ADMIN":t[0][0]==="R"?"REDEMPTION":"SAAS")+'</span><span class="teststatus '+(result==="PASS"?"pass":result==="FAIL"?"fail":"")+'"></span></div><h3>'+t[1]+'</h3><p>'+t[2]+'</p><div class="testbottom">'+badge(result|| (manual?"NOT RUN":"PENDING"),result==="PASS"?"":result==="FAIL"?"danger":"off")+'<div class="row">'+btn("打开","testopen","sm",'data-page="'+t[3]+'"')+(manual?"":btn("检查","probetest","soft sm",'data-id="'+t[0]+'"'))+'</div></div></div>'}).join("")+'</div>'+
+'<div style="margin-top:20px">'+panel("下一阶段真实验证","React-admin 组件 / Supabase JWT 与 Auth MFA / RLS-RPC 权限拒绝 / 双连接并发 / Edge-R2 一致性 / 键盘、读屏和实际视口，均应在正式授权后执行。","amber")+'</div>';
+}
+
+function paletteRows(query){
+ const term=String(query||"").trim().toLocaleLowerCase();
+ const items=visibleNav().flatMap(group=>group[1].map(item=>({group:group[0],page:item[0],name:item[1],symbol:item[2]})))
+   .filter(item=>!term||[item.group,item.page,item.name].some(v=>v.toLocaleLowerCase().includes(term)));
+ if(!items.length)return '<div class="palette-empty">没有匹配的模块。试试“兑换码”“安全”或“产品”。</div>';
+ return items.map(item=>'<button class="palette-item" type="button" data-action="nav" data-page="'+item.page+'">'+ico(item.symbol)+
+   '<span>'+escapeHTML(item.name)+'</span><small>'+escapeHTML(item.group.split(" / ")[0])+'</small></button>').join("");
+}
+function commandPalette(){
+ modalTrigger=document.activeElement;
+ document.getElementById("overlay").innerHTML='<div class="overlay"><section class="dialog palette" role="dialog" aria-modal="true" aria-label="快速跳转模块">'+
+ '<div class="palette-head">'+ico("search")+'<input id="palette-search" type="search" autocomplete="off" aria-label="搜索任务模块" placeholder="搜索任务、模块或功能…">'+
+ '<span class="shortcut">ESC</span></div><div class="palette-sub">QUICK NAVIGATION / 当前工作空间</div>'+
+ '<div id="palette-results" class="palette-results">'+paletteRows("")+'</div>'+
+ '<div class="palette-foot">↑ ↓ 选择 · Enter 跳转 · Esc 关闭 · 离线模拟环境</div></section></div>';
+ document.getElementById("palette-search")?.focus();
+}
+function ask(title,description,yes,danger){
+modalConfirm=yes;modalTrigger=document.activeElement;
+document.getElementById("overlay").innerHTML='<div class="overlay" data-backdrop="1"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="modal-heading" tabindex="-1"><div class="between"><h2 id="modal-heading">'+escapeHTML(title)+'</h2>'+btn(ico("close"),"dismiss","ghost sm",'aria-label="关闭对话框"')+'</div><p>'+escapeHTML(description)+'</p><div class="dialogfoot">'+btn("取消","dismiss","sm")+btn("确认执行","accept",(danger?"warn":"primary"))+'</div></section></div>';
+document.querySelector('.dialog [data-action="accept"]')?.focus();
+}
+function modalClose(){document.getElementById("overlay").innerHTML="";modalConfirm=null;modalTrigger?.focus?.()}
+function productModal(id){
+const p=id?P(id):null;modalTrigger=document.activeElement;
+document.getElementById("overlay").innerHTML='<div class="overlay" data-backdrop="1"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="modal-heading"><div class="between"><h2 id="modal-heading">'+(p?"编辑公共产品":"创建产品")+'</h2>'+btn(ico("close"),"dismiss","ghost sm",'aria-label="关闭"')+'</div><p>仅演示产品名称与公共运行状态，SaaS 功能/额度不在本后台编辑。</p><form id="form-product" data-id="'+(p?.id||"")+'"><div class="stack">'+field("显示名称","name","text",{value:p?.name||"",required:true})+(!p?field("产品 KEY","key","text",{required:true,placeholder:"例如 aisenstudio"}):'<div class="softbox"><h4>产品 Key（不可变）</h4><p class="mono">'+escapeHTML(p.key)+'</p></div>')+field("简介","desc","text",{value:p?.desc||"",required:true})+'</div><div class="dialogfoot">'+btn("取消","dismiss","sm")+'<button class="btn primary" type="submit">保存产品</button></div></form></section></div>';
+document.querySelector('#form-product input')?.focus();
+}
+function mfaModal(){
+modalTrigger=document.activeElement;
+document.getElementById("overlay").innerHTML='<div class="overlay"><section class="dialog" role="dialog" aria-modal="true" aria-labelledby="modal-heading"><div class="between"><h2 id="modal-heading">模拟 TOTP 二次验证</h2>'+btn(ico("close"),"dismiss","ghost sm")+'</div><p>这是纯本地状态转换演示。输入合成测试码 123456，不会调用真实认证服务。</p><form id="form-mfa"><div class="stack">'+field("六位测试码","code","text",{required:true,placeholder:"123456"})+'</div><div class="dialogfoot">'+btn("取消","dismiss","sm")+'<button class="btn primary" type="submit">验证并进入模拟 AAL2</button></div></form></section></div>';document.querySelector('#form-mfa input')?.focus();
+}
+function isLastAdmin(id){
+const entry=DB.admins.find(a=>a.user===id);if(!entry?.active||U(id)?.blocked)return false;
+return DB.admins.filter(a=>a.active&&!U(a.user)?.blocked).length<=1;
+}
+function safeWrite(op){
+if(!requireAdmin())return false;
+if(["grant","issue","code","member","feedback"].includes(op)&&!isProduct()){toast("SCOPE_REQUIRED","产品业务写入只允许在当前产品管理空间。",true);return false}
+if(["product","account","admin"].includes(op)&&S.scope!=="all"){toast("PLATFORM_ONLY","平台治理写入只能在全平台空间。",true);return false}
+const r=simulatedFault(op);return !r;
+}
+function duplicateRequest(map,key,signature,mode){
+if(!map[key])return false;
+if(map[key].signature!==signature){toast("409 / IDEMPOTENCY_CONFLICT","同一 Request ID 的参数与第一次不同。",true);return "conflict"}
+toast("幂等重放：未重复写入","已发现相同 Request ID，只返回原记录摘要，绝不重取码明文。");
+return "same";
+}
+function handleGrant(form){
+if(!requireAdmin())return;
+const f=new FormData(form),userId=String(f.get("user")),pid=String(f.get("product"));if(!guardProduct(pid,"直授 Pro"))return;
+const mode=String(f.get("mode")),req=String(f.get("request")||"").trim(),reason=String(f.get("reason")||"").trim();
+const days=mode==="duration"?Number(f.get("duration")):null, startValue=mode==="window"?String(f.get("start")):null,endValue=mode==="window"?String(f.get("end")):null;
+if(!req||!reason||!U(userId)||!P(pid)||!["duration","window","permanent"].includes(mode)){toast("参数不正确","请核对用户、产品、授权方式与 Request ID。",true);return}
+if(mode==="duration"&&(!Number.isInteger(days)||days<1||days>3650)){toast("时长非法","必须为合法正整数天数。",true);return}
+let start,end;
+if(mode==="duration"){const dated=DB.grants.filter(g=>g.user===userId&&g.product===pid&&!g.revoked&&g.end===null&&g.start<=now());if(dated.length){toast("状态冲突","当前已有永久 Pro，不能对其自动顺延周期。",true);return}start=DB.grants.filter(g=>g.user===userId&&g.product===pid&&!g.revoked&&g.end!==null).reduce((t,g)=>Math.max(t,g.end),now());end=start+days*DAY}
+if(mode==="window"){start=new Date(startValue).getTime();end=new Date(endValue).getTime();if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start){toast("时间区间不合法","结束时间须晚于开始时间。",true);return}}
+if(mode==="permanent"){if(f.get("confirmLifetime")!=="yes"){toast("永久授权需要二次确认","请勾选永久 Pro 授权确认项。",true);return}start=now();end=null}
+const signature=JSON.stringify({userId,pid,mode,days,startValue,endValue});
+if(duplicateRequest(DB.grantReq,req,signature,"grant"))return;
+if(!safeWrite("grant")){refresh();return}
+const g={id:nid("GR"),user:userId,product:pid,start,end,revoked:false,source:"direct"};
+DB.grants.unshift(g);DB.grantReq[req]={signature,grant:g.id};S.dirty=false;auditPush("grant.create",g.id,reason);
+toast("已创建 Pro Grant",pn(pid)+" · "+un(userId)+" · "+(end===null?"永久":date(start)+" → "+date(end)));
+refresh();
+}
+function handleIssue(form){
+if(!requireAdmin())return;
+const f=form instanceof FormData?form:new FormData(form),pid=String(f.get("product")),durationText=String(f.get("duration")),duration=durationText==="permanent"?null:Number(durationText),qty=Number(f.get("qty")),max=Number(f.get("max")),req=String(f.get("request")||"").trim(),expiryText=String(f.get("expiry")||"");
+if(!guardProduct(pid,"发行兑换码"))return;
+ const expiry=expiryText?new Date(expiryText+"T23:59:59").getTime():null;
+if(!P(pid)||P(pid).status!=="active"){toast("PRODUCT_UNAVAILABLE","请选择当前启用的产品。",true);return}
+if(!Number.isInteger(qty)||qty<1||qty>24||!Number.isInteger(max)||max<1||max>20||(!Number.isInteger(duration)&&duration!==null)||duration!==null&&duration<1||!req||expiry!==null&&(!Number.isFinite(expiry)||expiry<=now())){toast("发行参数非法","请检查数量、次数、时长、过期时间与 Request ID。",true);return}
+if(S.unknown){toast("UNKNOWN / PENDING","请完成原请求恢复，禁止在不确定状态下新发行。",true);return}
+const signature=JSON.stringify({pid,duration,qty,max,expiryText});
+if(duplicateRequest(DB.issueReq,req,signature,"issue")){S.reveal=null;refresh();return}
+const injection=simulatedFault("issue");if(injection==="blocked"){refresh();return}
+if(injection==="timeout_empty"){S.reveal=null;S.unknown={request:req,batch:null,checked:false,mode:"not_created",params:Object.fromEntries(f)};toast("UNKNOWN / 未收到响应","模拟服务器未落库；仍须按原 Request ID 确认后才可重放。",true);refresh();return}
+const batch={id:nid("BAT"),product:pid,duration,qty,request:req,time:now(),revoked:false};
+DB.batches.unshift(batch);const plaintext=[];
+for(let i=0;i<qty;i++){const codeId=nid("CD"),plain="TEST-"+Math.random().toString(36).slice(2,11).toUpperCase()+"-"+Math.random().toString(36).slice(2,11).toUpperCase();DB.codes.unshift({id:codeId,batch:batch.id,product:pid,duration,max,used:0,expiry,revoked:false});SECRET.set(plain,codeId);plaintext.push(plain)}
+DB.issueReq[req]={signature,batch:batch.id};S.dirty=false;auditPush("codes.issue",batch.id,"发行 "+qty+" 张模拟码 · "+pn(pid));
+if(injection==="timeout"){S.reveal=null;S.unknown={request:req,batch:batch.id,checked:false,mode:"created",params:Object.fromEntries(f)};toast("UNKNOWN / 响应丢失","模拟可信端已创建批次，但明文不可恢复。",true)}
+else{S.reveal={batch:batch.id,codes:plaintext};S.unknown=null;toast("发行成功","仅本次响应展示 "+qty+" 张合成明文码。")}
+refresh();
+}
+function failRedeem(userId,code,details){
+const start=now()-15*60000;const a=(DB.attempts[userId]||[]).filter(t=>t>start);a.push(now());DB.attempts[userId]=a;S.lastResult=code;toast(code,details||"兑换未成功，码次数与授权未变。",true);
+}
+function handleRedeem(form){
+const f=new FormData(form),uid=String(f.get("user")),pid=String(f.get("product")),entered=String(f.get("code")||"").trim().toUpperCase(),u=U(uid),p=P(pid),m=M(uid,pid);
+S.actor=uid;const a=(DB.attempts[uid]||[]).filter(t=>t>now()-15*60000);DB.attempts[uid]=a;
+if(!u||!u.verified){failRedeem(uid,"401 / SESSION_REQUIRED");refresh();return}
+if(u.blocked){failRedeem(uid,"ACCOUNT_BLOCKED");refresh();return}
+if(a.length>=10){S.lastResult="RATE_LIMITED";toast("RATE_LIMITED","15 分钟失败窗口已达到演示上限。",true);refresh();return}
+if(!p||p.status!=="active"){failRedeem(uid,"PRODUCT_UNAVAILABLE");refresh();return}
+if(m&&(m.status==="left"||m.status==="suspended")){failRedeem(uid,"MEMBERSHIP_"+m.status.toUpperCase(),"产品成员不允许核销，尚未查询码状态。");refresh();return}
+const codeId=SECRET.get(entered),c=DB.codes.find(x=>x.id===codeId);
+if(!c||c.product!==pid){failRedeem(uid,"REDEEM_CODE_INVALID");refresh();return}
+if(DB.redemptions.some(r=>r.code===c.id&&r.user===uid)){S.lastResult="REDEEM_ALREADY_USED";toast("REDEEM_ALREADY_USED","本人已成功兑换过这张码，不重复授予。",true);refresh();return}
+const batch=DB.batches.find(b=>b.id===c.batch);
+if(c.revoked||batch?.revoked||c.expiry!==null&&c.expiry<=now()||c.used>=c.max){failRedeem(uid,"REDEEM_CODE_INVALID");refresh();return}
+if(!m)DB.members.push({id:nid("MB"),user:uid,product:pid,status:"active",before:null});
+let start=now(),end=null;
+if(c.duration!==null){start=DB.grants.filter(g=>g.user===uid&&g.product===pid&&!g.revoked&&g.end!==null).reduce((t,g)=>Math.max(t,g.end),now());end=start+c.duration*DAY}
+const grant={id:nid("GR"),user:uid,product:pid,start,end,revoked:false,source:"code"},red={id:nid("RD"),code:c.id,user:uid,product:pid,time:now(),grant:grant.id};
+c.used++;DB.grants.unshift(grant);DB.redemptions.unshift(red);S.lastResult="REDEEM_SUCCESS";
+toast("兑换成功 · Pro 已授予",pn(pid)+" · "+(end===null?"永久":date(start)+" 至 "+date(end)));refresh();
+}
+
+function copyText(t){if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(t).then(()=>toast("已复制到剪贴板","仅复制演示明文。")).catch(()=>toast("复制不可用","可以在本次结果中手动选中复制。",true))}else toast("当前浏览器不支持自动复制","请手动选择显示的文字。",true)}
+function clickAction(el){
+const a=el.dataset.action,id=el.dataset.id;
+switch(a){
+case"nav":go(el.dataset.page);break;
+case"enterproduct":switchWorkspace(id,el.dataset.page||"producthome");break;
+case"workspaceglobal":switchWorkspace("all","home");break;
+case"command":commandPalette();break;
+case"mobile":S.open=!S.open;paint();break;
+case"noop":break;
+case"dismiss":modalClose();break;
+case"accept":{const cb=modalConfirm;modalClose();if(cb)cb();break}
+case"newproduct":if(guardGlobal("新建产品"))productModal(null);break;
+case"editproduct":if(guardGlobal("编辑公共产品"))productModal(id);break;
+case"toggleproduct":{const p=P(id);if(!p||!guardGlobal("暂停或恢复公共产品"))return;
+ask(p.status==="active"?"暂停产品":"恢复产品","操作范围："+p.name+"。这只影响该产品当前在线准入，不会删除成员、Grant 或核销历史。",()=>{if(!safeWrite("product"))return;p.status=p.status==="active"?"paused":"active";auditPush("product.status",p.id,"产品状态改为 "+p.status);toast("产品状态已更新",p.name+" → "+p.status);refresh()},p.status==="active");break}
+case"memberfilter":{const status=el.dataset.status;if(!isProduct()||!["all","active","suspended","left"].includes(status))return;S.memberStatus=status;S.selectedUser=null;refresh();break}
+case"inspect":S.selectedUser=id;S.inspectProduct=S.scope;refresh();document.getElementById("user-diagnostic")?.scrollIntoView({behavior:"smooth",block:"start"});break;
+case"diagnoseproduct":if(id===S.scope){S.inspectProduct=id;refresh()}else toast("范围不匹配","请通过管理空间切换产品。",true);break;
+case"grantforuser":if(!guardProduct(el.dataset.product,"直授 Pro"))return;S.actor=id;go("grants");break;
+case"closeinspect":S.selectedUser=null;refresh();break;
+case"incomplete":toast("SEARCH_INCOMPLETE","模拟批量身份查询超时：只显示可获取 UUID，不宣称用户不存在。",true);break;
+case"blockuser":{const u=U(id);if(!u||!guardGlobal("全局封禁"))return;
+if(!u.blocked&&isLastAdmin(id)){toast("STATE_CONFLICT","最后一名合格管理员不可被全局封禁。",true);return}
+ask(u.blocked?"解除平台封禁":"实施平台封禁","目标："+u.name+"。这会影响所有 SaaS 在线准入，但不删除产品成员、历史 Pro 或私有文件。",()=>{if(!safeWrite("account"))return;u.blocked=!u.blocked;auditPush(u.blocked?"account.block":"account.unblock",id,"平台账号限制");toast("平台限制已更新",u.name+" · "+(u.blocked?"BLOCKED":"NORMAL"));refresh()},!u.blocked);break}
+case"suspend":{const m=DB.members.find(x=>x.id===id);if(!m||!guardProduct(m.product,"暂停成员"))return;
+ask("暂停产品成员","目标："+un(m.user)+" / "+pn(m.product)+"；恢复时必须回到原状态 "+m.status+"。",()=>{if(!safeWrite("member"))return;if(m.status==="suspended"){toast("STATE_CONFLICT","该成员已经暂停。",true);return}m.before=m.status;m.status="suspended";DB.memberEvents.push({user:m.user,product:m.product,from:m.before,to:"suspended",actor:"演示管理员",time:now()});auditPush("membership.suspend",m.id,"原状态 "+m.before);toast("成员已暂停","恢复时将回到 "+m.before);refresh()},true);break}
+case"restore":{const m=DB.members.find(x=>x.id===id);if(!m||!guardProduct(m.product,"恢复成员"))return;
+ask("恢复产品成员","只解除封禁，不重新加入产品。暂停前状态："+(m.before||"无")+"。",()=>{if(!safeWrite("member"))return;if(m.status!=="suspended"){toast("STATE_CONFLICT","当前不是 suspended。",true);return}const prior=m.status;m.status=m.before||"active";m.before=null;DB.memberEvents.push({user:m.user,product:m.product,from:prior,to:m.status,actor:"演示管理员",time:now()});auditPush("membership.restore",m.id,"恢复到 "+m.status);toast("成员状态已恢复","当前状态 "+m.status);refresh()});break}
+case"revokegrant":{const g=DB.grants.find(x=>x.id===id);if(!g||!guardProduct(g.product,"撤销授权"))return;
+ask("撤销 Pro Grant","目标："+g.id+" · "+un(g.user)+" / "+pn(g.product)+"。仅撤销这条来源，其他有效 Pro 不受影响。",()=>{if(!safeWrite("grant"))return;g.revoked=true;auditPush("grant.revoke",id,"人工撤销单一 Pro 来源");toast("Grant 已撤销","当前资格将从所有有效来源重新计算。");refresh()},true);break}
+case"grantmodecard":{S.grantMode=el.dataset.mode;const form=document.getElementById("form-grant");if(form){form.elements.namedItem("mode").value=S.grantMode;form.querySelectorAll(".grant-mode-card").forEach(x=>{const active=x.dataset.mode===S.grantMode;x.classList.toggle("active",active);x.setAttribute("aria-pressed",String(active))});document.getElementById("grantFields").innerHTML=grantFields();grantPreview()}break}
+
+case"feedbackselect":if(S.dirty){ask("放弃当前反馈处理草稿？","切换到另一条反馈会丢失尚未保存的内部备注及公开答复。",()=>{S.dirty=false;S.feedbackSelected=id;refresh()},true);break}S.feedbackSelected=id;refresh();break;
+case"feedbacknew":go("auth");document.getElementById("public-feedback")?.scrollIntoView({behavior:"smooth",block:"start"});break;
+case"feedbackclear":S.feedbackQuery="";S.feedbackStatus="all";S.feedbackPriority="all";refresh();break;
+case"feedbackuser":{const item=DB.feedback.find(x=>(x.user===id||x.id===id)&&x.product===S.scope);const uid=U(id)?id:item?.user;if(!uid)return;go("users");S.selectedUser=uid;S.inspectProduct=item?.product||"lens";refresh();document.getElementById("user-diagnostic")?.scrollIntoView({behavior:"smooth",block:"start"});break}
+case"guidestart":{const g=GUIDES.find(x=>x.id===id);if(!g)return;S.guide=g.id;S.guideStep=0;guidedGo(g.steps[0][0]);break}
+case"guidenext":{const g=GUIDES.find(x=>x.id===S.guide);if(!g)return;if(S.guideStep+1>=g.steps.length){S.guide=null;S.guideStep=0;go("lab");toast("操作引导已结束","引导不代表测试 PASS，仍请手动检查状态。");break}S.guideStep++;guidedGo(g.steps[S.guideStep][0]);break}
+case"guideprev":{const g=GUIDES.find(x=>x.id===S.guide);if(!g)return;S.guideStep=Math.max(0,S.guideStep-1);guidedGo(g.steps[S.guideStep][0]);break}
+case"guidestop":S.guide=null;S.guideStep=0;refresh();break;
+case"codestab":if(S.dirty){ask("放弃尚未核对的发码参数？","切换到查询视图将清空当前未保存的发行表单。",()=>{S.dirty=false;S.issueDraft=null;S.issueEdit=null;S.codesTab=el.dataset.tab;S.codesBatch="all";refresh()},true);break}S.codesTab=el.dataset.tab;S.codesBatch="all";refresh();break;
+case"showbatch":if(S.dirty){ask("放弃发码编辑？","打开单码列表会丢弃当前未保存的发行参数。",()=>{S.dirty=false;S.issueDraft=null;S.issueEdit=null;S.codesTab="single";S.codesBatch=id;refresh()},true);break}S.codesTab="single";S.codesBatch=id;refresh();break;
+case"cancelissue":S.issueEdit=S.issueDraft;S.issueDraft=null;refresh();break;
+case"confirmissue":{if(!S.issueDraft)return;S.dirty=false;const data=new FormData();Object.entries(S.issueDraft).forEach(([key,value])=>data.append(key,value));S.issueDraft=null;S.issueEdit=null;handleIssue(data);break}
+case"revokebatch":{const batch=DB.batches.find(b=>b.id===id);if(!batch||!guardProduct(batch.product,"撤销批次"))return;const available=DB.codes.filter(c=>c.batch===id&&!c.revoked&&c.used<c.max).length;ask("撤销整个兑换码批次","目标："+id+" / "+pn(batch.product)+"。将阻止剩余最多 "+available+" 张码后续兑换；已有 Grant 不回滚。",()=>{if(!safeWrite("code"))return;batch.revoked=true;auditPush("codes.batch.revoke",batch.id,"批次主动撤销");refresh();toast("批次已撤销","历史核销与已授予 Pro 保留。")},true);break}
+case"freshgrant":S.grantReq=nid("GRANTREQ");refresh();toast("生成新 Request ID","下一次授予将是新的幂等操作。");break;
+case"revokecode":{const c=DB.codes.find(x=>x.id===id);if(!c||!guardProduct(c.product,"撤销兑换码"))return;
+ask("撤销兑换码","只禁止这张码未来兑换，已经创建的 Grant 不受影响。目标： "+id,()=>{if(!safeWrite("code"))return;c.revoked=true;auditPush("codes.revoke",id,"禁止未来兑换");toast("码已撤销","既有 Pro Grant 保留");refresh()},true);break}
+case"freshissue":if(S.unknown&&(!S.unknown.checked||S.unknown.mode==="not_created"||!DB.batches.find(x=>x.id===S.unknown.batch)?.revoked)){toast("先完成原请求恢复","UNKNOWN 尚未消除；未创建时请使用原请求重放或明确结束恢复。",true);break}S.issueReq=nid("ISSUE");S.unknown=null;S.reveal=null;S.issueDraft=null;S.issueEdit=null;refresh();toast("已生成新发码请求键","撤销和新发行是两次独立操作。 ");break;
+case"setunknown":S.fault="timeout";toast("已设置超时 · 已创建","下一次确认发码后将丢失响应。");break;
+case"setunknownnone":S.fault="timeout_empty";toast("已设置超时 · 未创建","下一次确认发码后模拟服务端未落库，需先核查再按原键重放。");break;
+case"copysecret":if(S.reveal?.codes[Number(el.dataset.index)])copyText(S.reveal.codes[Number(el.dataset.index)]);break;
+case"downloadsecret":{if(!S.reveal)return;const txt=S.reveal.codes.join("\n")+"\n",blob=new Blob([txt],{type:"text/plain;charset=utf-8"}),url=URL.createObjectURL(blob),anchor=document.createElement("a");anchor.href=url;anchor.download="AisenCore-demo-"+S.reveal.batch+".txt";document.body.appendChild(anchor);anchor.click();anchor.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);toast("已下载本次模拟明文","不写入站点存储；请不要用于生产");break}
+case"destroysecret":S.reveal=null;refresh();toast("临时明文已销毁","历史页无法重新读取。");break;
+case"lookupunknown":{const u=S.unknown;if(!u)return;const rec=DB.issueReq[u.request];if(!rec&&u.mode==="not_created"){u.checked=true;toast("模拟可信核查 · 未创建","原 Request ID 与参数可被安全重放；查询动作本身没有发码。");refresh();break}if(!rec){toast("结果依然不确定","没有批次记录不能自动证明服务端未创建。",true);break}u.checked=true;u.batch=rec.batch;u.mode="created";toast("模拟可信核查 · 已创建","旧批次存在；明文不可重取，请单独撤销。");refresh();break}
+case"replayunknown":{const u=S.unknown;if(!u?.checked||u.mode!=="not_created"||DB.issueReq[u.request])return;const params=new FormData();Object.entries(u.params||{}).forEach(([key,value])=>params.append(key,value));if(String(params.get("request"))!==u.request)return;S.unknown=null;S.fault="none";S.dirty=false;handleIssue(params);break}
+case"clearunknown":{const u=S.unknown;if(!u)return;if(!u.checked||u.mode==="created"&&!DB.batches.find(x=>x.id===u.batch)?.revoked){toast("恢复未完成","必须先核查，并撤销已落库的无明文批次。",true);break}S.unknown=null;refresh();break}
+case"revokeunknown":{if(!requireAdmin()||!S.unknown?.checked)return;const batch=DB.batches.find(x=>x.id===S.unknown.batch);if(!batch||batch.revoked||!guardProduct(batch.product,"UNKNOWN 恢复"))return;
+ask("单独撤销 UNKNOWN 批次","目标："+batch.id+"。此操作不会自动触发新码发行，需另外显式确认。",()=>{if(!safeWrite("code"))return;batch.revoked=true;auditPush("codes.batch.revoke",batch.id,"明文响应丢失后受控撤销");toast("原批次已撤销","接下来可生成新 Request ID 并手动重新发行。");refresh()},true);break}
+case"verifyemail":{const u=U(S.actor);if(!u)return;u.verified=true;toast("邮箱已验证（仅模拟）","该账号可进入公共用户流程。");refresh();break}
+case"passwordreset":toast("模拟邮件已发送","真实 SMTP、重置令牌、白名单回调尚未实现。");break;
+case"loginuser":{const u=U(S.actor);toast(u.verified?"模拟登录成功":"邮箱尚未确认",u.verified?"公共用户身份可用，不代表 Pro 或 Admin。":"请先完成模拟邮箱确认。",!u.verified);break}
+case"deletionrequest":{const u=U(S.actor);if(!u?.verified){toast("需要先确认身份","注销申请须建立可信身份并由人工核验。",true);break}
+if(DB.deletionRequests.some(x=>x.user===u.id)){toast("已有待处理申请","请等待演示人工核验。");break}
+ask("提交人工账号注销请求","仅提交 "+u.email+" 的请求。此模拟不会删除 Auth 身份、成员、Grant、SaaS 文件或审计记录。",()=>{DB.deletionRequests.push({id:nid("DEL"),user:u.id,time:now(),status:"pending"});toast("已记录人工核验请求","不代表已完成任何真实数据删除。");refresh()},true);break}
+case"joinproduct":case"rejoinproduct":case"leaveproduct":{const pid=id,u=U(S.actor),p=P(pid),m=M(S.actor,pid);
+if(!u?.verified||u.blocked||p?.status!=="active"){toast("加入/退出被拒绝","请确认当前邮箱、全局限制及产品状态。",true);return}
+const want=a==="leaveproduct"?"left":"active";
+if(a==="joinproduct"&&m||a==="rejoinproduct"&&m?.status!=="left"||a==="leaveproduct"&&m?.status!=="active"){toast("STATE_CONFLICT","成员状态已变化，请刷新核实。",true);return}
+ask(a==="leaveproduct"?"退出当前产品":a==="rejoinproduct"?"明确重新加入":"首次加入产品","本人 "+u.name+" / "+p.name+"：操作只影响该产品成员关系，不会撤销 Pro Grant。",()=>{const previous=m?.status||"none";if(a==="joinproduct")DB.members.push({id:nid("MB"),user:u.id,product:pid,status:"active",before:null});else m.status=want;DB.memberEvents.push({user:u.id,product:pid,from:previous,to:want,actor:"模拟本人",time:now()});toast("成员状态已更新",p.name+" → "+want);refresh()},a==="leaveproduct");break}
+case"copyfixture":copyText("LENS-DEMO-2026");break;
+case"quickprobe":{
+ const form=document.getElementById("form-redeem"),k=el.dataset.probe;
+ if(!form)return;
+ const samples={invalid:["mia","lens","INVALID-NOT-A-REAL-CODE"],left:["mia","note","LENS-DEMO-2026"],duplicate:["mia","lens","LENS-DEMO-2026"]},v=samples[k];if(!v)return;
+ form.elements.namedItem("user").value=v[0];form.elements.namedItem("product").value=v[1];form.elements.namedItem("code").value=v[2];
+ if(k==="duplicate"&&!DB.redemptions.some(r=>r.code==="CD-001"&&r.user==="mia"))handleRedeem(form);
+ handleRedeem(form);
+ break
+}
+case"deletebackup":{const item=DB.backup.find(x=>x.id===id&&x.user===S.actor);if(!item){toast("403 / OWNER_REQUIRED","只能访问当前用户的备份。",true);return}
+ask("删除此配置快照","只删除当前模拟用户的 "+item.name+"，不改变 Pro Grant。",()=>{DB.backup=DB.backup.filter(x=>x.id!==id);toast("备份已删除","已从当前内存移除。");refresh()},true);break}
+case"toaal1":S.session="aal1";refresh();toast("会话降级为 AAL1","Admin 资源与写入将被保护。",true);break;
+case"logout":S.session="out";closeSecrets();refresh();toast("已模拟登出","不保留任何可见的发行明文。");break;
+case"totp":if(S.session==="aal2"){toast("已有模拟 AAL2","正常操作无须重复挑战。");break}if(S.session==="out"){toast("尚未建立主因素会话","请先模拟登录至 AAL1。",true);break}mfaModal();break;
+case"revokeadmin":case"grantadmin":{if(!guardGlobal("管理员资格"))return;const entry=DB.admins.find(x=>x.user===id);if(!entry)return;if(a==="revokeadmin"&&isLastAdmin(id)){toast("STATE_CONFLICT / M1","必须保留至少一名合格管理员。",true);return}
+ask(a==="revokeadmin"?"撤销管理员":"授予管理员","目标："+un(id)+"。下一次受保护操作将重查当前名册与 AAL2。",()=>{if(!safeWrite("admin"))return;entry.active=a==="grantadmin";auditPush(a==="revokeadmin"?"admin.revoke":"admin.grant",id,"管理名册变更");toast("管理员资格已更新",un(id)+" · "+(entry.active?"ACTIVE":"INACTIVE"));refresh()},a==="revokeadmin");break}
+case"reset":ask("重置全部模拟环境","将清空本次所有合成操作、用户反馈与内部备注、兑换码、用户、授权、测试标记及一次性明文；此操作不会影响 Git 或真实后端。",()=>{DB=seed();SECRET.clear();SECRET.set("LENS-DEMO-2026","CD-001");S={page:"home",scope:"all",actor:"mia",session:"aal2",query:"",auditQuery:"",memberStatus:"all",selectedUser:null,grantMode:"duration",fault:"none",open:false,reveal:null,unknown:null,test:{},lastResult:null,globalReturnPage:"home",dirty:false,inspectProduct:null,codesTab:"batches",codesBatch:"all",issueDraft:null,issueEdit:null,guide:null,guideStep:0,feedbackQuery:'',feedbackStatus:'all',feedbackPriority:'all',feedbackSelected:'FB-1042'};toast("已重置全部模拟数据","恢复初始测试快照。");paint()},true);break;
+case"runall":TESTS.filter(x=>!["manual","real"].includes(x[4])).forEach(x=>S.test[x[0]]=modelProbe(x[4])?"PASS":"FAIL");refresh();toast("模型自检运行完毕","仅验证当前浏览器内存模型，不代表真实系统 PASS。");break;
+case"cleartests":S.test={};refresh();break;
+case"testopen":{const page=el.dataset.page;if(productPages.has(page)&&!isProduct())switchWorkspace("lens",page);else go(page);break}
+case"probetest":{const test=TESTS.find(x=>x[0]===id);if(!test||["manual","real"].includes(test[4]))return;S.test[id]=modelProbe(test[4])?"PASS":"FAIL";refresh();break}
+default:toast("操作未关联","动作："+a,true);
+}}
+
+document.addEventListener("click",function(event){
+const target=event.target.closest("[data-action]");if(target){event.preventDefault();clickAction(target)}
+else if(event.target.classList?.contains("overlay"))modalClose();
+});
+document.addEventListener("input",function(event){
+ if(event.target?.closest("#form-grant,#form-issue,#form-feedback-handle"))S.dirty=true;
+ if(event.target?.closest("#form-grant"))grantPreview();
+if(event.target?.id!=="palette-search")return;
+ const results=document.getElementById("palette-results");
+ if(results)results.innerHTML=paletteRows(event.target.value);
+});
+document.addEventListener("change",function(event){
+if(event.target?.closest("#form-grant,#form-issue,#form-feedback-handle"))S.dirty=true;
+const key=event.target.dataset.change;
+if(event.target.closest("#form-grant"))grantPreview();
+if(!key)return;const value=event.target.value;
+if(key==="workspace"){switchWorkspace(value);return}
+if(key==="codesbatch"){S.codesBatch=value;refresh()}
+if(key==="actor"){S.actor=value;refresh()}
+if(key==="accessproduct"){S.accessProduct=value;refresh()}
+if(key==="fault"){S.fault=value;toast("已设置一次性故障",value==="none"?"正常提交":"下一次管理写操作："+value)}
+if(key==="grantmode"){S.grantMode=value;const box=document.getElementById("grantFields");if(box)box.innerHTML=grantFields()}
+});
+document.addEventListener("submit",function(event){
+event.preventDefault();const form=event.target,formId=form.id;
+if(formId==="feedback-search"){const f=new FormData(form);S.feedbackQuery=String(f.get("query")||"").trim();S.feedbackStatus=String(f.get("status")||"all");S.feedbackPriority=String(f.get("priority")||"all");refresh();return}
+if(formId==="search-users"){S.query=String(new FormData(form).get("q")||"").trim();refresh();return}
+if(formId==="search-audit"){S.auditQuery=String(new FormData(form).get("q")||"").trim();refresh();return}
+if(formId==="form-feedback-public"){
+ const u=U(S.actor),f=new FormData(form),product=String(f.get("product")||""),category=String(f.get("category")||""),
+ title=String(f.get("title")||"").trim(),body=String(f.get("body")||"").trim();
+ if(!u?.verified||u.blocked){toast("提交被拒绝","当前合成账号需已验证且未被封禁。",true);return}
+ if(!P(product)||!FEEDBACK_CATEGORIES.some(x=>x[0]===category)||title.length<6||title.length>100||body.length<12||body.length>1000){
+  toast("反馈内容不完整","标题需要 6–100 字，详细说明 12–1000 字，并选择有效产品和类型。",true);return
+ }
+ const time=now(),id=nid("FB");
+ DB.feedback.unshift({id,user:S.actor,product,category,priority:"normal",status:"new",assignee:null,title,body,created:time,updated:time,
+ notes:[],events:[{actor:"合成用户",action:"提交反馈",detail:"通过模拟公开入口提交",time}]});
+ toast("反馈已记录 · "+id,"只保存到当前浏览器内存；尚未向任何真实客服发送。");refresh();return
+}
+if(formId==="form-feedback-handle"){
+ const id=form.dataset.id,item=DB.feedback.find(x=>x.id===id);if(!item||!guardProduct(item.product,"处理反馈"))return;
+ const f=new FormData(form),status=String(f.get("status")||""),priority=String(f.get("priority")||""),
+ assignee=String(f.get("assignee")||""),note=String(f.get("note")||"").trim(),reply=String(f.get("reply")||"").trim();
+ if(![item.status,...(FEEDBACK_NEXT[item.status]||[])].includes(status)){toast("状态流转不允许","请按受理 → 处理 → 解决 → 归档的合法路径操作。",true);return}
+ if(!FEEDBACK_PRIORITIES.some(x=>x[0]===priority)||!["","owner","alex"].includes(assignee)||note.length<5||note.length>500){
+  toast("处理信息不合法","请确认负责人、优先级并填写 5–500 字内部处理备注。",true);return
+ }
+ if(reply.length>500||reply.length>0&&reply.length<5){toast("公开答复内容不合法","填写时须为 5–500 字，留空表示暂不发送公开答复。",true);return}
+  if(["waiting_user","resolved"].includes(status)&&!(reply||item.publicReply)){toast("需要公开答复","标记等待用户补充或已解决时，请先给用户留下可见的处理说明。",true);return}
+  if(!safeWrite("feedback")){refresh();return}
+ const changes=[];
+ if(item.status!==status)changes.push("状态："+feedbackState(item.status)+" → "+feedbackState(status));
+ if(item.priority!==priority)changes.push("优先级："+feedbackPriority(item.priority)+" → "+feedbackPriority(priority));
+ if((item.assignee||"")!==assignee)changes.push("受理人："+feedbackOwner(item.assignee)+" → "+feedbackOwner(assignee));
+ if(reply)changes.push("更新给用户的公开答复");
+  item.status=status;item.priority=priority;item.assignee=assignee||null;item.updated=now();if(reply){item.publicReply=reply;item.publicReplyAt=item.updated}
+ S.dirty=false;item.notes.push({actor:"owner",text:note,time:item.updated});
+ item.events.push({actor:"演示管理员",action:changes.length?"更新处理进展":"补充内部记录",detail:changes.join("；")||"仅补充内部备注",time:item.updated});
+ auditPush("feedback.update",id,changes.join("；")||"追加内部处理记录（备注原文未写入审计）");
+ toast("反馈处理已保存",id+" · "+feedbackState(status)+(reply?" · 已更新模拟公开答复":"")+"。不会自动发邮件。");refresh();return
+}
+if(formId==="form-grant"){handleGrant(form);return}
+if(formId==="form-issue"){previewIssue(form);return}
+if(formId==="form-redeem"){handleRedeem(form);return}
+if(formId==="form-product"){
+if(!guardGlobal("创建或更新产品"))return;const f=new FormData(form),id=form.dataset.id,name=String(f.get("name")||"").trim(),desc=String(f.get("desc")||"").trim(),key=String(f.get("key")||"").trim().toLowerCase();
+if(!name||!desc||!id&&(!/^[a-z][a-z0-9_-]{2,31}$/.test(key)||DB.products.some(x=>x.key===key))){toast("无效产品数据","名称与描述不可为空，新 KEY 必须唯一且符合标识规则。",true);return}
+if(!safeWrite("product"))return;
+if(id){const item=P(id);if(!item)return;item.name=name;item.desc=desc;auditPush("product.update",id,"更新公共元数据")}
+else{DB.products.push({id:key,key,name,status:"active",desc});auditPush("product.create",key,"新增公共 SaaS")}
+modalClose();refresh();toast("产品已保存","公共产品状态已同步到其他模块。");return
+}
+if(formId==="form-mfa"){if(String(new FormData(form).get("code")||"").trim()!=="123456"){toast("测试码错误","此演示环境采用 123456。",true);return}S.session="aal2";modalClose();refresh();toast("模拟验证成功","当前演示会话已切换至 AAL2；正式 JWT 并未生成。");return}
+if(formId==="form-signup"){
+const f=new FormData(form),name=String(f.get("name")||"").trim(),email=String(f.get("email")||"").trim().toLowerCase();
+if(name.length<2||!/.+@.+\..+/.test(email)||DB.users.some(x=>x.email===email)){toast("注册数据无效","昵称至少两字，邮箱格式正确且未被使用。",true);return}
+const id=nid("u").toLowerCase();DB.users.push({id,name,email,verified:false,blocked:false});S.actor=id;toast("注册成功 · 待邮箱确认","未自动生成成员或 Grant。");refresh();return
+}
+if(formId==="form-login"){
+const f=new FormData(form),email=String(f.get("email")||"").trim().toLowerCase(),password=String(f.get("password")||""),account=DB.users.find(x=>x.email===email);
+if(!account||password!=="demo1234"||!account.verified||account.blocked){toast("模拟登录拒绝","邮箱、演示密码、邮箱确认或平台封禁检查未通过。",true);return}
+S.actor=account.id;toast("模拟邮箱密码登录成功","仅切换内存用户身份，未创建真实 Auth JWT。");refresh();return
+}
+if(formId==="form-backup"){
+const f=new FormData(form),uid=S.actor,q=qualified(uid,"lens"),payloadText=String(f.get("payload")||""),type=String(f.get("kind")),name=String(f.get("name")||"").trim();
+if(!q.ok||q.tier!=="Pro"){toast("403 / PRO_REQUIRED","必须为 AisenLens 的 active 成员且拥有当前有效 Pro。",true);return}
+let item;try{item=JSON.parse(payloadText)}catch(e){toast("JSON_INVALID","请输入合法 JSON。",true);return}
+const keys=Object.keys(item&&typeof item==="object"&&!Array.isArray(item)?item:{});
+const ok=item&&typeof item==="object"&&!Array.isArray(item)&&keys.length>0&&keys.every(k=>["theme","timelineZoom","accent"].includes(k))&&
+(item.theme===undefined||["dark","light"].includes(item.theme))&&
+(item.timelineZoom===undefined||typeof item.timelineZoom==="number"&&item.timelineZoom>.1&&item.timelineZoom<=4)&&
+(item.accent===undefined||typeof item.accent==="string"&&/^#[0-9a-f]{6}$/i.test(item.accent));
+const size=new TextEncoder().encode(payloadText).length;
+if(!ok||!name||size>2048||!["preferences","layout","preset"].includes(type)){toast("JSON_SCHEMA_REJECTED","超出本演示的受控字段、类型、大小或名称要求。",true);return}
+DB.backup.unshift({id:nid("BK"),user:uid,kind:type,name,size,time:now()});toast("SaaS 配置已模拟保存","仅保存轻量元数据到内存；没有触发真实 Edge / R2。");refresh();return
+}
+});
+document.addEventListener("keydown",function(event){
+const overlay=document.getElementById("overlay");
+if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==="k"){
+ event.preventDefault();
+ if(overlay?.querySelector(".palette"))modalClose();else if(!overlay?.firstElementChild)commandPalette();
+ return
+}
+const palette=overlay?.querySelector(".palette");
+if(palette){
+ const input=palette.querySelector("#palette-search"),items=[...palette.querySelectorAll(".palette-item")],selected=items.indexOf(document.activeElement);
+ if(event.key==="ArrowDown"&&items.length){
+  event.preventDefault();items[(selected+1)%items.length].focus();return
+ }
+ if(event.key==="ArrowUp"&&items.length){
+  event.preventDefault();(selected<=0?input:items[selected-1]).focus();return
+ }
+ if(event.key==="Enter"&&document.activeElement===input&&items.length){
+  event.preventDefault();items[0].click();return
+ }
+}
+
+if(event.key==="Escape"&&overlay?.firstElementChild){modalClose();return}
+if(event.key==="Tab"&&overlay?.firstElementChild){
+const focusables=[...overlay.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]')].filter(x=>x.getClientRects().length);
+if(focusables.length){const first=focusables[0],last=focusables[focusables.length-1];if(event.shiftKey&&document.activeElement===first){last.focus();event.preventDefault()}else if(!event.shiftKey&&document.activeElement===last){first.focus();event.preventDefault()}}
+}
+});
+paint();
+})();
+
+</script>
+</body>
+</html>
