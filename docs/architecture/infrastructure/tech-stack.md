@@ -11,6 +11,7 @@
 | 代码托管与版本管理 | **GitHub + Git** | 源代码、版本记录、未来与部署平台连接 | 仓库结构、分支与 CI 细则待实施时决定 |
 | Admin 前端 | **React-admin（Marmelab）** | 首版管理产品、成员、套餐/权益与兑换码；订单/订阅后续接入 | 仅内部少数可信管理员使用，遵循框架默认技术栈 |
 | Admin 构建工具 | **Vite** | 前端开发构建与生成静态资源 | 采用 React-admin 官方推荐路线；不是 React-admin 核心强制依赖 |
+| Admin 包管理器 | **pnpm（>= 12.0.0）** | Admin 前端依赖安装与脚本执行 | 已选定 pnpm；仅规定最低兼容版本，不锁定 pnpm 精确版本，也不设置版本上限；实际版本须满足 Node.js 及项目依赖的兼容性要求 |
 | Admin 网站部署 | **Cloudflare Pages** | 托管 React-admin 静态前端站点 | 已明确选定；域名、仓库连接、环境及自动部署尚未设置 |
 | 当前公共后端平台 | **Supabase** | 公共身份、产品级权益和必要公共后端能力 | 未来按用户规模与需要评估可靠迁移或自部署 |
 | 公共关系数据库 | **PostgreSQL（由 Supabase 托管）** | 公共结构化数据，例如用户关联、产品、权益和必要的计费状态 | 无需再为公共核心额外采购/选择另一款数据库 |
@@ -42,7 +43,7 @@
 | 构建与开发 | **Vite（官方推荐方案）** | 与 Cloudflare Pages 的静态站点构建衔接 |
 
 - **不引入平行的完整技术体系**：不另搭一套 Ant Design、Tailwind/shadcn UI、额外路由、表单或重复的全局状态/查询框架。
-- 依赖和版本随实际使用的 React-admin **兼容发行版本**确定，不预先逐个锁版本。
+- 除已确定的 **pnpm >= 12.0.0** 最低版本约束外，React-admin、React、MUI、Vite 等具体依赖版本随实际兼容组合确定，不在当前架构阶段逐个锁定。pnpm 大版本升级仍须检查官方 Node.js 兼容矩阵并运行构建/测试。
 - **未确定的可选集成**：[ra-supabase](https://github.com/marmelab/ra-supabase) 是否使用，或者自行编写局部 Data Provider；专用图表、Schema 验证库等只有真实需求出现时才选。
 - React-admin 可通过 Data Provider 对接 Supabase 普通数据或可信管理 API，不意味着浏览器能直接执行所有高权限操作。
 
