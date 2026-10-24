@@ -4,6 +4,23 @@
 
 AisenCore（Aisen 公共核心服务）为多个彼此独立的 SaaS 产品统一提供必要的账号身份、产品目录和成员关系、产品级会员权益、兑换码与轻量计费，以及内部 Admin 管理入口。各 SaaS 仍自行管理项目、任务、业务权限与业务数据。
 
+## 项目目录与代码索引
+
+AisenCore 使用**一个仓库、Supabase 原生可信后端、独立 React-admin 管理前端**的渐进式结构。完整目录蓝图、模块职责、代码归属和参考开源项目见 **[项目目录结构设计](./docs/architecture/infrastructure/repository-structure.md)**。
+
+| 当前入口 | 代码/内容归属 | 实际状态 |
+| --- | --- | --- |
+| [`supabase/`](./supabase/config.toml) | PostgreSQL 迁移、RLS、可信 RPC；未来按需 Supabase Edge Functions | **已存在**；[首份迁移](./supabase/migrations/20261024011528_core_foundation.sql)、[pgTAP 测试](./supabase/tests/database/001_core_foundation.test.sql)已编写并在本地验证 |
+| [`docs/`](./docs/README.md) | 现行需求、架构、开发与测试规范、TODO、Admin 离线原型 | **已存在** |
+| [`AGENTS.md`](./AGENTS.md) | AI 开发、安全纪律、同步文档及过期清理规则 | **已存在** |
+| `apps/admin/` | React-admin + Vite + TypeScript 正式管理应用 | **D3 规划，尚未创建** |
+| 根 `package.json` / `pnpm-workspace.yaml` / `pnpm-lock.yaml` | pnpm ≥12 工作区、依赖解析与脚本 | **D3 规划，尚未初始化** |
+| `packages/`、`scripts/`、`.github/workflows/`、`tests/e2e/` | 只有确实出现共享代码、重复脚本、CI 或跨端验收时才建立 | **按需规划，尚未创建** |
+
+**开发导航：** [当前需求](./docs/spec/requirements.md) · [架构总索引](./docs/architecture/README.md) · **[MVP 正式开发总计划](./docs/Plans/aisencore-mvp/00-mvp-master-plan.md)** · [D1 实施与验证记录](./docs/Plans/aisencore-mvp/d1-database-and-trusted-rpc.md) · [阶段计划总索引](./docs/Plans/README.md) · [当前 TODO](./docs/Plans/TODO.md) · [目录结构与归属规则](./docs/architecture/infrastructure/repository-structure.md)。
+
+这里没有单独的 Node.js 后端服务器目录：身份来自 Supabase Auth，受保护读取依赖 PostgREST/RLS，可信状态变更与审计由 PostgreSQL RPC 承担。未来 Edge 仅处理必要的持密钥或外部 I/O；各 SaaS 自己维护业务功能、资源及项目数据。
+
 ## Admin MVP 交互测试预览
 
 AisenCore 提供一个**可直接在浏览器打开的 Admin 交互测试 Demo**，用于预览与评审管理后台的信息架构、操作流程和异常恢复交互。它是单文件 HTML，使用合成数据，**无需安装依赖或连接真实服务**。

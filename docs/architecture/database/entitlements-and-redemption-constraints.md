@@ -76,6 +76,8 @@
 5. **`admin_revoke_grant(grant_id, reason)`**：设置撤销字段并写审计；重复撤销不重复写入。
 6. **仅会员资格管理命令**：不实现 `admin_upsert_plan`、`admin_update_product_free_capabilities`、功能版本克隆/指针切换；Pro 发行时长经发码/直授参数指定。管理员只能在受控写接口中修改码或 Grant 的明确生命周期事实，不能编辑 SaaS 功能策略。
 
+**续期时间事实**：正天数新 Grant 的 `starts_at` 应从 `max(trusted_now, 当前同用户同产品未撤销周期 Grant 最远 ends_at)` 确定，`ends_at = starts_at + duration`；不得以 `starts_at=now` 同时使用远期锚点扩展 `ends_at` 制造重叠区间。首次计算的真实时段须被幂等重试复用；永久有效期另行处理，不当作无穷数值相加。撤销 CHECK 中要求撤销时间、操作者、非空理由同时具备，`CHECK` 必须显式拒绝 NULL/UNKNOWN 绕过。
+
 **并发要点**：多人同码依靠行锁 + CHECK 防超量；同一人同码依靠 `UNIQUE(code_id,user_id)` 与来源幂等键；所有影响同一用户+产品的 Pro 周期续期的可信操作先采用一致的事务级锁顺序（如以用户/套餐派生的 advisory transaction lock），再检查未来未撤销的最长到期时间，避免并发读旧值造成重叠。尽量把授权时段计算与写入放在同一 RPC 中。
 
 **产品配额与计量不是 Core 实体**：AisenLens 备份 `ready+reserved` 容量仍由其专用可信元数据/R2 事务预留和核验；AI 自带 API Key、导出次数和存储额度都不进入公共会员数据库。本轮不设计跨 SaaS 扣减/余额表。
