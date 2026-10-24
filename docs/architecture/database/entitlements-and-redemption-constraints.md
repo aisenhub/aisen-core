@@ -1,6 +1,6 @@
-# 套餐、产品授权与兑换码数据约束
+# Pro 授权与兑换码数据约束
 
-> 状态：**MVP 逻辑数据模型与事务不变量**。字段名为建议，不是已执行的 DDL、迁移或 RLS 策略；未经另行授权不建库、不执行 SQL。业务规则以[统一计费与产品权益](../domains/billing-and-entitlements.md)为准，本文只定义存储、约束与一致性边界。
+> 状态：现行 Pro 授权/兑换码的逻辑约束与事务不变量。首批产品、成员、管理员及审计六表已在本地迁移；本文所述 Pro/码/核销/限流表与受保护 RPC 尚未实现和测试。长期业务语义以[计费与权益](../domains/billing-and-entitlements.md)为准。
 
 ## 1. 逻辑表与最小字段
 
@@ -69,7 +69,7 @@
 
 所有状态变更通过[数据库访问与可信事务](./database-access-and-transactions.md)中约定的**单次受保护 PostgreSQL RPC** 完成（一个数据库函数调用处于一次数据库事务内）。普通用户无直接表写权限。
 
-1. **`redeem_code(product_key, code)`**：按原 DEC-01/F02 安全锁序、声明产品 + left/suspended 先拒绝、本人限流、查码/核销/Grant 原子事务；校验 `redemption_codes.product_id` 同产品且 `tier=pro`，Grant 源为 redeem_code，授予期限读取首次码发行的可信时长。不可再以旧 `plan_id` 判权；重复兑换、撤销、未知及失败计数语义维持原有约束。
+1. **`redeem_code(product_key, code)`**：按现行 L0～L8 安全锁序、声明产品 + left/suspended 先拒绝、本人限流、查码/核销/Grant 原子事务；校验 `redemption_codes.product_id` 同产品且 `tier=pro`，Grant 源为 redeem_code，授予期限读取首次码发行的可信时长。不可再以旧 `plan_id` 判权；重复兑换、撤销、未知及失败计数语义维持原有约束。
 2. **`admin_create_codes(product, tier, duration_days, config, quantity, request_id)`**：只允许 `tier=pro` 且启用产品；明确正天数/合法时段，不接受 Free 或业务功能列表。与原 M3 相同的 actor-scoped request_id、强类型配置规范、NULL 安全比较、旧请求 UNKNOWN 查询、哈希保存与首响明文独占规则继续适用；同产品码不得跨平台兑现。
 3. **`admin_revoke_code(code_id, reason)`**：只设置 `revoked_at`，不影响已有授权；写审计。
 4. **`admin_grant_entitlement(user, product, tier, mode, duration_days?, starts_at?, ends_at?, reason, request_id)`（DEC-05）**：只允许指定产品 `tier=pro`，原 `duration` 正天数可信顺延或 `explicit_window` 完整起止（显式 NULL 才永久）、同 actor request_id 幂等语义和 L7 并发锁保持；不写会员布尔字段，Grant 与审计原子写入。

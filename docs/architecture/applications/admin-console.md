@@ -1,10 +1,10 @@
 # AisenCore 内部 Admin 管理前端架构
 
-> 状态：MVP **应用层长期架构**；本文规定 Admin Resource、Provider、敏感操作合同。原 [Admin 行为合同 页面施工设计](admin-console.md)保存候选路由、线框与测试安排，未形成真实页面或已批准视觉稿。
+> 状态：MVP **应用层长期架构**，规定 Admin Resource、Provider 与敏感操作；正式 React-admin 页面尚未实现，离线 Demo 仅用于交互参考。
 >
-> **视觉路线最新状态**：唯一视觉规范入口仍为 [Admin UI Design System](./admin-ui-design-system.md)。所有者已要求**删除 development 下的真实 React-admin/MUI 视觉原型**并暂停重新搭建；未来载体和 UI-G0 验收次序待讨论。**当前 UI-G0A NOT APPROVED，正式 MVP 业务实现不启动**。IA/权限仍以本文、[管理员领域](../domains/platform-admin-and-account-lifecycle.md)与[公共 API](../backend/api-contract-and-mvp-acceptance.md)为准。
+> **视觉与实施状态**：采用[统一 Theme/UX 规范](./admin-ui-design-system.md)；具体视觉方案仍须用户评审。D1 数据库开发已启动，独立后端开发不受历史 UI-G0A 视觉样例门槛阻塞。权限按[管理员领域](../domains/platform-admin-and-account-lifecycle.md)及[API 契约](../backend/api-contract-and-mvp-acceptance.md)实施。
 >
-> **开发时选用规范**：[Admin 设计规则与模式入口](../../development/frontend/admin-design-guide.md)覆盖字体中文混排、表格/表单/确认、导航位置和长内容/错误状态的开发审查。迁入的设计原则**不新增**业务 API、角色或高权限数据读取，不替代原有 UI-G0 视觉权威。
+> **开发时选用规范**：[Admin 设计规则与模式入口](../../development/frontend/admin-design-guide.md)覆盖字体中文混排、表格/表单/确认、导航位置和长内容/错误状态的开发审查。迁入的设计原则**不新增**业务 API、角色或高权限数据读取，不自行决定已获批准的视觉方案。
 >
 > 适用对象：平台所有者与少数可信管理员使用的 **React-admin** 内部管理应用；不将它扩展为各 SaaS 的业务运营后台或面向全部用户的门户。
 
@@ -47,8 +47,8 @@ Admin 是 AisenCore 的**公共能力管理门面**：查看必要的平台用�
 优先遵循 React-admin 现成 **Resource + Data Provider + Auth Provider** 契约，不另造通用 HTTP/缓存/表单/路由框架。
 
 - **普通列表/详情查询**：统一选择 **PostgREST + 管理员 RLS**；Data Provider 将 React-admin 的分页、排序、筛选转换为 Supabase Data API（须从服务端响应获得总数以支持分页）；先评估 `ra-supabase` 的版本兼容性，必要时只封装局部 Provider，不自行搭建每个 Resource 的读 API。`auth.users` 不暴露 Data API。**DEC-06 A 已批准**：优先受保护 PostgreSQL 只读 RPC 对本页有限 UUID[] 补邮箱、做有界精确邮箱查找与分页，内核必须同时验证真实 JWT/`aal2`/active admin/blocked、最小字段与受限参数，并在隔离环境证明 `auth.users` SELECT 的 owner/权限安全可行；**证据失败立即技术性回退**一次受保护 Edge 请求聚合内部有限并发 Auth Admin getUserById/listUsers 查询，禁止声称 SDK 有原生 UUID[] 批量 API。任何扫描未覆盖部分须标 `search_incomplete`，不能误报不存在；失败降级 UUID 主列表、严格隐私和浏览器无密钥。
-- **敏感写入**：产品、成员、套餐、授予/撤销、发码/撤码和平台限制全部由**单次管理 RPC** 承载，函数按当前资格、`aal2`、目标状态判权并与审计同事务提交；`BlockAccount` / `RevokeAdmin` 冲突按 `STATE_CONFLICT` 提示而不假装成功。Auth Admin 用户查询及确需 Auth Admin 权限的账号操作通过 Edge Function，不能绕过对管理员的保底检查；数据库变更仍调用相应受保护函数。浏览器不持有 `service_role` 或秘密。
-- **适配原则**：读路径仍为安全 RLS；普通产品/套餐 create/update 采用标准 DataProvider 封装**单个受保护 RPC**，仅特殊不可逆/敏感动作使用独立命令 Mutation；任何操作均不得将 CRUD 直通受保护表。具体接口响应与缓存参见 §4.1，`ra-supabase` 版本安装前再核验。
+- **敏感写入**：产品、成员、Pro 授予/撤销、发码/撤码和平台限制全部由**单次管理 RPC** 承载，函数按当前资格、`aal2`、目标状态判权并与审计同事务提交；`BlockAccount` / `RevokeAdmin` 冲突按 `STATE_CONFLICT` 提示而不假装成功。Auth Admin 用户查询及确需 Auth Admin 权限的账号操作通过 Edge Function，不能绕过对管理员的保底检查；数据库变更仍调用相应受保护函数。浏览器不持有 `service_role` 或秘密。
+- **适配原则**：读路径仍为安全 RLS；普通产品状态等可适配的 create/update 采用标准 DataProvider 封装**单个受保护 RPC**，仅特殊不可逆/敏感动作使用独立命令 Mutation；任何操作均不得将 CRUD 直通受保护表。具体接口响应与缓存参见 §4.1，`ra-supabase` 版本安装前再核验。
 - **查询与更新体验**：利用 React-admin 默认的 TanStack Query 机制做界面状态缓存与成功后的刷新/失效处理。缓存用于展示，不是权限判断凭据；操作失败不得假装后端已修改成功。
 - **异常呈现**：接入既定 HTTP 状态码和稳定业务错误码；401 引导身份恢复，403 管理权限不足，409 并发/状态冲突应刷新当前记录，429/503/网络超时作恰当提示与有限重试。不能把暂时服务异常误称为用户被封禁。
 - **结果一致性**：高风险操作优先等待服务端确认再显示最终成功；请求超时后先查询实际状态，不能假定操作未发生并盲目重复生成兑换码/授予权益。
@@ -57,7 +57,7 @@ Admin 是 AisenCore 的**公共能力管理门面**：查看必要的平台用�
 
 ### 4.1 标准 DataProvider 与特殊命令（A-03）
 
-**普通资源继续复用 React-admin 的标准 DataProvider 与表单生态**：`getList/getOne/getMany` → RLS 受限 PostgREST 读取，能一一对应受保护管理 RPC 的普通产品/套餐创建和允许字段修改由 `dataProvider.create/update` 封装**单次** RPC、返回稳定 `id` 和安全 record，保留原生校验、加载、通知、缓存失效与重定向。撤销、封禁、批次发行、管理员直接授予属于**危险/特殊命令**，采用显式自定义 DataProvider 方法或 Mutation，绝不让浏览器直接 PATCH/INSERT 受保护业务表，亦不构建第二套 UI、表单、缓存、路由框架。
+**普通资源继续复用 React-admin 的标准 DataProvider 与表单生态**：`getList/getOne/getMany` → RLS 受限 PostgREST 读取，能一一对应受保护管理 RPC 的普通产品状态等允许字段修改由 `dataProvider.create/update` 封装**单次** RPC、返回稳定 `id` 和安全 record，保留原生校验、加载、通知、缓存失效与重定向。撤销、封禁、批次发行、管理员直接授予属于**危险/特殊命令**，采用显式自定义 DataProvider 方法或 Mutation，绝不让浏览器直接 PATCH/INSERT 受保护业务表，亦不构建第二套 UI、表单、缓存、路由框架。
 
 | Resource | 安全读取 | 写操作与失效 |
 | --- | --- | --- |
@@ -71,11 +71,11 @@ Admin 是 AisenCore 的**公共能力管理门面**：查看必要的平台用�
 
 标准 create/update 返回服务端确定的 id+record；特殊命令返回其实际业务结果，不伪造普通 CRUD。401/403 应使管理资格相关查询立即失效；409 刷新对象；超时/未知结果先按 request_id 查持久事实，不能盲目重新发码/授权。**码明文绝不放入 TanStack Query cache、URL、localStorage、日志或遥测**。
 
-**A-02 / DEC-06 方案已批准，NOT IMPLEMENTED**：虚拟 `users` Resource 的 `getMany(ids)` 对本页去重 UUID[] 一次调用受限 `admin_lookup_users`，让成员/授权/核销的标准 ReferenceField 批量补邮箱，避免逐条 N+1；若实际权限/查询计划、越权或 P50/P95 证据不满足，工程师直接切换为已批准的**单次 Edge 批量聚合回退**。本页邮箱失败降级 UUID，不阻塞合法成员主查询、不得误报完整性。该技术选择不解除 UI-G0A；未签收四类可见高保真与 Token 前不可开始 Admin 正式编码。
+**A-02 / DEC-06 方案已批准，NOT IMPLEMENTED**：虚拟 `users` Resource 的 `getMany(ids)` 对本页去重 UUID[] 一次调用受限 `admin_lookup_users`，让成员/授权/核销的标准 ReferenceField 批量补邮箱，避免逐条 N+1；若实际权限/查询计划、越权或 P50/P95 证据不满足，工程师直接切换为已批准的**单次 Edge 批量聚合回退**。本页邮箱失败降级 UUID，不阻塞合法成员主查询、不得误报完整性。该技术方案须先以真实权限/性能证据验证；Admin 视觉由所有者按实际页面评审，不强制历史四类样例。
 
-**Free/Pro 操作边界（2026-10-23 最终修订）**：用户 360° 的会员层级由本人在当前 SaaS 是否存在生效、未撤销、未过期的 Pro Grant 派生；否则显示 Free（无有效 Pro），不写永久用户等级、不造 Free Grant。**Core 不定义 Free/Pro 的 AI、导出、备份功能或业务配额**；各产品自身执行。账号 blocked、成员 left/suspended、产品停服照常限制在线服务。发码/直授只可授予本产品 Pro 时长，不能发行 Free。
+**Free/Pro 操作边界**：用户 360° 的会员层级由本人在当前 SaaS 是否存在生效、未撤销、未过期的 Pro Grant 派生；否则显示 Free（无有效 Pro），不写永久用户等级、不造 Free Grant。**Core 不定义 Free/Pro 的 AI、导出、备份功能或业务配额**；各产品自身执行。账号 blocked、成员 left/suspended、产品停服照常限制在线服务。发码/直授只可授予本产品 Pro 时长，不能发行 Free。
 
-**功能配置不在 Core（2026-10-23 最新决定）**：移除产品 Free/Pro Features/Limits、Free 默认能力更新、Pro 套餐版本克隆、功能快照编辑与相关 Admin 操作。产品管理只显示“Pro 资格与授权期限”（30天/365天/永久快捷期限选项）及发码/直授入口；变更具体 AI、导出或云备份业务规则不经过 AisenCore。原有期限计算、强类型幂等、风险确认、明文仅首响和 UNKNOWN 安全恢复不变。参见[资格边界](../domains/membership-qualification-boundary.md)。
+**SaaS 功能配置不在 Core**：移除产品 Free/Pro Features/Limits、Free 默认能力更新、Pro 套餐版本克隆、功能快照编辑与相关 Admin 操作。产品管理只显示“Pro 资格与授权期限”（30天/365天/永久快捷期限选项）及发码/直授入口；变更具体 AI、导出或云备份业务规则不经过 AisenCore。原有期限计算、强类型幂等、风险确认、明文仅首响和 UNKNOWN 安全恢复不变。参见[资格边界](../domains/membership-qualification-boundary.md)。
 
 ## 5. 典型管理流程
 
@@ -92,7 +92,7 @@ Admin 是 AisenCore 的**公共能力管理门面**：查看必要的平台用�
 1. 管理员选择目标产品和已批准的兑换码规则，提交创建请求。
 2. 管理 RPC 核验管理员和 MFA、产品/套餐、数量上限以及提交的 `request_id`；生成高熵码、只持久化哈希并与审计同事务提交；**首次响应才包含明文**，允许管理员仅在本次结果页立即复制/下载，明确提示安全保存，不写浏览器持久存储、持久化查询缓存或日志。
 3. Admin 按需展示创建结果及兑换情况，平台所有者按既定规则人工分发；领取/核销仍由独立的可信用户兑换接口执行。
-4. 提交前生成一次 `request_id`；可在当前标签页 `sessionStorage` 暂存**非秘密**的 request_id、产品/套餐与规范请求摘要用于刷新/断线恢复，不得含码明文、Token 或密钥。未知结果先用原 request_id 查非秘密批次状态；已创建则**不得再次显示/导出明文**。若明文确实丢失，分别确认撤销原批次和以新 request_id 重发并留审计；**不自动串联两次危险写入**。终态确认或登出时清理暂存。
+4. 提交前生成一次 `request_id`；可在当前标签页 `sessionStorage` 暂存**非秘密**的 request_id、产品/Pro 期限与规范请求摘要用于刷新/断线恢复，不得含码明文、Token 或密钥。未知结果先用原 request_id 查非秘密批次状态；已创建则**不得再次显示/导出明文**。若明文确实丢失，分别确认撤销原批次和以新 request_id 重发并留审计；**不自动串联两次危险写入**。终态确认或登出时清理暂存。
 
 兑换次数、有效期、批量创建、撤销、码明文一次性展示等 **MVP 默认规则已确定**，以[计费权益专项](../domains/billing-and-entitlements.md)为唯一权威；页面字段与批量数量上限待实施时细化。
 
@@ -120,7 +120,7 @@ Admin 是 AisenCore 的**公共能力管理门面**：查看必要的平台用�
 
 ## 8. Admin 前端行为验收用例（原 D3-UI-X 编号保留）
 
-以下是可观察行为与安全回归索引，**不规定页面结构或视觉方案**。正式 React-admin/后端代码尚未实施；所有案例目前均 `NOT RUN`。真实证据需来自相应浏览器、RPC/RLS、权限、网络和可访问性测试。
+以下是可观察行为与安全回归索引，**不规定页面结构或视觉方案**。正式 React-admin 页面和这些端到端用例均未实现/执行（本地首批 SQL/RLS 的 35 项局部测试另有证据）。真实证据需来自相应浏览器、RPC/RLS、权限、网络和可访问性测试。
 
 | ID | 应验证的行为与状态 |
 | --- | --- |

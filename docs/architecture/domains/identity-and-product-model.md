@@ -1,6 +1,6 @@
 # 统一身份、产品目录与成员关系模型
 
-> 状态：逻辑领域模型已确认；字段是架构层候选，公共 API 逻辑已确定但路由/Schema 尚未批准实施。
+> 状态：逻辑领域模型已确认；字段是架构层候选，公共 API 逻辑已确定；首批产品/成员基础表在本地隔离库已迁移，完整 RPC/生产部署仍未实施。
 
 ## 1. 目标和身份边界
 
@@ -28,7 +28,7 @@ AisenCore 统一管理多个独立 SaaS 的**公共账号、产品目录、产�
 | `entitlement_grants` / `redemption_code_batches` / `redemption_codes` / `redemptions` | 按产品 Pro 资格、可信授予时段/来源/撤销、兑换码与核销事实 | 无公共业务套餐功能版本、功能开关或额度；具体功能策略属 SaaS，参见[资格边界](./membership-qualification-boundary.md) |
 | 各 SaaS 业务数据 | 项目、任务、内容、产品内协作权限和文件元数据 | 归各产品自己管理 |
 
-以上是逻辑实体与推荐字段，已确认采用当前状态表 + 最小事件审计表；具体 DDL、索引实现、同库部署或 API 路径尚未批准。数据库不变量与事务规则详见[数据库逻辑约束与最小审计模型](../database/database-constraints-and-audit.md)。公共身份、产品与成员核心使用已选择的 Supabase 托管 PostgreSQL；产品业务数据可逻辑隔离或物理隔离，无“一产品一 Supabase Project”强制要求。
+以上是逻辑实体与推荐字段，已确认采用当前状态表 + 最小事件审计表；首批基础表 DDL/索引已在本地迁移；其余关系、RPC/云端部署与 API 行为尚待实施测试。数据库不变量与事务规则详见[数据库逻辑约束与最小审计模型](../database/database-constraints-and-audit.md)。公共身份、产品与成员核心使用已选择的 Supabase 托管 PostgreSQL；产品业务数据可逻辑隔离或物理隔离，无“一产品一 Supabase Project”强制要求。
 
 ## 3. 产品注册与生命周期
 

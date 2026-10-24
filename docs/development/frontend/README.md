@@ -12,4 +12,4 @@
 | 产品/权限/数据范围与前端可观察的业务行为 | [Admin 应用层架构及验收索引](../../architecture/applications/admin-console.md) |
 | 原型文件及版本入口 | [interaction-benchmarks](../../interaction-benchmarks/README.md) |
 
-**权威边界**：旧 UI-G0A 原型尚未签收，历史固定色板、四主题、六模块、组件 1:1 映射、特定导航与抽屉样式等已取消为全局强制项。新的设计按任务审阅并明确决定；文档整理不自动授权正式前端、后端、SQL 或部署。
+**权威边界**：现行 Admin 视觉仍需所有者评审。V6 是合成交互参考，不强制复刻导航/配色/DOM；实施应以 React-admin/MUI 及当前业务、安全合同为准。
