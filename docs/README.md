@@ -6,8 +6,8 @@
 
 1. [现行需求](./spec/requirements.md)：唯一当前产品要求。
 2. [主架构](./architecture/current-main-architecture.md)和[专题索引](./architecture/README.md)：安全、领域、API、数据库与应用的长期约束。
-3. [技术栈](./architecture/infrastructure/tech-stack.md)：React-admin、Vite、pnpm ≥12、Supabase、PostgreSQL、Cloudflare 等已选技术。
-4. [当前 D1 开发计划和证据](./Plans/aisencore-mvp/aisencore-mvp-development-kickoff.md)及[未完成 TODO](./Plans/TODO.md)。
+3. [技术栈](./architecture/infrastructure/tech-stack.md)与[项目目录结构](./architecture/infrastructure/repository-structure.md)：选型、真正的代码归属及按阶段落地的目录蓝图。
+4. [MVP 正式开发总计划](./Plans/aisencore-mvp/00-mvp-master-plan.md)、[阶段计划索引](./Plans/README.md)、[当前 D1 实施与证据](./Plans/aisencore-mvp/d1-database-and-trusted-rpc.md)及[未完成 TODO](./Plans/TODO.md)。
 5. [开发规范](./development/README.md)、[测试指南](./development/testing/README.md)和[Admin 离线 Demo](./interaction-benchmarks/README.md)。
 
 ## 已验证工程状态（2026-10-24）
