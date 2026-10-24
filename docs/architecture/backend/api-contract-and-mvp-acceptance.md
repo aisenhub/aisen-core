@@ -157,21 +157,21 @@
 | R-14 | 修改具体 SaaS 的 Pro 功能配置 | 不涉及 AisenCore schema/Admin/RPC；测试各 SaaS 自己执行权限/配额，Core 历史 Grant 和码不变 |
 | R-15 | 管理端移除/隐藏 30 天期限预设后，已发行同产品 Pro 码仍有效 | 按码首次保存的正授权天数兑现；新发行按当前有效预设，撤码才阻止旧码 |
 
-验收还应覆盖 401/403/404/409/429/503 区别、超时后的状态确认、资源不可枚举检查以及 RLS 正反向测试（推荐 pgTAP）；以上为**测试场景规格**，尚未创建自动测试或运行数据库。
+验收还应覆盖 401/403/404/409/429/503 区别、超时后的状态确认、资源不可枚举检查以及 RLS 正反向测试（推荐 pgTAP）；以上为**测试场景规格**，当前已有 35 项本地 PostgreSQL 结构与模拟角色的 pgTAP 测试；本表所述完整业务接口/真实 JWT/并发场景尚未实现或运行。
 
-### 6.1 DEC-01～06 批准后的额外运行验收（全部 NOT RUN）
+### 6.1 补充业务场景（本组端到端用例尚未运行）
 
 | 新场景 | 正向/负向边界与可复核证据 |
 | --- | --- |
 | REV-DEC01-01～08 | `redeem_code(product_key, code)` 对 left/suspended 输入随机码、真实码及跨产品码在码定位前相同拒绝；none/active 的未知/跨产品/撤销/过期/用尽码统一失败；本人历史已兑仅在成员准入通过后优先；失败计数可保存而不修改成员/grant/码次数，旧单参不可作为探针，双连接无死锁 |
 | REV-DEC02-01～08 | Edge 仅接收限定白名单小型 JSON，拒绝超体积、异常 schema、视频/API Key/Token；JWT/成员/Pro/属主无旁路；R2 final 唯一条件写，客户端不能写 final；DB pending 过期预留逻辑释放与 R2 物理清理分离，R2/DB 单侧成功、断线、同键并发、删除失败的对账与恢复可证实 |
-| REV-DEC03-G0/G3 | 项目所有者已删除原 G0B 真实 React-admin/MUI 视觉基础；**未来视觉载体、顺序及签收条件待重议，UI-G0A NOT APPROVED**。正式业务施工未获许可；UI-G3 真实页面截图、键盘、响应式、MFA、秘密和错误码 E2E 仍 NOT RUN |
+| REV-DEC03-G0/G3 | 当前 V6 离线 Demo 只验证模拟交互；React-admin 的 Theme/视觉仍待所有者审阅，UI-G3 真实页面截图、键盘、响应式、MFA、秘密和错误码 E2E 尚未运行 |
 | REV-FREEPRO-01～08（2026-10-23 最终修订） | 任何 Admin/公开写入不得生成 Free Code/Grant 或业务 Features/Limits；**Core 不创建 plans 表**，同产品 Pro 的每次成功兑换/直授才新增来源明确的 Grant，不修改用户永久等级；未来 Grant 不提前使 Pro 生效；最后一份 Pro 到期/撤销后只派生 Free 并保留历史，多份仍有效 Pro 不误降级；跨产品不串权，blocked/left/suspended 和 401/503 仍独立，匿名 AisenLens 本地 Free 不联网 |
 | REV-DEC04-01～05（2026-10-23 再修订） | AisenCore 无 `free_features/free_limits` 或公共功能版本；CheckAccess 只认证同产品 Pro 资格和可信有效期；免费/专业功能策略属于 SaaS；首发只有 Pro 码/Grant；产品功能更新不变更 Core 表/API/旧 Grant；本地匿名 Free 仍离线 |
 | REV-DEC05-01～07 | `duration` 与 `explicit_window` 完全互斥，永久必须显式 ends_at=null；首次可信时段保存，重试不按新时钟重复顺延；同 actor/request_id 相同输入幂等、异参冲突；空值/时区/未来生效与安全投影/RLS/GRANT 负向 |
 | REV-DEC06-01～06 | 仅当前真实 `aal2` 且 active Admin/非 blocked 可批量读必要邮箱，UUID[]/精确邮箱/分页/字段有界；anon/普通用户/撤权/过期拒绝；实际 auth.users SQL 权限、查询计划及 P50/P95 验证；SQL 不安全则一次受保护 Edge 聚合，本页失败只降级 UUID 并返回不完整标记 |
 
-**计数与版本**：上述均为对既有 I-01～I-28、R-01～R-15 及 D4/REV 测试的**追加规格**，不是已执行或已通过数量；实施须留存真实 SQL/HTTP/R2/浏览器日志、环境版本、失败注入与回退证据。
+**验证口径**：上述是 I-01～I-28、R-01～R-15 的补充业务验收，不是已执行或已通过数量；实施须留存真实 SQL/HTTP/R2/浏览器日志、环境版本、失败注入与回退证据。
 ## 7. 交付边界与尚待实施决定
 
 进入开发前需最终确认：函数签名与返回 JSON 字段、PostgREST 自定义错误的版本兼容、Supabase CLI 与 Edge Runtime 版本、RLS 逐表 SQL、管理员种子与密钥保管、邮件服务与回调域名、限流参数、长任务/R2 撤权时效。

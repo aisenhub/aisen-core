@@ -1,30 +1,12 @@
-1. admin前端设计：
+# AisenCore 开发约束
 
-   ::OBJECTIVE{site_design|pri:OVERRIDE_ALL}
-     target: build page to award-tier visual standard
-     ACCEPT: no visible improvement remaining across all CHECK dimensions
-     BENCHMARK: Awwwards | Webby Awards | FWA winning entries
+**适用优先级**：以当前需求和长期架构为业务与安全权威；本文规定通用工程、UI 和实施纪律，不将历史示例视为有效代码合同。
 
-   ::CHECK{typography|standard:award_tier}
-   ::CHECK{whitespace|standard:award_tier}
-   ::CHECK{visual_hierarchy|standard:award_tier}
-   ::CHECK{color|standard:award_tier}
-   ::CHECK{motion|standard:award_tier}
-   ::CHECK{micro_interaction|standard:award_tier}
-   ::CHECK{responsive|standard:award_tier}
-   ::CHECK{originality|standard:award_tier}
-
-   ::LOOP{self_review|trigger:on_completion}
-     [READ] current page against CHECK list
-     [COMPARE] each dimension to BENCHMARK entries
-     [IF] gap found => [PATCH] then re-enter LOOP
-     [IF] no gap => [Ω]
-
-
+**Admin 视觉质量**：追求清晰且高质量的信息层级、排版、留白、颜色、响应式、微交互和无障碍体验；按真实用户任务及 React-admin/MUI 组件验证，不使用无限自评循环或奖项风格作为难以判定的验收门槛。
 
 1. **优先复用成熟框架，绝不手写造轮子**：
 
-- 优先复用 `react-admin`（配合 `ra-supabase`）和 `Supabase Auth` 已有的成熟能力，只自行设计 AisenCore 特有的用户、产品、授权关系与必要的业务接口（`DataProvider` / `AuthProvider` 胶水层与受保护 SQL RPC）。
+- 优先复用 `react-admin` 与 `Supabase Auth` 已有的成熟能力；`ra-supabase` 为需验证兼容性后才采用的可选适配，只自行设计 AisenCore 特有的用户、产品、授权关系与必要的业务接口（`DataProvider` / `AuthProvider` 胶水层与受保护 SQL RPC）。
 - 凡是 `react-admin` 已提供的列表 (`<List>`/`<Datagrid>`)、详情 (`<Show>`/`<TabbedShowLayout>`/`<ReferenceManyField>`)、跨表批量关联 (`<ReferenceField>`)、表单 (`<SimpleForm>`)、确认弹窗 (`<Confirm>`) 与全局状态 (`useStore`)，一律直接复用，严禁手写自定义表格、分页器、表单状态机或引入 Redux/Zustand/Tailwind 等第二套框架。
 
 
@@ -45,3 +27,11 @@
 5. **【不可逾越的强制规则：禁止过度设计与过度防御】** 开发任何产品代码时，**必须贯彻 KISS、YAGNI 和最小必要实现**：只实现当前明确且真实需要的功能，优先复用成熟框架和平台能力。**严禁**为了假设的未来场景预建通用框架、抽象层、插件机制、额外服务、复杂状态机、重复封装，或无现实风险依据地堆砌校验、try/catch、重试、兜底、回退和防御分支。不得以“以后可能需要”为借口增加复杂度。**但不得因此省略真实必要的身份鉴权、访问控制、输入校验、数据一致性、并发安全、幂等和错误处理**；以最简洁、充分且可验证的实现保障可靠性。发现更简单的正确实现时，必须优先收敛，拒绝无收益的复杂设计。
 
 6. **【不可逾越的强制规则：明确上线前零历史兼容，完全按新项目开发】** **在项目所有者明确告知“项目已经上线”之前，AisenCore 必须始终视为全新、未上线的项目。所有代码编写、修改和重构一律不考虑历史兼容。** 严禁为了过去的计划、设计、旧代码、API/RPC 签名、数据库结构、迁移、配置、数据格式、客户端版本或测试样例保留向后兼容；**禁止**双轨实现、旧接口别名、兼容包装器、废弃代码保留层、旧数据格式转换、兼容开关、过渡迁移和仅为了旧行为存在的 fallback。旧实现与当前已批准的需求或架构冲突时，**只实现最新唯一有效合同，直接替换并移除过时路径，不得新旧并存**。不要为假设的老用户、历史数据或未来升级背负兼容成本。**必须以代码可靠、安全、正确、简洁、性能优秀为目标**，并保留真实必要的安全与正确性验证。**只有项目所有者明确说明已经上线后，才能重新评估兼容要求；旧文档、候选方案和开发者个人习惯无权豁免本规则。**
+
+7. **【强制规则：开发过程中同步维护和清理文档】**：
+
+   - **同一任务内更新**：开发前阅读与任务直接相关的现行需求、架构、当前 TODO/计划及真实代码和迁移。每当需求决定、系统边界、接口/RPC、数据库结构与权限、技术依赖、配置、前端交互或实测结果发生变化，**必须在本次任务交付前**同步修订所属权威文档及必要索引，不得将“以后再补文档”视为完成。
+   - **事实与单一权威**：`docs/spec/` 记录现行需求，`docs/architecture/` 记录长期业务/安全/技术合同，`docs/development/` 记录可复用规范，`docs/Plans/TODO.md` 和活动计划只记录真实未完成事项及可复测证据。避免跨文件重复完整规则；严格区分已设计、已编码、已运行、已通过、尚未验证，不能将原型或模拟 SQL 检查冒充真实 Auth/RPC/E2E 验收。
+   - **增量清理同样必须及时**：每次修改顺带检查直接受影响的描述、链接、待办、计划和示例。被新决定取代的描述、已完成的施工计划、交接与阶段过程记录，必须先将仍有效的业务/安全约束、可复现测试及未完成工作放到正确位置，再及时修订或删除失效内容；不允许新旧合同并存。
+   - **按需全量治理，非每次重扫全仓**：当文档存在多处矛盾、阶段收尾或项目所有者提出要求时，使用 [过期文档清理提示词](docs/prompt/cleanup-outdated-docs.md) 专项清理。日常开发只检查相关范围，避免为了文档管理引入多余流程。
+   - **交付前校验**：检查相关索引/相对链接、现行需求与代码/迁移的一致性、TODO 的未完成状态，并在交付说明中说明“更新了哪些文档 / 经检查无需更新”、删除了哪些过期项以及仍未验证的范围。不伪造执行记录，不擅自删除迁移、测试、有效安全合同或未纳入 Git 的唯一证据。文档治理不代表批准 Git 推送、云环境变更或生产部署。

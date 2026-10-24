@@ -6,7 +6,7 @@
 
 | 资料 | 官方/源码入口 | 适用场景 |
 | --- | --- | --- |
-| React-admin 管理框架 | [GitHub：marmelab/react-admin](https://github.com/marmelab/react-admin) | 在 Admin 提供兑换码与产品套餐等管理页面 |
+| React-admin 管理框架 | [GitHub：marmelab/react-admin](https://github.com/marmelab/react-admin) | 在 Admin 提供兑换码与产品 Pro 授权等管理页面 |
 | React-admin Data Provider | [GitHub：Data Providers 文档](https://github.com/marmelab/react-admin/blob/master/docs/DataProviders.md) | 将列表、创建、查询等操作与受保护 API 衔接 |
 | React-admin 身份与授权 | [GitHub：Authentication 文档](https://github.com/marmelab/react-admin/blob/master/docs/Authentication.md) | 管理界面的登录状态与操作许可；**服务端授权仍不可省略** |
 | Supabase Edge Functions | [官方文档](https://supabase.com/docs/guides/functions) | 可信服务端创建兑换码、完成兑换和处理外部订单通知 |

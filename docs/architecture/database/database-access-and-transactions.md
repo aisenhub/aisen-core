@@ -1,6 +1,6 @@
 # 数据库访问隔离、可信写入与事务边界
 
-> 状态：MVP 架构设计结论。采用 Supabase Auth + PostgreSQL Grants/RLS + **受保护 PostgreSQL 函数承载全部状态变更** + 少量 Edge Functions 处理需要密钥的场景；不是已部署的表结构、SQL、迁移或安全策略。实现前需按当时官方文档核验具体 API 与版本。
+> 状态：MVP 架构设计结论。采用 Supabase Auth + PostgreSQL Grants/RLS + **受保护 PostgreSQL 函数承载全部状态变更** + 少量 Edge Functions 处理需要密钥的场景；首批产品/成员/审计六表及只读 RLS 已在本地隔离库部署并有 35 项 SQL 测试；可信 RPC、管理员 MFA、Pro/兑换及真实 JWT/HTTP 尚未实现和实测。
 
 ## 1. 唯一权限判定边界
 

@@ -1,6 +1,6 @@
-# AisenCore 轻量会员认证边界（2026-10-23 最新决定）
+# AisenCore 轻量会员认证边界
 
-> **唯一现行职责约束**：本文件替代此前公共层 `plans.features/limits`、`products.free_features/free_limits`、`CheckAccess(product_key,capability)`、功能并集/额度 max、Free/Pro 功能版本冻结和克隆的设计。之前的需求/设计/测试如果冲突，应按本文件及同步修订的正式合同执行。项目尚未上线，设计修改不等于生产实施。
+> **现行职责约束**：公共 Core 不存储或计算 SaaS 的 Free/Pro 功能、额度和版本，不存在公共 `plans`、`products.free_features/free_limits` 或 `CheckAccess(..., capability)`。本文件只规定领域边界，不代表所有数据库/API/安全能力已实现。
 
 ## 公共后端仅认证身份、产品成员和 Pro 资格
 

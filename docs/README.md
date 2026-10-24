@@ -1,48 +1,30 @@
-# AisenCore 文档索引
+# AisenCore 文档入口
 
-项目文档依职责分为**唯一正式需求、系统架构、实施设计计划、开发规范与参考资料**。当前已开始 MVP **文档实施设计**，不因计划或文档完成自动授权代码开发、数据库执行或部署。
+> 只维护当前需求、架构、开发规范与未完成工作。已完成的审查、交接和被推翻的方案通过 Git 历史追溯，不占据正式入口。
 
-## 需求
+## 开发者 / AI 阅读顺序
 
-- [当前统一需求](./spec/requirements.md)：项目定位、功能范围、已确认要求、非目标及待确认事项；**需求事实唯一权威**。
+1. [现行需求](./spec/requirements.md)：唯一当前产品要求。
+2. [主架构](./architecture/current-main-architecture.md)和[专题索引](./architecture/README.md)：安全、领域、API、数据库与应用的长期约束。
+3. [技术栈](./architecture/infrastructure/tech-stack.md)：React-admin、Vite、pnpm ≥12、Supabase、PostgreSQL、Cloudflare 等已选技术。
+4. [当前 D1 开发计划和证据](./Plans/aisencore-mvp/aisencore-mvp-development-kickoff.md)及[未完成 TODO](./Plans/TODO.md)。
+5. [开发规范](./development/README.md)、[测试指南](./development/testing/README.md)和[Admin 离线 Demo](./interaction-benchmarks/README.md)。
 
-## 架构
+## 已验证工程状态（2026-10-24）
 
-- [架构总索引](./architecture/README.md)：五类架构目录（业务领域、后端、数据、应用、基础设施）及文档职责与维护规则。
-- [当前主架构](./architecture/current-main-architecture.md)：系统边界、主要组成、MVP 范围、技术选型概要和分层导航。
-- 深入专题直接从[业务领域](./architecture/domains/README.md)、[后端服务](./architecture/backend/README.md)、[数据与持久化](./architecture/database/README.md)、[应用接入](./architecture/applications/README.md)、[基础设施](./architecture/infrastructure/README.md)进入；平台的[Admin 管理前端架构](./architecture/applications/admin-console.md)位于应用层。
+- 本地 Node 24、pnpm 12、Docker、Supabase CLI 已验证。独立 PostgreSQL 17.11 位于本地端口 `55322`。
+- [首份迁移](../supabase/migrations/20261024011528_core_foundation.sql)已在隔离库应用：产品、成员、成员事件、管理员、限制与审计共六张表，均启用 RLS。
+- [35 项 pgTAP 检查](../supabase/tests/database/) PASS（结构/GRANT 以及使用合成用户、**模拟 JWT 声明**的行权限）。
+- **尚未验收**真实签名 JWT、Supabase Auth / PostgREST 完整服务、管理员 TOTP、可信 RPC、Pro/兑换、R2、正式 React-admin 和生产部署。
+- 停用的旧 Aisenhubplatform 本地 Supabase Docker 资源已清理；旧源码与远程云端项目不在清理范围。
 
-## 当前计划、待办与实施设计
+## 唯一权威与更新规则
 
-- [Plans 工作区与保留/删除规则](./Plans/README.md)：只保留活动计划、实际待办、有效设计正文和必要阶段基线；完成的执行清单及时删除。
-- [MVP 总计划（ACTIVE）](Plans/aisencore-mvp/aisencore-mvp-implementation-design-master-plan.md)：整体阶段依赖、实际开发与发布门槛。
-- [当前 TODO](./Plans/TODO.md)：尚待确认的产品/运营参数、UI-G0 视觉签收及真实后端、MFA、R2、浏览器测试。
-- [D1 数据库设计](Plans/aisencore-mvp/aisencore-mvp-d1-database-implementation-design.md)、[D2 API/Auth/Aisenlens 设计](Plans/aisencore-mvp/aisencore-mvp-d2-api-auth-aisenlens-implementation-design.md)、[D3 Admin/环境设计](Plans/aisencore-mvp/aisencore-mvp-d3-admin-infrastructure-design.md)：实施候选而非已运行代码。
-- [Admin 应用与行为合同](./architecture/applications/admin-console.md)、[统一 Theme 与 UI 质量规范](./architecture/applications/admin-ui-design-system.md)、[MVP 设计状态](./Plans/20261022-admin-mvp-six-step-master-plan.md)：保留 React-admin 与安全行为，取消历史固定主题、页面、像素与全景原型，正式施工须另行授权。
-- [D4 测试/开发就绪评审](Plans/aisencore-mvp/aisencore-mvp-d4-test-and-readiness-review.md)：逻辑/安全/R2 增量测试设计，全部 NOT RUN。
-- [F01～F04 安全收敛](Plans/aisencore-mvp/aisencore-f01-f04-security-convergence-design.md)、[F05～F08 契约及兼容准备](Plans/aisencore-mvp/aisencore-f05-f08-contract-compatibility-readiness-design.md)：仅设计收敛，真实环境验收仍未执行。
-- [U03～U11 当前决议](Plans/aisencore-mvp/aisencore-u03-u11-user-decisions-2026-10-22.md)：已确认项与真实待定条件。
-- [Auth/Pro/MFA 低请求量设计](Plans/aisencore-mvp/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md)：仍未实测；BAAS-Q01～Q10 已归入[测试指南](./development/testing/README.md)而非保留独立已完评审。
-
-## 开发规范、资料与模板
-
-- [开发总入口](./development/README.md)：开发规范和各主题参考。
-- [前端指南](./development/frontend/README.md)：React-admin 前端约束与官方资料。
-- [原型与 AI 开发流程](./development/frontend/interaction-benchmark-workflow.md)、[原型产物规范](./development/frontend/interaction-benchmark-spec.md)：按风险选验证场景，不强制固定六模块或特定 HTML 外壳；前端 README 为索引。
-- [测试指南](./development/testing/README.md)：测试规范入口。
-- [计费/订阅接入资料](./development/billing-subscriptions/README.md)：参考资料、集成指南与模板。
-
-## 交互基准网页（验证产物，不是另一层权威）
-
-- [交互原型目录](./interaction-benchmarks/README.md)：按任务存实际产物；当前未找到旧计划引用的可运行全景 HTML，旧 UI-G0A 未签收。
-
-## 文档维护规则
-
-1. **spec/**：唯一当前有效需求文档，不保存旧需求轮次。
-2. **architecture/**：主架构 + 五个按职责分类的二级目录；以所属架构文档为详细规则权威，其他文档只摘要并交叉链接。分类不是要求部署多个服务。
-3. **Plans/**：尚未实施的设计和阶段计划、执行记录、待用户确认事项与评审门槛；不能代替 spec 或 architecture 的正式决定。每阶段先有详细计划，结束后核查并按需同步所有相关文档。
-4. **development/**：独立执行规范、接入指南、技术参考和模板；`frontend/README.md` 只索引，不在 README 里复述完整产物/验收规则。
-5. **interaction-benchmarks/**：保存按任务生成的模拟网页，属于**四层文档工作流使用的验证产物，不是第五层权威**；不要在此存长期业务规则、真实凭据或独立审批决定。
-6. 区分已经明确的逻辑架构与待实施确认的 HTTP/SQL/邮件/部署参数，不将推荐候选误写为已实施。
-7. 持续更新索引和相对链接，不为未来假设创建空专项、不保留迁移日志或旧结构副本。
-8. 文档改动**不授权**运行代码、建库、连接 Supabase/R2/Cloudflare/GitHub、提交/推送或部署；需另行明确许可。
+- **spec/**：现行需求，不维护多轮决定的经过。
+- **architecture/**：长期业务、权限与技术合同；明确区分已设计与已实现。
+- **Plans/**：只保留活动计划和真实未完成事项；已完成执行清单、旧候选和审核快照删除，Git 历史承担追溯。
+- **development/**：复用的工程、测试和 UX 约束；**interaction-benchmarks/**：合成原型，不是另一层业务权威。
+- Core 只管理产品成员、Pro 资格/有效期/来源、码和审计；具体 Free/Pro 功能及额度由 SaaS 自己控制。不得恢复已取消的公共 `plans` / 功能版本模型。
+- **开发与文档同步是任务完成条件**：需求、接口、数据库、权限、配置、UI 或真实测试改变时，同一任务更新所属权威文档、当前计划/TODO 与受影响的索引；无需修改的须确认现行说明仍准确，不能把旧状态留待未来再修。
+- **及时清理直接受影响的过期内容**：已完成计划、被取代的方案、交接过程与重复台账，在转移其中仍有效的规则/测试/待办后及时删除或收敛，避免新旧合同并存；真实测试尚未运行必须明确标记。具体强制规则在项目根目录 [AGENTS.md](../AGENTS.md)。
+- **按需专项清理**：文档整体积累矛盾、阶段结束或需要全面复查时使用 [过期文档清理提示词](./prompt/cleanup-outdated-docs.md)，对全仓进行事实和引用核验；这不能替代日常增量维护。Git 历史承担已跟踪旧文件的追溯，不擅自删除未跟踪唯一证据。

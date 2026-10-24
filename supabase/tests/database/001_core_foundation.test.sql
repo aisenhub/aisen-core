@@ -1,0 +1,32 @@
+-- D1 baseline structural/GRANT checks; real JWT/RLS and RPC behavior tests follow.
+-- All assertions run against local isolated PostgreSQL, never production.
+BEGIN;
+CREATE EXTENSION IF NOT EXISTS pgtap WITH SCHEMA extensions;
+SELECT plan(25);
+SELECT has_table('public', 'products', 'D1 products table exists');
+SELECT has_table('public', 'product_memberships', 'D1 product_memberships table exists');
+SELECT has_table('public', 'membership_events', 'D1 membership_events table exists');
+SELECT has_table('public', 'platform_admins', 'D1 platform_admins table exists');
+SELECT has_table('public', 'platform_account_restrictions', 'D1 platform_account_restrictions table exists');
+SELECT has_table('public', 'admin_audit_log', 'D1 admin_audit_log table exists');
+SELECT ok((SELECT c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'products'), 'RLS enabled on products');
+SELECT ok((SELECT c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'product_memberships'), 'RLS enabled on product_memberships');
+SELECT ok((SELECT c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'membership_events'), 'RLS enabled on membership_events');
+SELECT ok((SELECT c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'platform_admins'), 'RLS enabled on platform_admins');
+SELECT ok((SELECT c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'platform_account_restrictions'), 'RLS enabled on platform_account_restrictions');
+SELECT ok((SELECT c.relrowsecurity FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE n.nspname = 'public' AND c.relname = 'admin_audit_log'), 'RLS enabled on admin_audit_log');
+SELECT hasnt_table('public', 'plans', 'no obsolete public plans table');
+SELECT ok(NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='products' AND column_name IN ('free_features','free_limits')), 'SaaS feature and limit columns stay outside AisenCore');
+SELECT ok(EXISTS (SELECT 1 FROM pg_constraint WHERE conname='product_memberships_valid_state'), 'member pre-suspend state CHECK exists');
+SELECT ok(EXISTS (SELECT 1 FROM pg_constraint WHERE conname='membership_events_transition_valid'), 'membership event transition CHECK exists');
+SELECT ok(has_column_privilege('anon', 'public.products', 'product_key', 'SELECT'), 'anon can read public active product key columns');
+SELECT ok(NOT has_column_privilege('anon', 'public.products', 'created_at', 'SELECT'), 'anon cannot read non-granted product columns');
+SELECT ok(NOT has_table_privilege('anon', 'public.product_memberships', 'SELECT'), 'anon cannot select product memberships');
+SELECT ok(has_column_privilege('authenticated', 'public.product_memberships', 'status', 'SELECT'), 'authenticated can read permitted membership columns subject to RLS');
+SELECT ok(NOT has_table_privilege('authenticated', 'public.product_memberships', 'INSERT'), 'authenticated cannot insert membership directly');
+SELECT ok(NOT has_table_privilege('authenticated', 'public.product_memberships', 'UPDATE'), 'authenticated cannot update membership directly');
+SELECT ok(NOT has_table_privilege('authenticated', 'public.platform_admins', 'SELECT'), 'authenticated cannot select platform admin roster');
+SELECT ok(NOT has_table_privilege('authenticated', 'public.admin_audit_log', 'INSERT'), 'authenticated cannot forge admin audit');
+SELECT ok(NOT has_table_privilege('anon', 'public.platform_account_restrictions', 'SELECT'), 'anon cannot inspect platform restrictions');
+SELECT * FROM finish();
+ROLLBACK;

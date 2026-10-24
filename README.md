@@ -10,7 +10,7 @@ AisenCore 提供一个**可直接在浏览器打开的 Admin 交互测试 Demo**
 
 - **[查看 Admin MVP 交互预览 HTML](./docs/interaction-benchmarks/aisencore-mvp-interaction-lab.html)**
 - [查看功能说明、体验步骤与测试边界](./docs/interaction-benchmarks/README.md)
-- [查看全平台 / 单产品工作空间设计与实施计划](./docs/interaction-benchmarks/workspace-scope-refactor-plan.md)
+- [Admin 应用架构](./docs/architecture/applications/admin-console.md)
 
 **如何体验：** 在 GitHub 打开上述 HTML 文件，点击右上方的 **Download raw file（下载原始文件）** 保存到本地，再使用 Chrome 或 Edge 打开。也可以克隆仓库后直接打开 `docs/interaction-benchmarks/aisencore-mvp-interaction-lab.html`。
 
@@ -36,12 +36,12 @@ AisenCore 提供一个**可直接在浏览器打开的 Admin 交互测试 Demo**
 ## MVP technology choices
 
 - **Identity**: Supabase Auth
-- **Backend**: Supabase Edge Functions
+- **Trusted backend**: PostgREST/RLS for reads, PostgreSQL RPC for state changes; Supabase Edge Functions for operations that require secrets
 - **Relational data**: Supabase PostgreSQL
 - **Admin**: React-admin + Vite, planned for Cloudflare Pages
 - **Object storage**: Cloudflare R2 (where needed)
 - **Source control**: GitHub
 
-**Current status:** architecture and requirements design. The listed stack and workflows are architectural choices, **not** a claim that all services, APIs, billing integrations, or deployments are operational.
+**Current status:** D1 local development has started. The first six PostgreSQL tables/RLS migration is applied and 35 local pgTAP checks pass; Auth/MFA, trusted RPC, Pro/redemption, React-admin, R2, payments, and cloud deployments are **not yet delivered or verified**.
 
 Repository: https://github.com/aisenhub/aisen-core

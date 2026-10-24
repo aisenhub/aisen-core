@@ -57,7 +57,7 @@ MVP 尽量用 Supabase 官方 Auth SDK 的登录、令牌刷新、登出与密�
 - 在 SaaS A 登出默认不影响 B；显式全局登出需明确告知用户影响范围，已签发短期 JWT 的实际失效窗口须如实处理。
 - 本地匿名 Free 不要求登录；首次需登录服务才触发成员；本地 Pro 按既定在线复核。
 - 管理员资格和 `aal2` 必须由管理 RPC/RLS 复核；跨 Project SaaS 需验证非对称 JWT 的签名、iss/aud/exp 并单独核验具体资源权限；单项目共享回调/发信/安全配置限制应在上线清单中检查。
-- **MVP Admin MFA 真实验收**：完成首次 TOTP enroll、challenge/verify、新 `aal2` JWT、正常会话不逐请求再次挑战、会话刷新/新登录/AAL 降级与因素遗失恢复；在列表和写 RPC 中量测额外 Auth/MFA HTTP 应为 0（不包括实际 JWT 刷新、必要新 MFA），参照 [AUTH-P06～P11](../../Plans/aisencore-mvp/aisencore-mvp-auth-entitlement-mfa-efficiency-design.md#43-admin-测试矩阵全部-not-run)。
+- **MVP Admin MFA 真实验收**：完成首次 TOTP enroll、challenge/verify、新 `aal2` JWT、正常会话不逐请求再次挑战、会话刷新/新登录/AAL 降级与因素遗失恢复；在列表和写 RPC 中量测额外 Auth/MFA HTTP 应为 0（不包括实际 JWT 刷新、必要新 MFA），参照 [统一 Auth 与会话架构](./auth-and-multi-saas-sessions.md)。
 - 产品封禁及平台全局阻断在新关键授权判断时不可被旧 JWT 中的过期权限声明绕过。
 
 不在首版建设第三方身份融合、跨域无感 SSO、通用用户画像、多设备风控平台；具体邮件供应商、回调清单、各产品界面文案及日常会话参数在上线前按产品确定。**MFA 强制策略与邮箱确认开关已确定**，不是实施时的任选项。

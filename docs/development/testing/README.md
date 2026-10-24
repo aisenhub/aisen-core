@@ -1,37 +1,35 @@
-# 测试规范
+# AisenCore 测试与验收规范
 
-> 状态：建立开发测试专题入口，**尚未选定测试框架与测试流程**。
+> 当前已采用 **Supabase CLI + pgTAP** 完成第一批本地 PostgreSQL 结构/RLS/权限验证。其他 API、Auth、浏览器、R2/云环境的真实端到端验证尚未完成。
 
-## 当前可确定的质量要求
+## 已有真实执行证据（2026-10-24）
 
-- **业务正确性**：公共用户身份、不同产品的权益边界、兑换码开通会员、后期订单权益同步必须有可靠验证方式。
-- **关键安全场景**：普通用户不得执行 Admin 高权限操作；他人的兑换码/权益/文件不能无授权访问；不能仅依赖浏览器 UI 控制权限。
-- **重复/并发与失败恢复**：重点覆盖重复兑换、并发争抢码、重复或漏发支付通知、支付状态与权益状态不一致。
-- **客户端权益**：首版在线 Pro 在启动时校验，并按具体产品关键操作复核；离线免费功能不受无关错误牵连。
-- **Admin 原型及真实 UI 验证**：复杂或风险较高的新交互按 [原型与 AI 开发工作流](../frontend/interaction-benchmark-workflow.md) 先验证；正式 React-admin 前端在明确施工授权后实现，视觉方案由用户审阅，发布前须用真实浏览器测试布局、键盘、焦点、缩放、内容可读性和必要权限行为；不强制旧四页/四主题/指定像素作为编码前置条件。
-- **Admin 质量与安全回归**：结合[62 条通用 UX 规则](../frontend/admin-design-rules.json)和[Admin 应用行为验收索引](../../architecture/applications/admin-console.md)按任务选择测试。机器规则的建议审查方式不等于自动 CI 已运行；真实 RLS/Auth/MFA/RPC、码明文和危险操作必须由实际测试证明，未运行维持 `NOT RUN`。
+| 验证 | 脚本 | 实测 |
+| --- | --- | --- |
+| 6 张基础表、约束、RLS、显式 GRANT / 禁止废弃公共表 | [001_core_foundation.test.sql](../../../supabase/tests/database/001_core_foundation.test.sql) | **25 PASS** |
+| SQL 角色、合成身份下本人隔离、跨用户禁止读写/管理员表保护 | [002_membership_rls.test.sql](../../../supabase/tests/database/002_membership_rls.test.sql) | **10 PASS** |
 
-## 待实际实施时补充
+合计 **35 PASS / 0 FAIL**，在独立本地 PostgreSQL 17.11 执行。合成身份使用 `SET ROLE` / SQL 会话 JWT claim，**不等于真实 Supabase Auth 验签、MFA 或 PostgREST HTTP 安全测试**。所有合成用户/成员已在测试事务中回滚。
 
-选定与代码栈相符的测试框架、测试分层、用例模板、测试数据管理、持续集成、测试覆盖范围、上线前验收。**此处不提前确定 Vitest、Playwright 或其它具体工具**。
+复测命令：
 
-相关需求：[当前统一需求](../../spec/requirements.md)；相关架构：[计费与权益专项](../../architecture/domains/billing-and-entitlements.md)。
+```powershell
+pnpm dlx supabase migration up --local
+pnpm dlx supabase test db --local supabase/tests/database
+```
 
-## BAAS-Q 安全负向用例与条件触发（来自已完成的 2026-10-22 技术评审）
+## 未完成但必须真实验证
 
-**沿用原 BAAS-Q01～Q10 用例号，全部 NOT RUN。** Q01～Q03 消费型余额/积分业务**只有未来真的引入后才启用**，不能据此给 MVP 新建余额表、通用消费 RPC。Q04～Q10 对现有 RLS/GRANT/JWT/备份配额与请求量性能的适用部分在真实实现时验证。禁止从匿名前端传任意成本；任何受保护扣减如引入必须正数、可信 actor/属主、原子幂等/并发、统一锁序及审计同事务。拒绝复制 public SECURITY DEFINER 且允许负 cost_amount 的样例；动态 Pro/Admin/blocked 不靠可能陈旧的 JWT 自定义 claim 作权威；不为减少网络请求就默认增加 Redis、独立 API 服务或 AI 代理。\n\n### BAAS-Q01～Q10 场景矩阵
+- **JWT、RLS、函数授权**：匿名/账号 A/B、产品跨界、管理 `aal1`/`aal2`、blocked、Admin 撤权、`private SECURITY DEFINER` 内核直接调用、默认 PUBLIC EXECUTE / owner / `search_path`、新建表显式 GRANT。
+- **状态、事务、兑换**：首次加入并发唯一、`left→suspended→left`、最后一位可用管理员保护、审计失败回滚；码首响明文/UNKNOWN、跨产品防枚举/限流、重复核销、超兑、Pro 延长/永久/撤销、强类型幂等。
+- **真实客户端与产品**：Supabase Auth 邮件验证/找回、刷新与 TOTP、独立 SaaS 登录/登出、本地离线 Free、React-admin 用真实浏览器验证键盘/焦点/响应式和高危恢复；禁止将离线 Demo 模拟通过记为端到端 PASS。
+- **R2 与网络恢复**：SaaS 资源属主/容量、白名单小 JSON 可信校验、唯一 final 条件写、防重放、pending/ready/孤儿对账、单边失败/超时、已签 URL 撤权窗口、手动备份恢复。
+- **稳定性与上线**：真实双连接并发/锁等待、P50/P95/请求次数、真实服务成本、日志脱密、账号注销、密钥隔离、备份/迁移恢复、部署和回滚。批准后在隔离环境运行，再判断生产就绪。
 
-| Case | 负向/边界输入 | 必须符合的结果 | 状态 |
-| --- | --- | --- | --- |
-| **BAAS-Q01** | 可信消费候选接收 -1/0/NULL/浮点/超范围/极大正数 | 安全拒绝，不允许余额增加、不越界、不写审计成功；没有消费能力时本案例为**设计门槛**而非强制先发明新接口 | NOT RUN |
-| **BAAS-Q02** | 两连接并发在仅剩 1 单位时各消费 1 | 仅一次成功，余额不负、无重复审计；有真实计量业务时再跑 | NOT RUN |
-| **BAAS-Q03** | 同 actor/request_id 重试、响应丢失和改变 cost/产品/资源 | 相同参数幂等一次，改参数冲突，任何消费/预留不重复 | NOT RUN |
-| **BAAS-Q04** | 普通用户尝试基表直接 UPDATE/UPSERT `quota`、`grant`、`reserved` | 无直接写权限；必须经过受保护、精确授权的 RPC；匿名与跨用户拒绝 | NOT RUN |
-| **BAAS-Q05** | public 中任何函数的默认 PUBLIC EXECUTE、owner/RLS bypass、缺少 search_path | 无预期外 EXECUTE 或 actor 冒充；最小 private 内核仍严格身份/属主检查，不能靠公开 definer 获得越权 | NOT RUN |
-| **BAAS-Q06** | JWT Hook 旧 `is_pro`/旧授权、撤权/blocked/永久权益、管理员 `aal1` | 可信服务端依当前 DB 拒绝失效能力；普通 JWT 不能取得 admin `aal2` | NOT RUN |
-| **BAAS-Q07** | 用户退出、换号、完成兑换、已到自然到期点、断网重连 | Pro 缓存不会串号、不超自然到期；未批准的离线新 Pro 不被缓存默许 | NOT RUN |
-| **BAAS-Q08** | R2 同账号并发备份/超限/confirm 超时/已 ready 覆盖 | `ready+reserved` 原子且幂等、可信 final 不可被旧 URL 修改，异常孤儿补偿 | NOT RUN |
-| **BAAS-Q09** | 相同使用模式固定轮询与按需合并，并放大真实 DB / RLS 规模 | 比较 HTTP/SQL 次数、扫描/锁等待、CPU、带宽、P95、Edge 调用；没有实际数据前不得断言“省 80%/85%” | NOT RUN |
-| **BAAS-Q10** | 重新登录/刷新时 JWT 声明陈旧，禁用 Admin 后仍持有效 access token | 后续 RLS/RPC 校验当前资格；MFA 正常会话不需逐操作挑战，也不因不查询 Auth 每次而放宽撤销边界 | NOT RUN |
+测试行为与编号以 [API 契约的 I-01～I-28、R-01～R-15 及补充用例](../../architecture/backend/api-contract-and-mvp-acceptance.md)、[事务锁序](../../architecture/database/rpc-security-and-locking-contract.md)、[Admin 应用合同](../../architecture/applications/admin-console.md)为权威；本文件不维护第二套逐案例期望。
 
-原 I-01～I-28、R-01～R-15、A-01～A-12、AUTH-P01～P12 均继续保持原设计/NOT RUN；**不将条件性“未来平台消费 RPC”误算成已经确定的 MVP 交付需求**。
+## 额外安全底线
+
+只对实际存在的业务能力测试。不为假设的通用积分余额、`consume_user_quota`、AI 网关或公共业务配额新建数据库表/RPC。若 SaaS 将来引入消费计量，应由可信主体确认资源属主与成本，并在事务里检查正数、上限、并发、请求幂等和必要审计；不得信任客户端传来的负成本，也不得把陈旧 JWT 自定义权限作为当前 Pro/Admin/blocked 的权威。
+
+每次运行记录测试脚本、提交版本、环境/服务版本、可复核断言、实际 PASS/FAIL/SKIPPED/NOT RUN，失败不以设计说明遮盖；公开日志不得包含真实码、JWT 或高权限密钥。
