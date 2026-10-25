@@ -1,0 +1,6 @@
+packages:
+  - 'apps/*'
+
+# Avoid a known transitive query-string decoder denial-of-service issue.
+overrides:
+  decode-uri-component: 0.5.0

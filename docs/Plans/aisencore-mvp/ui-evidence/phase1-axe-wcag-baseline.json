@@ -1,0 +1,193 @@
+{
+  "context": "axe-core local headless Chrome production preview; automated rules only; does not establish WCAG AA compliance",
+  "pages": [
+    {
+      "page": "dashboard",
+      "violations": [],
+      "passes": 26,
+      "incomplete": 1
+    },
+    {
+      "page": "operation-product-dialog",
+      "violations": [],
+      "passes": 18,
+      "incomplete": 1
+    },
+    {
+      "page": "operation-grant-dialog",
+      "violations": [],
+      "passes": 18,
+      "incomplete": 1
+    },
+    {
+      "page": "operation-issue-dialog",
+      "violations": [],
+      "passes": 18,
+      "incomplete": 1
+    },
+    {
+      "page": "products-desktop",
+      "violations": [],
+      "passes": 31,
+      "incomplete": 2
+    },
+    {
+      "page": "user360-mobile",
+      "violations": [],
+      "passes": 22,
+      "incomplete": 1
+    },
+    {
+      "page": "grant-form",
+      "violations": [],
+      "passes": 28,
+      "incomplete": 1
+    },
+    {
+      "page": "issue-codes",
+      "violations": [],
+      "passes": 28,
+      "incomplete": 1
+    },
+    {
+      "page": "account-actions",
+      "violations": [],
+      "passes": 28,
+      "incomplete": 1
+    },
+    {
+      "page": "memberships",
+      "violations": [],
+      "passes": 34,
+      "incomplete": 1
+    },
+    {
+      "page": "grants",
+      "violations": [],
+      "passes": 34,
+      "incomplete": 1
+    },
+    {
+      "page": "code-batches",
+      "violations": [],
+      "passes": 33,
+      "incomplete": 1
+    },
+    {
+      "page": "codes",
+      "violations": [],
+      "passes": 33,
+      "incomplete": 1
+    },
+    {
+      "page": "redemptions",
+      "violations": [],
+      "passes": 33,
+      "incomplete": 1
+    },
+    {
+      "page": "membership-events",
+      "violations": [],
+      "passes": 34,
+      "incomplete": 1
+    },
+    {
+      "page": "admins",
+      "violations": [],
+      "passes": 33,
+      "incomplete": 1
+    },
+    {
+      "page": "restrictions",
+      "violations": [],
+      "passes": 33,
+      "incomplete": 1
+    },
+    {
+      "page": "audit-logs",
+      "violations": [],
+      "passes": 33,
+      "incomplete": 1
+    },
+    {
+      "page": "users",
+      "violations": [],
+      "passes": 28,
+      "incomplete": 1
+    },
+    {
+      "page": "products-detail",
+      "violations": [],
+      "passes": 25,
+      "incomplete": 1
+    },
+    {
+      "page": "memberships-detail",
+      "violations": [],
+      "passes": 25,
+      "incomplete": 1
+    },
+    {
+      "page": "grants-detail",
+      "violations": [],
+      "passes": 25,
+      "incomplete": 1
+    },
+    {
+      "page": "code-batches-detail",
+      "violations": [],
+      "passes": 25,
+      "incomplete": 1
+    },
+    {
+      "page": "codes-detail",
+      "violations": [],
+      "passes": 25,
+      "incomplete": 1
+    },
+    {
+      "page": "admins-detail",
+      "violations": [],
+      "passes": 25,
+      "incomplete": 1
+    },
+    {
+      "page": "restrictions-detail",
+      "violations": [],
+      "passes": 25,
+      "incomplete": 1
+    },
+    {
+      "page": "audit-logs-detail",
+      "violations": [],
+      "passes": 25,
+      "incomplete": 1
+    },
+    {
+      "page": "product-danger-dialog",
+      "violations": [],
+      "passes": 17,
+      "incomplete": 1
+    },
+    {
+      "page": "user360-account-dialog",
+      "violations": [],
+      "passes": 18,
+      "incomplete": 1
+    },
+    {
+      "page": "user360-grant-dialog",
+      "violations": [],
+      "passes": 18,
+      "incomplete": 1
+    }
+  ],
+  "manualStillRequired": [
+    "screen reader",
+    "focus order",
+    "IME",
+    "keyboard",
+    "200-400% zoom",
+    "all dynamic states"
+  ]
+}

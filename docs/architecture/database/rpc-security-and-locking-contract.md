@@ -1,6 +1,6 @@
 # 受保护 RPC 与事务锁序：长期安全合同（F01/F02）
 
-> 状态：设计基线已收敛，**首批 6 表/RLS/列权限已在本地数据库执行并通过 35 项 pgTAP；受保护 RPC、真实 JWT、并发与性能仍 NOT RUN**。本文保存长期必须遵循的授权与锁顺序，不代替[计费权益业务规则](../domains/billing-and-entitlements.md)和[公共 API/错误契约](../backend/api-contract-and-mvp-acceptance.md)，DEC-01 已批准双参数新兑换签名，**L0 仍保持原全局排他锁模式**，实现前不得宣称安全测试已通过。
+> 状态：设计基线已收敛，**11 张表与受保护 SQL RPC 已从零重建并通过 239 项 pgTAP 与 LCK-01～07 双连接锁测试；D2 局部真实签名 JWT/HTTP/MFA 已 PASS，完整会话风险与性能仍 NOT RUN**。本文保存长期必须遵循的授权与锁顺序，不代替[计费权益业务规则](../domains/billing-and-entitlements.md)和[公共 API/错误契约](../backend/api-contract-and-mvp-acceptance.md)，DEC-01 已批准双参数新兑换签名，**L0 仍保持原全局排他锁模式**，实现前不得宣称安全测试已通过。
 
 ## 1. 可信入口与权限隔离（F01）
 
@@ -39,6 +39,7 @@
 | redeem_code(product_key, code) | — | 本人 | 限流行 UPDATE | 声明产品 SHARE | —（无 plan 表） | 先已有成员 UPDATE，left/suspended 先拒绝 | 后码 UPDATE 并确认产品、tier=pro 和原始授权天数 | 本人+产品 Pro | 成功才写必要成员/Grant/核销与次数，失败只能保留限流计数 |
 | admin_create_codes | 全局排他 | — | — | 产品 SHARE | —（无 plan 表） | — | 新码/批次唯一性 | — | 发 Pro+固定授予天数；首响明文，重放只能读非秘密 |
 | admin_grant_entitlement | 全局排他 | 目标用户 | — | 产品 SHARE | —（无 plan 表） | — | — | 用户+产品 Pro | duration / explicit_window，同 actor 幂等；不自动入会 |
+| admin_find_grant_request | — | — | — | — | — | — | — | — | 原管理员 JWT/AAL2 实时检查，按 actor + request_id 只读结果，无事务锁与业务写入 |
 | admin_revoke_grant | 全局排他 | 目标用户 | — | — | — | — | — | 视续期竞争而定 | 只撤销当前 grant，审计同提交 |
 | admin_suspend / restore_membership | 全局排他 | 目标用户 | — | — | — | 成员 UPDATE | — | — | 精确恢复 pre_suspend_status；不得隐式 rejoin |
 | admin_revoke_code / batch | 全局排他 | — | — | 产品 SHARE | — | — | 多码 UPDATE，ID 固定排序 | — | 撤码仅影响后续兑现；审计同事务 |
@@ -51,20 +52,20 @@
 
 **锁实施验证**：LCK-01～07 用真实双连接检查管理员互撤/封禁、同产品 Pro 续期、发码撤销核销、失败计数、幂等/UNKNOWN、锁超时和死锁；具体运行证据见当前测试记录，未运行项不得标 PASS。
 
-### 2.1 锁键映射的尚未完成项
+### 2.1 锁键映射的已实现范围与风险
 
-L0、L1、L7 的 advisory lock 编码必须在物理 DDL/RPC 实现前明确固定 namespace、类 ID、UUID 的编码/哈希算法、字节序、版本及稳定性。采用 PostgreSQL 双 int4 class_id 分域只能防**不同类**键空间冲突；同类 32-bit 哈希仍可能碰撞，须评估虚假串行化、等待和吞吐。没有实际证明前**不改现行 L0 全局排他为共享/排他混合锁**，也不得宣称哈希零碰撞。
+D1 SQL 使用事务级双 int4 advisory lock：L0 `(1000,1)`，L1 `(1001,hashtext(user_uuid::text))`，L7 `(1007,hashtext(user_uuid::text || ':' || product_uuid::text))`。不同层 class 分域；同层 32-bit 哈希仍可能偶然碰撞，只会造成额外串行化，不可宣称零碰撞或跨 PostgreSQL 版本恒定。LCK-01～07 已实测；L0 **仍为全局排他**。
 
 ## 3. 失败事务、重试与权限边界
 
 - 兑换业务拒绝只在核销/授权成功写入之前判定，合法失败计数应由正常返回路径提交；未知 SQL、权限、审计故障应抛出并**整笔事务回滚**。不使用宽泛异常捕获把真实技术错误转换为业务失败。
 - 只有码最终检查成功才创建缺失成员、join event、grant、redemption 并增加码次数；失败不能半提交。补充业务处理所需的 PL/pgSQL 子事务只能采用窄范围、明确回滚的实现并经测试，不作为默认机制。
 - 同用户同码唯一、来源键唯一、actor 域 request_id、首次请求持久化参数校验共同保证重试安全。发码明文只在**首次创建响应**返回，查询、超时重放、审计与日志均不得恢复/保存明文。
-- **B-01 设计已获批准，运行未修复**：RedeemCode(product_key, code) 在 L3 锁定**声明**产品并于 L5 校验其成员 left/suspended（同失败码与计数，**不读码**）；none/active 才在 L6 读真实码并核对产品归属。既有发行码引用的套餐权益已冻结，因此该操作**不需倒序补 L4**。旧单参 RedeemCode(code) 不得在迁移期继续可探测地读取码表，应撤销公开 EXECUTE 或仅固定返回升级指示。REV-B01 / 两连接锁测试通过前，不能称漏洞已运行修复。
+- **B-01 已在本地 SQL/模拟角色和双连接锁验证通过；真实 JWT/HTTP 待 D2**：RedeemCode(product_key, code) 在 L3 锁定**声明**产品并于 L5 校验其成员 left/suspended（同失败码与计数，**不读码**）；none/active 才在 L6 读真实码并核对产品归属。既有发行码引用的套餐权益已冻结，因此该操作**不需倒序补 L4**。当前仅提供双参 `redeem_code(product_key, code)`，单参签名不存在。SQL 合成身份、跨产品/left/未知码与双连接竞争已本地验证；真实 JWT/HTTP 层的 REV-B01 仍须 D2 复核。
 - 普通成员或 Admin 凭证被封禁后，下一受保护可信事务应拒绝；既有外部 R2 短 URL、执行中任务和历史授权不保证即时跨系统撤销。
 
 ## 4. 强制实测
 
-后续隔离环境需验证真实 JWT 与 RLS/GRANT/EXECUTE 负向用例、private 函数直接执行的安全性、M1～M5、两连接 LCK-01～07、未知码/已兑/left/suspended、审计故障回滚、码超兑、续期竞态、锁等待/P50/P95。首批 SQL/角色模拟的 35 项验证已通过，但本段列出的**可信 RPC、真实 JWT/MFA、双事务 LCK 与性能验证仍 NOT RUN**。
+后续隔离环境需验证真实 JWT 与 RLS/GRANT/EXECUTE 负向用例、private 函数直接执行的安全性、M1～M5、两连接 LCK-01～07、未知码/已兑/left/suspended、审计故障回滚、码超兑、续期竞态、锁等待/P50/P95。目前本地 SQL 模拟身份 **239/239 pgTAP** 与双连接 `LCK-01`～`07` **7/7 PASS**；**D2 局部真实 GoTrue/JWT/HTTP/MFA 场景已 PASS；完整 Auth/503/性能、浏览器及生产全链路仍 NOT RUN**。
 
 相关：[数据库访问隔离](./database-access-and-transactions.md) · [兑换约束](./entitlements-and-redemption-constraints.md) · [API 错误模型](../backend/api-contract-and-mvp-acceptance.md) · [当前待办与未验证项](../../Plans/TODO.md)。

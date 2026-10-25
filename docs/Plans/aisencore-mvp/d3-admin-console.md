@@ -1,6 +1,9 @@
 # 阶段 D3 执行计划：React-admin 正式管理前端、单一 MUI Theme 与高危动作恢复
 
 - **阶段代号**：`PHASE-D3`
+- **新三阶段归属**：D3 是 **技术工作流编号**，不是新交付“第三阶段”。本 Admin 正式前端的**所有可独立完成的业务模块、交互表格、异常状态、原创八维视觉、WCAG 2.2 AA、响应式、性能/代码拆分及所有者签收都必须在新第一阶段完成**，且在 AisenLens 本地环境对接之前达成。第二阶段只承接真实本地业务联调，第三阶段负责部署端复验。权威见 [三阶段交付总则](./three-stage-delivery-gates.md)。
+- **最新体验专项执行计划（持续实施，整体尚未签收）**：[D3 Admin 高标准前端完备化｜功能缺口、原创视觉、测试数据、UX-0～UX-7 与八维验收](./d3-admin-experience-upgrade.md)。此文件仅细化本 D3 阶段的产品体验工作，不替代当前需求/安全合同或已存在的 18 项 E2E 验收。
+- **当前事实**：2026-10-24 已创建 [`apps/admin/`](../../../apps/admin/README.md) 和 pnpm 工作区，编写 Supabase 客户端、认证/TOTP、公共身份回调、唯一 MUI Theme、只读 RLS DataProvider、Pro 授权/发码/未知结果恢复、受保护管理操作与 10 个业务列表/详情资源。源码边界烟测 [`scripts/test-d3-source-boundaries.mjs`](../../../scripts/test-d3-source-boundaries.mjs) 已执行 PASS（12 个 TypeScript 源模块）；**依赖已安装，typecheck/build/lint 和未认证 Chrome 登录页实测 PASS；但完整认证浏览器 E2E 与视觉签收仍未验证，不能记为 D3 阶段完成**。
 - **前置依赖**：可在 D2 接口稳定后准备脚手架/主题；正式管理读写与验收必须等待所需 RPC、JWT、MFA 安全用例通过。
 - **权威依据**：
   - [根目录开发约束 `AGENTS.md`（规则 1, 2, 3, 4, 5）](../../../AGENTS.md)
@@ -52,6 +55,8 @@
 
 ### Milestone D3-M1：工程脚手架、唯一 MUI Theme 与 Provider 基础层
 
+**实施进展（NOT ACCEPTED）**：Vite React TS 目录及根 `package.json`/`pnpm-workspace.yaml` 已建立，MUI Theme、Supabase Auth 与初版只读 DataProvider/受保护 RPC 适配已写入源码。依赖安装已成功，`pnpm typecheck/build/lint` 已成功退出；锁文件 frozen install PASS，`pnpm audit --prod` 固定修复 transitive 包后 0 已知漏洞。
+
 1. **目录与依赖初始化**：
    - 唯一创建 `apps/admin/`，按[仓库目录规范](../../architecture/infrastructure/repository-structure.md)建立 pnpm workspace 和真实 `pnpm-lock.yaml`，配置 `vite.config.ts`、`tsconfig.json`。
    - 安装核心依赖：`react`, `react-dom`, `react-admin`, `ra-ui-materialui`, `ra-core`, `@mui/material`, `@mui/icons-material`, `@emotion/react`, `@emotion/styled`, `@supabase/supabase-js`。
@@ -65,6 +70,8 @@
 
 ### Milestone D3-M2：TOTP MFA 登录页与安全壳层（Layout / Scope Switcher）
 
+**实施进展（NOT ACCEPTED）**：登录页对接官方 `signInWithPassword` / `mfa.listFactors` / `enroll` / `challengeAndVerify`，AAL2 后用 `admin_check_access` 二次验证；AppBar 通过 RA useStore 保存当前产品过滤范围。真实 Chrome 登录页 DOM 烟测已 PASS（使用假的公开测试 key，未进行管理员账号登录）；焦点/移动端与实际管理员完整会话未验收。
+
 1. **自定义登录与 MFA 挑战视图（`src/pages/LoginPage.tsx`）**：
    - 第一步：邮箱 + 密码登录。
    - 第二步：检查 `supabase.auth.mfa.getAuthenticatorAssuranceLevel()`：
@@ -77,6 +84,8 @@
 ---
 
 ### Milestone D3-M3：六大核心 Resource 页面与高危交互实现
+
+**实施进展（NOT ACCEPTED）**：已用 React-admin List/Datagrid/Show/Create 实现产品、成员、Grant、批次/安全码、核销、管理员/限制、审计与成员事件列表；提供受保护的 Pro 直授、账号管理和兑换码首响组件，UNKNOWN 保存非秘密请求元数据并提供独立批次核查/撤销/以原 request_id 重试。仍需要完整浏览器 E2E、安全审计、错误路径与视觉签收，禁止将静态源码或离线原型当生产可用。
 
 1. **`products` Resource**：`<List>` + `<Datagrid>`、新建弹窗、状态切换确认按钮（带原因输入）。
 2. **`memberships` Resource & 用户 360° 详情**：
@@ -117,10 +126,10 @@
 
 ## 3. 阶段 D3 退出门禁清单（Exit Gate Checklist）
 
-- [ ] `pnpm typecheck` 与 `pnpm build` 100% 零报错通过，`dist/` 产物静态密钥扫描通过。
+- [x] `pnpm typecheck/build/lint/install --frozen-lockfile/audit --prod` 与 `dist/` 静态密钥扫描通过；Vite 8 按依赖分包最大约 428 KB，无原先的 500 KB 单包警告。
 - [ ] 真实浏览器 E2E 测试覆盖 `D3-UI-X01` ~ `D3-UI-X18` 全部 18 项用例并取得 PASS 证据（不能用 V6 HTML 离线原型的模拟结果代替）。
 - [ ] 向项目所有者展示真实 React-admin 页面截图/预览并获得正式视觉与交互评审确认。
-- [ ] 同步更新 `docs/Plans/aisencore-mvp/d3-admin-console.md` 验证记录与 `docs/Plans/TODO.md`。
+- [x] 同步更新 `docs/Plans/aisencore-mvp/d3-admin-console.md` 验证记录与 `docs/Plans/TODO.md`，完整安全/视觉/发布门禁保持未完成。
 
 
 ---
@@ -130,5 +139,19 @@
 | 日期 | 命令或场景 | 退出码/结果 | 范围与限制 |
 | --- | --- | --- | --- |
 | 2026-10-24 | `docs/interaction-benchmarks/aisencore-mvp-interaction-lab.html`（V6 离线原型） | 28 项本地内存模型检查 | **仅作离线交互参考**，不连接真实后端，UI-G0A 视觉未签收，不计入正式代码 PASS |
-| 待执行 | 正式 React-admin 工程 `pnpm typecheck` & `pnpm build` & 产物密钥扫描 | `NOT RUN` | 须在 D2 退出门禁 100% PASS 后执行 |
-| 待执行 | 真实浏览器 E2E（`D3-UI-X01` ~ `D3-UI-X18`）与所有者视觉评审 | `NOT RUN` | 覆盖真实 MFA、首响明文阅后即焚、UNKNOWN 恢复与 WCAG 无障碍 |
+| 2026-10-24 | `pnpm typecheck`、`pnpm build`、`pnpm lint` | `0` / **PASS** | React-admin 5 + MUI 9/Vite 8/TS6，构建 2324 模块；大于 500KB 的 JS 警告未解决，不等于浏览器 E2E |
+| 2026-10-24 | `pnpm install --frozen-lockfile`、`pnpm audit --prod` | `0` / **PASS** | 锁文件可复现；已通过 pnpm 受控 override 将已知漏洞依赖 `decode-uri-component` 固定为 0.5.0，当前 0 已知生产依赖漏洞 |
+| 2026-10-24 | `node scripts/test-d3-bundle-secrets.mjs` 与 `node scripts/test-d3-browser-smoke.mjs` | `0` / **PASS** | 构建 JS 静态扫描无服务端秘钥或兑换哈希列；真实本地 Chrome 加载未认证登录 DOM；不是实际管理员或安全浏览器 E2E |
+| 2026-10-24 | `node scripts/test-d3-missing-config.mjs`，`node scripts/test-d3-browser-smoke.mjs`，`pnpm typecheck`，`pnpm lint`，`pnpm build` | `0` / **PASS** | 修复缺失 `apps/admin/.env.local` 时的白屏：入口先检查公共 Supabase URL/Key，缺失或错误时给出安全配置页；无配置 Chrome 首页和有测试公钥 Chrome 登录页均实测可见。仅 UI 初始化/构建，不等于管理员权限业务 E2E |
+| 2026-10-24 | `pnpm run setup:local`、`git check-ignore -v apps/admin/.env.local`、`node scripts/test-d3-browser-smoke.mjs --local` | **PASS** | 从本地正在运行的 AisenCore Supabase status 生成仅含 API URL/Publishable Key 的 git-ignored 配置；重复运行确认一致；Chrome 隔离端口 3395 真实加载了这份配置并显示登录页，不等于已登录管理员 E2E |
+| 2026-10-24 | `node scripts/test-d3-source-boundaries.mjs` | `0` / PASS | 12 个 TS/TSX 源模块：MFA、受保护 RPC、禁止直写、码明文内存；这是静态烟雾测试，**非构建、浏览器或权限验收** |
+| 2026-10-24 | `pnpm run setup:dev-admin`、真实 GoTrue password grant、`admin_check_access` | **PASS** | 本地开发账号固定 `admin@aisencore.test` / `Admin123456!`，只通过本机验证的 GoTrue API 更新 Auth 密码哈希，不再维护随机凭据文件；实际固定密码登录 PASS，AAL1 仍被管理 RPC 拒绝。首次 TOTP 与完整浏览器管理员业务未验收；固定密码绝不可用于生产环境 |
+| 2026-10-24 | `pnpm run seed:admin-demo` ×2 | **PASS** | 仅本机 55321/55322：24 合成 Auth 用户、4 产品/48 成员/26 Grants/3 批次/18 安全码摘要/6 核销/61 成员事件；重复不增长，保留原数据；无真实 SaaS |
+| 2026-10-24 | `pnpm typecheck`、`pnpm lint`、`pnpm build`、真实 Chrome 登录 smoke | **PASS** | 第一版 Operator Studio：MUI Theme、分组导航、中文 i18n、真数据 Dashboard、产品页面、用户 360 入口；JS App chunk 仍大于 500KB，非全站签收 |
+| 2026-10-24 | `node scripts/test-d3-authenticated-pages.mjs` | **局部 PASS** | 本地临时 GoTrue 账号完整 TOTP AAL2 + admin_check_access，隔离 Chrome 实测 Dashboard、产品页、用户 360、Pro 授权表单、兑换码发行表单，保存 1440px/1000px/390px 证据；真实图像复查修复了 390px 布局被表格撑至 810px 的问题，当前页面宽度与滚动宽度均为 390px。全 18 项 E2E 及八维视觉仍 NOT RUN |
+| 2026-10-24 | `pnpm typecheck`/`lint`/`build`，扩展 `node scripts/test-d3-authenticated-pages.mjs` | **局部 PASS** | 10 个原未完成模块统一列表（真实查询、空/错态、筛选、分页、移动卡片）、8 类统一受保护详情、3 类操作表单均已编码；Chrome 真 TOTP/AAL2 逐路由读取、真实邮箱精确搜索、`aisenlens` 范围空态→点击恢复 48 条成员通过。完整危险写入 E2E、全部 WCAG 与视觉签收仍 **NOT RUN** |
+| 2026-10-24 | `node scripts/test-d3-authenticated-pages.mjs` + `AISENCORE_UIQA_PREVIEW=1` 正式构建回归 | **局部真实写入 PASS** | 首先通过 GoTrue TOTP 达到 aal2，实际 UI 创建临时草稿产品、填写理由并启用产品、对临时用户授予 30 天 Pro、首次发行 1 条兑换码，验证明文确认清除，查库核对 Admin 审计。所有测试资源以随机 QA 产品 ID/用户 ID 精确清理，未截屏、打印明文码。仍需完整 UI-X01～X18 正负场景 |
+| 2026-10-24 | Vite 8 Rolldown 分包 + `pnpm build` + 正式 `vite preview` Chrome 回归 | **PASS（限定范围）** | 从约 944 KB 的单个 Admin chunk 调整至主要 JS 216/308/366/428 KB，当前无 500 KB 单包警告；生产构建的独立 3396 端口上全部列表/详情与上述四个写入链路 PASS。不构成全面性能、WCAG、视觉签收 |
+| 2026-10-24 | 长期 demo 数据环境下 `pnpm dlx supabase test db --local`、`python scripts/test-d1-concurrency.py`、`node scripts/test-d2-auth-api-mfa.mjs` | **286/286 pgTAP + 7/7 锁场景 + 真实 HTTP GoTrue/AAL2 PASS** | 修正原测试全库计数假设，保存长期演示数据和固定本地管理员；最后管理员 HTTP 409 的纯空名册前提仍须在另一个隔离实例测，不能改动固定开发管理员制造条件 |
+| 2026-10-24 | 最新 `node scripts/test-d3-authenticated-pages.mjs` + production preview | **大范围局部 PASS** | 浏览器真实成员 active/left 暂停恢复、产品创建启停、Pro/码撤销、平台封禁/解封、管理员授予撤权、旧 JWT 服务端拒绝、UTF-8 TXT/CSV、UNKNOWN、实际 Chrome HTTP 503/429 注入（发现并修复 429 状态码丢失）与原 ID 安全重试、30 组响应式和 Tab/Escape、安全明文/哈希检查、严格 QA 清理；**不等于 WCAG/全部 18 项完成** |
+| **待补齐** | D3-UI-X01～X18 完整合同、视觉与生产门禁 | **部分覆盖** | [逐项验收矩阵](./d3-acceptance-matrix.md) 明确通过/局部/未测；仍含生产规模 DEC-06、真实 429/断网和部分身份恢复，WCAG、设备/视觉签收与生产发布 |

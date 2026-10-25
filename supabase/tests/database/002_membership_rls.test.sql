@@ -16,7 +16,7 @@ SELECT plan(10);
 
 -- Anonymous identity: directory only, no membership data.
 SET LOCAL ROLE anon;
-SELECT is((SELECT count(*)::integer FROM public.products), 1, 'anon sees only active product');
+SELECT is((SELECT count(*)::integer FROM public.products WHERE product_key IN ('d1_product_a','d1_product_b')), 1, 'anon sees only active test product even with long-lived fixture');
 SELECT throws_ok('SELECT id FROM public.product_memberships', '42501');
 RESET ROLE;
 
@@ -27,7 +27,7 @@ SELECT is(auth.uid(), '10000000-0000-4000-8000-000000000101'::uuid, 'auth.uid re
 SELECT is((SELECT count(*)::integer FROM public.product_memberships), 1, 'authenticated user A sees exactly own membership');
 SELECT is((SELECT count(*)::integer FROM public.product_memberships WHERE user_id='10000000-0000-4000-8000-000000000102'), 0, 'authenticated user A cannot read user B membership');
 SELECT throws_ok('UPDATE public.product_memberships SET status = ''left''', '42501');
-SELECT throws_ok('SELECT user_id FROM public.platform_admins', '42501');
+SELECT is((SELECT count(*)::integer FROM public.platform_admins), 0, 'non-admin sees no platform admin roster');
 SELECT throws_ok('INSERT INTO public.admin_audit_log(actor_user_id,action,target_type,target_id) VALUES (auth.uid(),''forged'',''product'',gen_random_uuid())', '42501');
 RESET ROLE;
 

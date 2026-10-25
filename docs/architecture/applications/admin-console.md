@@ -1,8 +1,9 @@
 # AisenCore 内部 Admin 管理前端架构
 
-> 状态：MVP **应用层长期架构**，规定 Admin Resource、Provider 与敏感操作；正式 React-admin 页面尚未实现，离线 Demo 仅用于交互参考。
+> 状态：MVP **应用层长期架构**，规定 Admin Resource、Provider 与敏感操作；正式 React-admin 已开始在 `apps/admin/` 编码（登录/TOTP、唯一 MUI Theme、初版 DataProvider 与业务 Resource）；已通过本地 TypeScript、Vite build、lint、Chrome 未认证登录页面烟测与静态产物秘钥扫描；完整真实管理员浏览器、业务高危交互和正式视觉签收仍未验证，离线 Demo 仍只用于交互参考。
 >
 > **视觉与实施状态**：采用[统一 Theme/UX 规范](./admin-ui-design-system.md)；具体视觉方案仍须用户评审。D1 数据库开发已启动，独立后端开发不受历史 UI-G0A 视觉样例门槛阻塞。权限按[管理员领域](../domains/platform-admin-and-account-lifecycle.md)及[API 契约](../backend/api-contract-and-mvp-acceptance.md)实施。
+> **2026-10-25 最新 Admin 外壳**：已按 [三分区浅色轻质感设计与工程验收](../../Plans/aisencore-mvp/phase1-admin-shell-light-surfaces-2026-10-25.md) 将顶栏、浮动卡片式左侧导航、独立内容面板统一为浅色层次；顶栏不重复显示资源标题或「工作范围」，选择器靠左侧品牌。既有五入口IA与资源权限不变；Chrome全回归通过但人工视觉、无障碍与真机门槛未签收。
 >
 > **开发时选用规范**：[Admin 设计规则与模式入口](../../development/frontend/admin-design-guide.md)覆盖字体中文混排、表格/表单/确认、导航位置和长内容/错误状态的开发审查。迁入的设计原则**不新增**业务 API、角色或高权限数据读取，不自行决定已获批准的视觉方案。
 >
@@ -28,6 +29,18 @@ Admin 是 AisenCore 的**公共能力管理门面**：查看必要的平台用�
 - 产品成员 `left/suspended`、平台账号 `blocked` 与产品运行状态的作用范围不同；不得混淆为一种 UI 状态。查询他人的会员状态只能基于授权的安全字段与事实，不能利用管理员 JWT 代调用其本人 `check_access`。
 - Pro 是资格与授权时长事实，30/365/永久是期限参数而非功能版本。公共 Admin 不提供 SaaS Free/Pro Features/Limits 编辑、功能方案克隆或业务配额控制，参见[最新会员边界](../domains/membership-qualification-boundary.md)。
 - 发码第一次响应中的明文只能临时展示；未知结果按原目标产品与 `request_id` 核查，不得自动产生双重危险写入。交互必须明确真实目标、影响、授权和错误结果，但不要求某个特定视觉组件承载上述规则。
+
+### 当前第一阶段 Admin 业务导航（2026-10-25，已按用户新要求更新）
+
+侧栏**仅保留「工作区」一个分组和 5 个一级入口**：`概览 /`、`用户 /memberships`、`权益 /grants`、`兑换码 /code-batches`、`平台管理 /audit-logs`。不再出现独立的侧栏「产品」一级入口或「业务管理」分类标题。其领域二级导航：
+- 用户：`成员关系 /memberships`、`查找账号 /users`。
+- 兑换码：`发行批次 /code-batches`、`兑换码记录 /codes`、`核销记录 /redemptions`。
+- 平台管理：`产品 /products`、`管理审计 /audit-logs`、`账号限制 /restrictions`、`管理员权限 /admins`（同级；用户指定顺序）。
+一级「权益」以授权记录为核心，不混用「会员」与产品成员身份；具体 Pro 授权操作仍保留业务类型。一级「平台管理」点击默认进入管理审计，产品独立 Resource 路径及其创建/详情仍保留并归属平台管理。二级导航复用统一的 `DomainNavigation` 与纯数据导航配置；React Router URL 是唯一的选中态依据，直接 URL、前进/后退、刷新、移动布局应保留当前视图。菜单层级不引入新权限边界。
+
+成员事件 `/membership-events` 继续作为成员详情可检索的全平台生命周期记录，不以产品过滤假装其只涵盖选定产品。人工授予 `/grant-new`、发码 `/issue-codes`、账号治理 `/account-actions` 和新建产品 `/products/create` 的普通操作按钮以共享弹窗呈现，保留背景列表/详情与操作上下文；直接URL/新标签页仍可使用原独立完整页面。一次性明文保存、UNKNOWN请求核查、批次撤销均在同一个顶层弹窗处理，权限/审计始终交由后端。它们不单列一级菜单，细节见[弹窗施工与验收记录](../../Plans/aisencore-mvp/phase1-admin-operation-dialogs-2026-10-25.md)。产品详情能够选定该产品并前往成员、Pro 和批次视图；安全码与核销纪录可按非秘密 UUID 从已确定的批次或授权进行深链接。账号查找仍只接受完整邮箱，不增加用户枚举、模糊查找或信任前端参数的身份授权。
+
+**适用范围**：这是第一阶段当前 UI 导航方案，并非永久不变的架构约束。参见 [最新五入口导航改造记录](../../Plans/aisencore-mvp/phase1-admin-navigation-v2-2026-10-25.md)；原[六入口施工记录](../../Plans/aisencore-mvp/phase1-admin-navigation-redesign.md)已转为历史证据。
 
 ## 3. 登录、管理员准入与会话
 
@@ -71,7 +84,7 @@ Admin 是 AisenCore 的**公共能力管理门面**：查看必要的平台用�
 
 标准 create/update 返回服务端确定的 id+record；特殊命令返回其实际业务结果，不伪造普通 CRUD。401/403 应使管理资格相关查询立即失效；409 刷新对象；超时/未知结果先按 request_id 查持久事实，不能盲目重新发码/授权。**码明文绝不放入 TanStack Query cache、URL、localStorage、日志或遥测**。
 
-**A-02 / DEC-06 方案已批准，NOT IMPLEMENTED**：虚拟 `users` Resource 的 `getMany(ids)` 对本页去重 UUID[] 一次调用受限 `admin_lookup_users`，让成员/授权/核销的标准 ReferenceField 批量补邮箱，避免逐条 N+1；若实际权限/查询计划、越权或 P50/P95 证据不满足，工程师直接切换为已批准的**单次 Edge 批量聚合回退**。本页邮箱失败降级 UUID，不阻塞合法成员主查询、不得误报完整性。该技术方案须先以真实权限/性能证据验证；Admin 视觉由所有者按实际页面评审，不强制历史四类样例。
+**A-02 / DEC-06 后端查询与前端 getMany 已编码，D3 实际浏览器验收未完成**：虚拟 `users` Resource 的 `getMany(ids)` 对本页去重 UUID[] 一次调用受限 `admin_lookup_users`，让成员/授权/核销的标准 ReferenceField 批量补邮箱，避免逐条 N+1；若实际权限/查询计划、越权或 P50/P95 证据不满足，工程师直接切换为已批准的**单次 Edge 批量聚合回退**。本页邮箱失败降级 UUID，不阻塞合法成员主查询、不得误报完整性。该技术方案须先以真实权限/性能证据验证；Admin 视觉由所有者按实际页面评审，不强制历史四类样例。
 
 **Free/Pro 操作边界**：用户 360° 的会员层级由本人在当前 SaaS 是否存在生效、未撤销、未过期的 Pro Grant 派生；否则显示 Free（无有效 Pro），不写永久用户等级、不造 Free Grant。**Core 不定义 Free/Pro 的 AI、导出、备份功能或业务配额**；各产品自身执行。账号 blocked、成员 left/suspended、产品停服照常限制在线服务。发码/直授只可授予本产品 Pro 时长，不能发行 Free。
 
@@ -120,7 +133,7 @@ Admin 是 AisenCore 的**公共能力管理门面**：查看必要的平台用�
 
 ## 8. Admin 前端行为验收用例（原 D3-UI-X 编号保留）
 
-以下是可观察行为与安全回归索引，**不规定页面结构或视觉方案**。正式 React-admin 页面和这些端到端用例均未实现/执行（本地首批 SQL/RLS 的 35 项局部测试另有证据）。真实证据需来自相应浏览器、RPC/RLS、权限、网络和可访问性测试。
+以下是可观察行为与安全回归索引，**不规定页面结构或视觉方案**。正式 React-admin 页面和这些端到端用例均未实现/执行（本地 D1 的 239 项 SQL/模拟角色 pgTAP 与 LCK-01～07 双连接测试另有证据）。真实证据需来自相应浏览器、RPC/RLS、权限、网络和可访问性测试。
 
 | ID | 应验证的行为与状态 |
 | --- | --- |
