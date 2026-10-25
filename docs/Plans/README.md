@@ -1,15 +1,18 @@
 # AisenCore｜当前执行计划索引
 
-此目录只保留当前有效的 MVP 总计划、五份阶段计划、真实 TODO 与必要模板。业务规则/安全与技术规范分别以 [需求](../spec/requirements.md)、[架构](../architecture/README.md)、[AGENTS](../../AGENTS.md) 为权威；代码与真实测试结果决定当前进度。
+此目录保留当前有效的唯一 MVP 总计划、**项目所有者确定的三阶段交付验收总则**、D1/D2/D3/S1/D4 技术工作流计划与 TODO。**交付顺序只有三阶段**：① 对接 AisenLens 本地环境前，使用合成数据达到完整 Admin 功能、性能/分包、无障碍和高标准视觉签收；② AisenLens 本地实际业务数据双端联调与余下业务开发；③ Admin/Supabase/AisenLens 部署后真实环境测试。旧 D1～D4/S1 不是交付阶段。业务规则/安全以 [需求](../spec/requirements.md)、[架构](../architecture/README.md)、[AGENTS](../../AGENTS.md) 为权威；代码和测试证据决定实际进度。
 
 ## 唯一正式施工入口
 
 - [MVP 总计划（主控/阶段关系/待决事项）](./aisencore-mvp/00-mvp-master-plan.md)
-- [D1：数据库、Pro、兑换码与可信 RPC](./aisencore-mvp/d1-database-and-trusted-rpc.md) — **当前阶段**：首迁移六表、35 项本地 pgTAP 已通过，新增可信 RPC 与 LCK 测试尚未实现。
-- [D2：真实 Auth、公共 API 与 TOTP MFA](./aisencore-mvp/d2-auth-public-api-and-mfa.md) — 可预先准备本地服务；真实 JWT/HTTP 验证尚未通过。
-- [D3：React-admin](./aisencore-mvp/d3-admin-console.md) — 仅以 `apps/admin/` 为正式工程；前端代码与浏览器 E2E 尚未实现。
-- [S1：AisenLens 私有备份/Edge/R2](./aisencore-mvp/s1-aisenlens-r2-backup.md) — 产品业务参数未冻结；AisenLens 客户端留在独立仓库。
-- [D4：整体验收与发布准入](./aisencore-mvp/d4-release-acceptance.md) — 正式发布范围需要单独批准。
+- **[三阶段交付和验收准则（必须遵守）](./aisencore-mvp/three-stage-delivery-gates.md)** — 第一阶段 Admin 本地独立完整交付并完成性能、视觉/无障碍签收；第二阶段停用合成 fixture 作为联调依据，与 AisenLens 真实本地业务数据双端开发；第三阶段全部线上配置、部署与端到端测试。每阶段需要独立准出和所有者确认。
+- **[第一阶段全站交付整改总计划与专项施工单](./aisencore-mvp/phase1-delivery-remediation-plan.md)** — 对审查出的功能/业务操作/表格/性能/代码拆分/WCAG/响应式/八维视觉缺口逐包施工及记录，按 W0～W7 关口复测；目前仅部分基础工程已实施，仍需完整质量验收。
+- [D1：数据库、Pro、兑换码与可信 RPC](./aisencore-mvp/d1-database-and-trusted-rpc.md) — **D1 本地准出**：四份迁移从零重建成功，001～005 共 **239/239 pgTAP PASS**，双连接 LCK-01～07 全部通过；真实 JWT/HTTP/MFA 由 D2 验收。
+- [D2：真实 Auth、公共 API 与 TOTP MFA](./aisencore-mvp/d2-auth-public-api-and-mfa.md) — **旧技术工作流，第一阶段需要收口独立可完成内容**：DEC-06 SQL 查询、[006](../../supabase/tests/database/006_admin_user_lookup.test.sql) 47 项 pgTAP，GoTrue/PostgREST/Mailpit 实际 HTTP、签名 ES256 JWT 与 TOTP `aal2` 测试已 PASS；真实 Mailpit 密码找回、签名恢复 JWT、旧密码失效和新密码登录也已 PASS；D2 完整退出门禁（浏览器回调、失设备恢复、全量错误分支、性能）仍未通过。
+- [D3：React-admin（第一阶段交付重点）](./aisencore-mvp/d3-admin-console.md) — 正式 `apps/admin/` Vite/React-admin/TypeScript 已有全资源和主要真实 MFA 浏览器写入回归，仍需**全业务/表格流程、真实前端性能/代码拆分、WCAG 2.2 AA、高品质八维视觉和所有者签收**；不允许把这些任务移交至 AisenLens 本地联调阶段。
+  - [D3 专项：Admin 高标准前端完备化计划](./aisencore-mvp/d3-admin-experience-upgrade.md) — 以合成数据完成完整业务交互、八维视觉/无障碍、响应式/动效、真实 E2E 与最终签收；**部分代码及真实测试已通过，整体尚未签收**。
+- [S1：AisenLens 私有备份/Edge/R2](./aisencore-mvp/s1-aisenlens-r2-backup.md) — 第二阶段与 AisenLens 本地实际业务数据共同开发 Core 后端和 Lens 前端；第三阶段验证实际部署端/R2；业务参数待冻结。
+- [D4：整体验收与发布准入](./aisencore-mvp/d4-release-acceptance.md) — 前两阶段不得漏测各自本地可验收项目；第三阶段负责云端部署、生产级跨服务验收与单独发布审批。
 - [当前唯一 TODO](./TODO.md) · [新任务模板](./TEMPLATE.md) · [Coding Agent 子任务调度](../prompt/mvp-stage-dispatch.md)
 
 ## 执行边界和计划生命周期

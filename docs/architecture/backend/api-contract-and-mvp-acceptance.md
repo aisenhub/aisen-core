@@ -1,6 +1,6 @@
 # 公共 API 契约与 MVP 验收清单
 
-> 状态：MVP **逻辑接口清单、最小数据契约、错误语义和验收标准的唯一权威**。函数名与字段为实施候选，非已实现的 RPC/路由、OpenAPI 或 SQL；客户端文案与限流/超时数值按实际产品调整。接入时序与信任边界见[公共 API 与 SaaS 接入](./public-api-and-saas-integration.md)。
+> 状态：MVP **逻辑接口清单、最小数据契约、错误语义和验收标准的唯一权威**。D1 SQL RPC 已通过 239 项本地 pgTAP 与 7 项双连接锁测试。D2 的受限 `admin_lookup_users` SQL 已实现（47 项 pgTAP，累计 286），本地 GoTrue/Kong/PostgREST/Mailpit 真实签名 JWT、TOTP `aal2`、部分 HTTP 401/403/409/422/业务 200 场景实测通过。完整 AUTH-P01～P12、密码恢复、性能、OpenAPI/生产服务仍未验收。客户端文案与限流/超时数值按实际产品调整。接入时序与信任边界见[公共 API 与 SaaS 接入](./public-api-and-saas-integration.md)。
 
 ## 1. 复用优先和接口集合
 
@@ -18,11 +18,14 @@
 | 管理：产品与套餐 | `SetProductStatus`、产品资料维护、`UpsertPlan` | 平台管理员 | RPC（写）/ Data API（读） | 是 |
 | 管理：成员 | `SuspendMembership`、`RestoreMembership` | 平台管理员 | RPC | 是 |
 | 管理：权益与兑换码 | `CreateCodes`、`RevokeCode`、`GrantEntitlement`、`RevokeGrant` | 平台管理员 | RPC | 是 |
+| 管理：Pro UNKNOWN 只读核查 | `admin_find_grant_request(p_request_id)` | 原提交 AAL2 管理员 | INVOKER 公共薄代理 + 可信私有核查 | 否 |
 | 管理：账号与管理员 | `BlockAccount` / `UnblockAccount`、`GrantAdmin` / `RevokeAdmin` | 平台管理员 | RPC | 是 |
 | 管理：用户查询 | `AdminFindUser(user_id)` 精确查；`AdminSearchUsers(email?)` 分页列出/限量搜索 | 平台管理员 | 优先受限 PostgreSQL 只读 RPC；安全/性能不成立时单次受保护 Edge 聚合 | 否 |
 | 管理：列表与审计 | 成员、授权、兑换码、事件、审计列表 | 平台管理员 | Data API + 管理员 RLS | 否 |
 
 承载方式的依据见[数据库访问与可信事务](../database/database-access-and-transactions.md#2-执行机制决定)。账号注销首版为人工流程，**不提供**自助注销接口（见[平台管理员与账号生命周期](../domains/platform-admin-and-account-lifecycle.md)）。不同 SaaS 只需对接公共身份/成员/权益契约，各自业务 API 保持独立。
+
+**原授权结果核查合同**：请求丢失成功响应后，原提交管理员使用原 `request_id` 先调用 `admin_find_grant_request`，后端从实时 JWT/AAL2/管理员资格确定 actor，只检索此 actor 的管理授权，不接受客户端指定 actor。`found=false` 不泄露其他管理员记录；`found=true` 仅提供原 Grant ID、目标、产品、模式、期限、理由与撤销事实供核对，不返回内部 `source_ref`，也不给客户端该列的直接 SELECT 权限。已提交且参数匹配则结束 UNKNOWN、不再写入；不存在才能用相同参数及 ID 重试。刷新/异常/失联会撤销此前的“查无”许可，唯一来源键继续阻止查询与重试之间的并发重复写入。
 
 ## 2. 输入身份与检查顺序
 
@@ -157,7 +160,7 @@
 | R-14 | 修改具体 SaaS 的 Pro 功能配置 | 不涉及 AisenCore schema/Admin/RPC；测试各 SaaS 自己执行权限/配额，Core 历史 Grant 和码不变 |
 | R-15 | 管理端移除/隐藏 30 天期限预设后，已发行同产品 Pro 码仍有效 | 按码首次保存的正授权天数兑现；新发行按当前有效预设，撤码才阻止旧码 |
 
-验收还应覆盖 401/403/404/409/429/503 区别、超时后的状态确认、资源不可枚举检查以及 RLS 正反向测试（推荐 pgTAP）；以上为**测试场景规格**，当前已有 35 项本地 PostgreSQL 结构与模拟角色的 pgTAP 测试；本表所述完整业务接口/真实 JWT/并发场景尚未实现或运行。
+验收还应覆盖 401/403/404/409/429/503 区别、超时后的状态确认、资源不可枚举检查以及 RLS 正反向测试（推荐 pgTAP）；以上为**测试场景规格**，当前累计 286 项本地 PostgreSQL/模拟角色 pgTAP、LCK-01～07 双连接 PASS；核心 GoTrue/HTTP/TOTP 签名 JWT 的已实现场景部分通过真实 API 测试，**全部业务矩阵、客户端、性能与生产端到端仍未验收**。
 
 ### 6.1 补充业务场景（本组端到端用例尚未运行）
 

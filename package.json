@@ -1,0 +1,15 @@
+{
+  "name": "aisencore",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@12.15.0",
+  "scripts": {
+    "dev": "pnpm --filter @aisencore/admin dev",
+    "setup:local": "node scripts/configure-local-admin.mjs",
+    "setup:dev-admin": "node scripts/bootstrap-local-admin.mjs",
+    "seed:admin-demo": "node scripts/seed-admin-demo.mjs",
+    "typecheck": "pnpm --filter @aisencore/admin typecheck",
+    "build": "pnpm --filter @aisencore/admin build",
+    "lint": "pnpm --filter @aisencore/admin lint"
+  }
+}

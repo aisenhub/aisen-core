@@ -36,9 +36,13 @@ Aisencore/
 ├─ supabase/                               [现有] 可信公共后端的唯一根
 │  ├─ config.toml / .gitignore             [现有] 本地项目配置
 │  ├─ migrations/                          [现有] 扁平时间戳 SQL
-│  │  └─ 20261024011528_core_foundation.sql
+│  │  ├─ 20261024011528_core_foundation.sql
+│  │  ├─ 20261024025852_entitlements_and_redemption_schema.sql
+│  │  ├─ 20261024032247_trusted_rpcs_and_locking.sql
+│  │  ├─ 20261024033040_redemption_and_grant_rpcs.sql
+│  │  └─ 20261024045105_admin_user_lookup.sql
 │  ├─ tests/
-│  │  ├─ database/                        [现有] 两组 pgTAP
+│  │  ├─ database/                        [现有] 001～006 六组 pgTAP
 │  │  └─ functions/                       [按需] Edge 测试
 │  ├─ functions/                           [按需] 只有密钥/外部 I/O 才建
 │  │  ├─ deno.json                        单独的 Deno 配置
@@ -46,7 +50,7 @@ Aisencore/
 │  │  ├─ admin-users/                     RPC 方案不适用时的回退
 │  │  └─ aisenlens-config-backup/         SaaS 专属 JSON/R2 备份
 │  └─ seed.sql                             [按需] 仅合成测试数据
-├─ apps/                                   [D3] 可部署应用
+├─ apps/                                   [D3已建] 待实测构建/发布的前端应用
 │  └─ admin/                               React-admin + Vite + TS
 │     ├─ package.json / index.html
 │     ├─ vite.config.ts / tsconfig.json
@@ -67,12 +71,17 @@ Aisencore/
 │        ├─ components/                    仅实际复用组件
 │        ├─ types/                         生成 DB 类型 / API DTO
 │        └─ tests/                         组件单测
-├─ package.json                           [D3] 少量根脚本/引擎范围
-├─ pnpm-workspace.yaml                    [D3] 只匹配实际 apps/*
-├─ pnpm-lock.yaml                         [D3] 依赖安装后提交
+├─ package.json                           [现有] 根级脚本/工作区
+├─ pnpm-workspace.yaml                    [现有] 只匹配实际 apps/*
+├─ pnpm-lock.yaml                         [现有] frozen 安装/安全审计通过
 ├─ .github/workflows/                     [按需] CI 与经批准发布
 ├─ tests/e2e/                             [按需] 跨 Auth/API/Admin 测试
-├─ scripts/                               [按需] 实际复用的脚本
+├─ scripts/                               [现有] 本地测试脚本
+│  ├─ test-d1-concurrency.py              双连接 LCK-01～07
+│  ├─ test-d2-auth-api-mfa.mjs            真实本地 JWT/HTTP/TOTP/密码恢复
+│  ├─ test-d3-source-boundaries.mjs       前端静态边界检查
+│  ├─ test-d3-bundle-secrets.mjs          生产 JS 包的静态密钥扫描
+│  └─ test-d3-browser-smoke.mjs           Chrome 未认证登录页 DOM 烟测（非E2E）
 └─ packages/                              [暂不创建] ≥2 实际消费者再评估
 ```
 

@@ -1,7 +1,8 @@
 # 阶段 D2 执行计划：统一身份、公共 API HTTP 契约、Admin TOTP MFA 与受限身份查询
 
 - **阶段代号**：`PHASE-D2`
-- **前置依赖**：D1 目标 API 和权限合同已稳定，可提前准备本地 Auth 栈；对应受保护接口在 D1 安全测试通过前不能进行正式验收或发布。
+- **当前状态**：`IN_PROGRESS`。DEC-06 SQL 受保护查询已本地实现，[006 pgTAP](../../../supabase/tests/database/006_admin_user_lookup.test.sql) 47/47 PASS，数据库共 286/286 PASS；[真实 Auth/HTTP/MFA 脚本](../../../scripts/test-d2-auth-api-mfa.mjs) 成功运行。已使用 ES256 + JWKS 公钥验签、真实 `aal2`，但不是 D2 的全部 AUTH-P01～P12 或生产验收。
+- **前置依赖**：D1 本地 SQL/RPC 已通过 239/239 pgTAP 和 LCK-01～07 两连接锁测试；真实 JWT/HTTP/MFA 验收仍需 D2 独立证明，不能凭 D1 SQL 模拟角色发布。
 - **权威依据**：
   - [统一需求 §3, §6](../../spec/requirements.md)
   - [统一登录、邮件验证与多 SaaS 会话架构](../../architecture/applications/auth-and-multi-saas-sessions.md)
@@ -37,6 +38,8 @@
 
 ### Milestone D2-M1：完整本地 Supabase 栈启动与 PostgREST 错误映射核验
 
+**2026-10-24 实际进展**：通过 `pnpm dlx supabase start --exclude realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor` 启动本项目 DB 55322、GoTrue/Kong/PostgREST 55321、Mailpit 55324，服务健康返回 200。真实 HTTP 验证无/坏 JWT 401、普通用户与 `aal1` 管理员操作 403、最后管理员撤销 409、非法批量参数 422、`check_access` 与 `redeem_code` 业务拒绝 HTTP 200。**完整服务栈及技术错误 503/超时尚未验证**。
+
 1. **启动与健康检查**：
    - 运行 `pnpm dlx supabase start`（确认使用 `supabase/config.toml` 中的 `project_id = "Aisencore"` 及 `55321`~`55327` 端口，绝不借用其他项目的容器）。
    - 验证实际启用的 Auth/Data API/网关健康；JWKS 公钥验签仅适用于真实非对称签名配置，不能把 JWKS URL 存在视为验签成功。
@@ -53,11 +56,13 @@
 
 ### Milestone D2-M2：DEC-06 管理员受限身份查询（SQL RPC 优先 + Edge 回退）
 
+**2026-10-24 本地实现与验证**：迁移 [`20261024045105_admin_user_lookup.sql`](../../../supabase/migrations/20261024045105_admin_user_lookup.sql) 使用非登录、无 RLS bypass 执行角色，`auth.users` 仅授五个白名单字段的列级 SELECT + 该角色专属 RLS Policy；public `SECURITY INVOKER` wrapper → private `SECURITY DEFINER`，每次读前校验 `aal2`、active 管理员与非 blocked。查询需 `uuid[1..100]` 或精确邮箱，`page[1..1000]`、`per_page[1..100]`，返回 `items/total/page/per_page/has_more/search_incomplete=false`；禁止无条件全用户查询及模糊邮箱匹配；精确邮箱的实际扫描计划仍待性能验收。`006` **47/47 pgTAP PASS**，真实 HTTP 包括匿名、普通用户、`aal1`、blocked、revoke、`aal2` 等通过。一次 50 UUID / 15 次真实本地 HTTP 烟雾测试观察到 **P95 21.6ms**（库内用户极少，**不是有代表性的数据规模或正式 SLA**）。**未完成：代表性数据的索引 EXPLAIN 与 P95 门禁**；Auth 拥有者不允许普通迁移创建额外索引，因此未绕过所有权强行修改 `auth.users`，实际达到性能门槛前不得宣告 D2-M2 完全准出。
+
 依据 `docs/architecture/backend/api-contract-and-mvp-acceptance.md` §3（DEC-06 已批准方案）：
 
 1. **首选方案：受保护 PostgreSQL 只读 RPC**：
-   - 实现 `public.admin_lookup_users(p_user_ids uuid[] DEFAULT NULL, p_email_exact text DEFAULT NULL, p_page integer DEFAULT 1, p_per_page integer DEFAULT 50) RETURNS jsonb`（委托给 `private.admin_lookup_users_kernel`）：
-     - 首行强制校验 `IF NOT private.is_platform_admin() THEN RAISE ... ADMIN_REQUIRED END IF;`。
+   - 实现 `public.admin_lookup_users(p_user_ids uuid[] DEFAULT NULL, p_email_exact text DEFAULT NULL, p_page integer DEFAULT 1, p_per_page integer DEFAULT 50) RETURNS jsonb`（委托给 `private.admin_lookup_users_core`）：
+     - 访问 Auth 行前调用 `private.require_admin()`，按 JWT `aal2` + 当前 active + 非 blocked 校验，拒绝报 `ADMIN_REQUIRED`。
      - 限制 `cardinality(p_user_ids) <= 100`，`p_per_page BETWEEN 1 AND 100`。
      - 仅从 `auth.users` 投影白名单字段：`id`, `email`, `created_at`, `email_confirmed_at`, `last_sign_in_at`（**严禁返回 `encrypted_password`, `confirmation_token`, `recovery_token`, `raw_user_meta_data`, `raw_app_meta_data` 或 MFA 秘钥**）。
      - `p_email_exact` 使用 `lower(btrim(p_email_exact))` 精确匹配，严禁开放无界 `ILIKE '%...%'` 全表模糊扫描。
@@ -70,6 +75,8 @@
 ---
 
 ### Milestone D2-M3：真实 GoTrue Auth、多 SaaS 会话与 Admin TOTP MFA 自动化验收脚本
+
+**2026-10-24 部分场景实测通过**：[`scripts/test-d2-auth-api-mfa.mjs`](../../../scripts/test-d2-auth-api-mfa.mjs) 使用本地 GoTrue + Mailpit 捕获真实确认邮件、密码登录、ES256 JWKS 验签、Supabase TOTP factor enroll/challenge/verify、正常 AAL2 管理操作、blocked/revoked 后当前旧 JWT 立即拒绝、两个独立会话 local logout 后另一会话刷新仍有效，所有脚本中已执行断言 PASS。新增真实密码找回流程（通过 Mailpit 读取恢复链接、GoTrue 颁发签名 JWT、更新密码并验证旧密码拒绝和新密码登录）已 PASS；因子丢失/移除后的旧 JWT 风险、完整 `AUTH-P01～P12` 对照和浏览器回调页仍待验证。
 
 编写自动化端到端验证脚本 `scripts/test-d2-auth-api-mfa.mjs`（使用 `@supabase/supabase-js` 与 `otplib` 或标准 TOTP 生成器直接对接本地 `http://127.0.0.1:55321`）：
 
@@ -98,10 +105,10 @@
 ## 3. 阶段 D2 退出门禁清单（Exit Gate Checklist）
 
 - [ ] 本地真实启用的 Supabase 服务健康运行，实际端口以 `supabase/config.toml` 为准，不借用其他项目容器。
-- [ ] `scripts/test-d2-auth-api-mfa.mjs` 真实 HTTP + GoTrue JWT + TOTP `aal2` 自动化测试 100% PASS。
+- [x] `scripts/test-d2-auth-api-mfa.mjs` **当前已实现场景**的真实 HTTP + ES256 JWT + TOTP `aal2` 断言全部 PASS；完整 `AUTH-P01～P12` 仍待补齐，不能把当前测试等同 D2 全部验收。
 - [ ] `CheckAccess`（HTTP 200 + `allowed/reason`）、`RedeemCode`（HTTP 200 + `ok/code`）及普通写 RPC（401/403/409/422）的 HTTP 响应契约 100% 符合 `api-contract-and-mvp-acceptance.md`。
 - [ ] `REV-DEC06-01` ~ `06` 管理员受限用户查询正负向与性能测试全部 PASS。
-- [ ] 同步更新 `docs/Plans/aisencore-mvp/d2-auth-public-api-and-mfa.md` 验证记录与 `docs/Plans/TODO.md`。
+- [x] 同步更新 `docs/Plans/aisencore-mvp/d2-auth-public-api-and-mfa.md` 验证记录与 `docs/Plans/TODO.md`，未通过的阶段门禁仍保留。
 
 
 ---
@@ -110,6 +117,11 @@
 
 | 日期 | 命令或场景 | 退出码/结果 | 范围与限制 |
 | --- | --- | --- | --- |
-| 待执行 | 完整本地 Supabase 栈启动（`55321`~`55327`）与 JWKS / Inbucket 联调 | `NOT RUN` | 须在 D1 退出门禁 100% PASS 后执行 |
-| 待执行 | `AUTH-P01` ~ `AUTH-P12` 真实 GoTrue JWT + TOTP `aal2` 正负向测试 | `NOT RUN` | 不得以 SQL `set_config` 模拟代替 |
-| 待执行 | `REV-DEC06-01` ~ `06` 管理员受限用户查询安全与性能实测 | `NOT RUN` | 优先受保护 SQL RPC，不成立时自动回退受保护 Edge |
+| 2026-10-24 | `pnpm dlx supabase start` 全栈启动尝试 | **未完成** | CLI 在 Docker 镜像层下载阶段长期未完成，主动终止；未确认 GoTrue/Kong/PostgREST/Inbucket 健康，**HTTP/JWT NOT RUN**。随后保留数据卷并恢复 DB-only 测试库，pgTAP 239/239 再次通过 |
+| 2026-10-24 | `pnpm dlx supabase start --exclude realtime,storage-api,imgproxy,postgres-meta,studio,edge-runtime,logflare,vector,supavisor` | `0` / PASS | DB、GoTrue、Kong、PostgREST、Mailpit 健康（55322/55321/55324）；不是全部组件 |
+| 待执行 | 余下 Supabase 服务与 503/超时映射 | `NOT RUN` | 不能把已启用的核心服务当作完整栈 |
+| 2026-10-24 | `node scripts/test-d2-auth-api-mfa.mjs` | `0` / 当前全部断言 PASS | 真实邮箱确认、ES256 JWKS 签名、TOTP AAL2、普通/blocked/revoked 管理员拒绝、多会话 local logout、HTTP 401/403/409/422、业务 200、真实 Mailpit 恢复邮箱与密码变更；AUTH-P01～P12 全量及浏览器回调尚缺 |
+| 2026-10-24 | `pnpm dlx supabase stop --project-id Aisencore` | `0` / PASS | 测试结束后停止 `0.0.0.0` 监听及默认开发密钥的本地服务，Docker 数据卷已备份保留；再次真实 HTTP 测试需按上面的最小启动命令恢复 |
+| 2026-10-24 | `pnpm dlx supabase migration up --local` + `pnpm dlx supabase test db --local supabase/tests/database` | `0` / **286 PASS / 0 FAIL** | D1 239 + D2 管理受限查询 47 项 pgTAP；数据库用合成 SQL claims，真实 HTTP 另见上一行 |
+| 2026-10-24 | 本地 `supabase/config.toml` Auth URL/重定向配置 | **已配置/未完成浏览器回调 E2E** | `site_url=http://localhost:3000`，增加 `localhost` 与 `127.0.0.1` 两种本地地址的 `/auth/confirm`、`/auth/reset-password` 精确白名单；GoTrue 本地 Auth 与 Mailpit 健康检查均 200，完整回调安全验收仍待执行 |
+| 待执行 | DEC-06 P95/EXPLAIN、完整 AUTH-P01～P12、浏览器密码回调/因子失设备恢复 | `NOT RUN` | GoTrue 后端密码恢复链路已 PASS，但完整 D2 退出门禁未通过，禁止发布结论 |

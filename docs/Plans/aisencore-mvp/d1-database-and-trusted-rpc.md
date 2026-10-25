@@ -1,7 +1,7 @@
 # 阶段 D1 执行计划：完整关系数据模型、可信 RPC 内核与并发锁验证
 
 - **阶段代号**：`PHASE-D1`
-- **当前状态**：`IN_PROGRESS`（已完成首批 6 张基础表与 35 项局部 pgTAP；剩余表结构、全部可信 RPC 与并发锁测试待实施）
+- **当前状态**：`LOCAL_GATE_PASSED`（D1-M1～M4 SQL、四迁移从零重建、239/239 pgTAP 与真实双连接 LCK-01～07 通过；签名 JWT/HTTP/TOTP 待 D2，不能由此推断上线安全）
 - **权威依据**：
   - [统一需求 §3, §4, §5](../../spec/requirements.md)
   - [数据库逻辑约束与最小审计](../../architecture/database/database-constraints-and-audit.md)
@@ -15,7 +15,7 @@
 ### 已验证的本地基线（不代表完整系统完成）
 
 - Node 24.19.0、pnpm 12.15.0、Docker Engine 29.7.2、Supabase CLI 2.121.0；独立 PostgreSQL 17.11（`supabase_db_Aisencore`，端口 `55322`）。这些是当次执行记录，不是未来版本锁定。
-- 已应用 `20261024011528_core_foundation.sql`；`001` 25 PASS、`002` 10 PASS，共 `35 PASS / 0 FAIL`；测试中合成身份与成员均由事务回滚，不能当作真实 GoTrue/JWT/MFA 验收。
+- 已从零重建 `20261024011528_core_foundation.sql`、`20261024025852_entitlements_and_redemption_schema.sql`、`20261024032247_trusted_rpcs_and_locking.sql`、`20261024033040_redemption_and_grant_rpcs.sql` 四迁移；`001`～`005` 各 25/10/57/70/77 项，共 **239 PASS / 0 FAIL**；独立连接 `LCK-01`～`07` PASS；SQL 合成 JWT/MFA 不当成真实 GoTrue 验证。
 
 ## 1. 阶段边界声明（Scope & Hard Boundaries）
 
@@ -41,6 +41,8 @@
 ## 2. 详细技术设计与实施子任务（Milestones & Tasks）
 
 ### Milestone D1-M1：补完 Pro 授权、兑换码、核销与限流表结构
+
+**已于 2026-10-24 在本地完成**：新增迁移 `20261024025852_entitlements_and_redemption_schema.sql`；5 张表、`private.is_platform_admin()`、管理员 RLS/列级授权及 `security_invoker` 无哈希安全视图。新增 `003` pgTAP 57 项全部通过，覆盖 SQL 模拟 `aal1/aal2`、blocked、哈希/限流隔离、禁止表写入、期限和撤销约束负例。M2～M4 的业务 RPC、双连接锁和真实签名 JWT/HTTP 尚未实现/验证。
 
 在 `supabase/migrations/` 下新增迁移文件（通过 `pnpm dlx supabase migration new entitlements_and_redemption_schema` 创建；禁止手编时间戳）：
 
@@ -132,6 +134,8 @@
 
 ### Milestone D1-M2：实现 F02 锁序助手与身份/成员/管理基础 RPC
 
+**2026-10-24 本地 PASS**：`20261024032247_trusted_rpcs_and_locking.sql` 包含 L0/L1/L7 锁、非登录执行 owner、只读准入、成员生命周期与管理员安全 RPC；`004_membership_and_admin_rpcs.test.sql` **70/70 PASS**。
+
 在 `supabase/migrations/` 下新增迁移文件（通过 `pnpm dlx supabase migration new trusted_rpcs_and_locking` 创建；禁止手编时间戳）：
 
 1. **定义确定性 Advisory Lock 键映射函数（F02 §2.1）**：
@@ -159,6 +163,8 @@
 ---
 
 ### Milestone D1-M3：实现兑换码核销（DEC-01）、批量发码与管理直授（DEC-05）RPC
+
+**2026-10-24 本地 PASS**：`20261024033040_redemption_and_grant_rpcs.sql` 包含限流、DEC-01 防侧信道、160-bit Base32 码、首响明文/重放无明文、强类型幂等、Pro 顺延及撤销；`005_redemption_and_grant_rpcs.test.sql` **77/77 PASS**（包括技术故障完整事务回滚）。未获批准的永久码发行仍拒绝，SQL 内 `1000/批` 是技术保护阈值，不是批准的运营上限。
 
 1. **`public.redeem_code(p_product_key text, p_code text) RETURNS jsonb`（唯一兑换入口）**：
    - **严格锁序与检查顺序（DEC-01 防侧信道）**：
@@ -199,6 +205,8 @@
 
 ### Milestone D1-M4：编写并执行完整 pgTAP 与双连接并发锁测试（LCK-01 ~ LCK-07）
 
+**2026-10-24 本地 PASS**：`pnpm dlx supabase db reset --local --no-seed --yes` 从空隔离数据库 55322 重建四份迁移；五组 pgTAP 239/239 PASS；`python scripts/test-d1-concurrency.py` 真实双连接 `LCK-01`～`07` 全部通过，以 `pg_stat_activity.wait_event_type='Lock'` 确认等待，本次范围无死锁，测试夹具清理后零残留。
+
 1. **新增 pgTAP 数据库测试脚本**：
    - `supabase/tests/database/003_entitlements_and_codes_rls.test.sql`：验证新表结构、CHECK 约束（含 `revoke_reason=NULL` 被拒、三值逻辑负例）、`code_hash` 零列权限暴露、`redemption_rate_limits` 零客户端权限、管理员 `aal1` vs `aal2` RLS 读取隔离。
    - `supabase/tests/database/004_membership_and_admin_rpcs.test.sql`：验证 `ensure_membership`、`leave_product`、`rejoin_product`、`admin_suspend/restore_membership`（含 `left → suspended → left` 精确恢复 I-09/I-10）、M1 最后一名合格管理员防自锁（I-27）、`private` 内核直接调用鉴权拦截。
@@ -229,11 +237,11 @@
 
 Agent 只有在以下所有检查项均取得真实本地执行证据（Exit Code 0）后，方可宣告 D1 完成：
 
-- [ ] `pnpm dlx supabase db reset --local` 仅针对核对无误的本地隔离库重建全部迁移成功；重要警告应分析，不以无任何非致命提示作为通过条件。
-- [ ] `pnpm dlx supabase test db --local supabase/tests/database` 全部测试文件（`001` ~ `005`）100% PASS。
-- [ ] 双连接并发锁测试脚本覆盖 `LCK-01` ~ `LCK-07` 全部断言 PASS；记录连接数、隔离级别、锁等待与超时，在规定测试范围内未观察到死锁或竞态覆盖，不宣称理论上永无死锁。
-- [ ] 核查确认数据库中不存在 `public.plans` 表、不存在单参 `redeem_code(code)`、不存在 `code_hash` 的客户端 `SELECT` 授权。
-- [ ] 同步更新 `docs/Plans/aisencore-mvp/d1-database-and-trusted-rpc.md` 的验证记录表与 `docs/Plans/TODO.md`。
+- [x] `pnpm dlx supabase db reset --local --no-seed --yes` 仅针对核对无误的本地隔离库重建全部迁移成功；重要警告应分析，不以无任何非致命提示作为通过条件。
+- [x] `pnpm dlx supabase test db --local supabase/tests/database` 全部测试文件（`001` ~ `005`）100% PASS。
+- [x] 双连接并发锁测试脚本覆盖 `LCK-01` ~ `LCK-07` 全部断言 PASS；记录连接数、隔离级别、锁等待与超时，在规定测试范围内未观察到死锁或竞态覆盖，不宣称理论上永无死锁。
+- [x] 核查确认数据库中不存在 `public.plans` 表、不存在单参 `redeem_code(code)`、不存在 `code_hash` 的客户端 `SELECT` 授权。
+- [x] 同步更新 `docs/Plans/aisencore-mvp/d1-database-and-trusted-rpc.md` 的验证记录表与 `docs/Plans/TODO.md`。
 
 
 ---
@@ -244,4 +252,9 @@ Agent 只有在以下所有检查项均取得真实本地执行证据（Exit Cod
 | --- | --- | --- | --- |
 | 2026-10-24 | `pnpm dlx supabase migration up --local` (`20261024011528_core_foundation.sql`) | `0` / PASS | 本地 PG 17.11（端口 `55322`）已建立首批 6 张基础表与只读 RLS |
 | 2026-10-24 | `pnpm dlx supabase test db --local supabase/tests/database` (`001` + `002`) | `0` / **35 PASS, 0 FAIL** | 验证表结构、显式列级 GRANT 与 SQL 合成身份下的成员本人读取隔离；不含 GoTrue 签名 JWT |
-| 待执行 | Milestone D1-M1 ~ D1-M4（`003`~`005` pgTAP + `LCK-01`~`07` 双连接并发锁测试） | `NOT RUN` | 待按本计划完成 Pro/兑换表与受保护 RPC 后实测回填 |
+| 2026-10-24 | `pnpm dlx supabase migration up --local`（`20261024025852_entitlements_and_redemption_schema.sql`） | `0` / PASS | 在已运行的隔离 PG 17.11 上增量应用；尚未执行从零 `db reset` |
+| 2026-10-24 | `pnpm dlx supabase test db --local supabase/tests/database`（`001`～`003`） | `0` / **92 PASS / 0 FAIL** | 新增 D1-M1 57 项结构、权限与 SQL 模拟 JWT/MFA；非真实签名 Auth / HTTP |
+| 2026-10-24 | `pnpm dlx supabase db reset --local --no-seed --yes` | `0` / PASS | 已核对端口 55322 的空数据隔离 PostgreSQL，四迁移重建 |
+| 2026-10-24 | `pnpm dlx supabase test db --local supabase/tests/database`（`001`～`005`） | `0` / **239 PASS / 0 FAIL** | SQL 合成 JWT claims、权限、受保护 RPC 与异常回滚，不是签名 JWT/HTTP |
+| 2026-10-24 | `python scripts/test-d1-concurrency.py`（`LCK-01`～`07`） | `0` / **7/7 PASS** | 独立 PG 连接真实锁等待、M1 保底、Pro 续期、单次码、限流、幂等与产品状态竞争；合成数据已清理 |
+| 待 D2 | 真实 GoTrue/JWT/HTTP/TOTP 及旧管理会话/错误映射 | `NOT RUN` | SQL 模拟不可作为上线权限验收 |
