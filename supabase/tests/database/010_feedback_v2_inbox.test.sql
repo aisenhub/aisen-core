@@ -63,47 +63,47 @@ SELECT is((public.admin_screen_feedback(
 SELECT is((public.admin_screen_feedback(
  '39000000-0000-4000-8000-000000000001',1,'read')->>'changed'),
  'false','reopening an already read item creates no new event');
-SELECT is((public.admin_screen_feedback(
- '39000000-0000-4000-8000-000000000001',1,'archive')->>'version'),
- '2','inbox can archive without creating workbench entry');
+SELECT throws_ok($$SELECT public.admin_screen_feedback(
+ '39000000-0000-4000-8000-000000000001',1,'archive')$$,'PT409',
+ 'INVALID_QUEUE_ACTION','V3 queue guard forbids inbox archive via legacy RPC');
 SELECT throws_ok($$SELECT public.admin_screen_feedback(
  '39000000-0000-4000-8000-000000000001',2,'triage','urgent')$$,'PT409');
-SELECT is((public.admin_screen_feedback(
- '39000000-0000-4000-8000-000000000001',2,'restore')->>'queue_state'),
- 'inbox','archive restore returns to untriaged inbox');
+SELECT is((SELECT queue_state FROM public.user_feedback
+ WHERE id='39000000-0000-4000-8000-000000000001'),
+ 'inbox','forbidden archive keeps row in inbox');
 SELECT throws_ok($$SELECT public.admin_screen_feedback(
- '39000000-0000-4000-8000-000000000001',3,'triage',NULL)$$,'PT422');
+ '39000000-0000-4000-8000-000000000001',1,'triage',NULL)$$,'PT422');
 SELECT is((public.admin_screen_feedback(
- '39000000-0000-4000-8000-000000000001',3,'triage','high')->>'version'),
- '4','explicit priority promotes inbox to workbench');
+ '39000000-0000-4000-8000-000000000001',1,'triage','high')->>'version'),
+ '2','explicit priority promotes inbox to workbench');
 SELECT ok((SELECT queue_state='workbench' AND priority='high' AND status='new'
  AND triaged_at IS NOT NULL FROM public.user_feedback
  WHERE id='39000000-0000-4000-8000-000000000001'),
  'workbench row requires explicit priority and initial new processing status');
 SELECT throws_ok($$SELECT public.admin_screen_feedback(
- '39000000-0000-4000-8000-000000000001',4,'archive')$$,'PT409');
+ '39000000-0000-4000-8000-000000000001',2,'archive')$$,'PT409');
 SELECT is((public.admin_attention_feedback(
- '39000000-0000-4000-8000-000000000001',4,true,NULL)->>'version'),
- '5','workbench can star a feedback');
+ '39000000-0000-4000-8000-000000000001',2,true,NULL)->>'version'),
+ '3','workbench can star a feedback');
 SELECT is((public.admin_attention_feedback(
- '39000000-0000-4000-8000-000000000001',5,NULL,ARRAY['同步','稳定性'])->>'version'),
- '6','workbench tags can be saved');
+ '39000000-0000-4000-8000-000000000001',3,NULL,ARRAY['同步','稳定性'])->>'version'),
+ '4','workbench tags can be saved');
 SELECT throws_ok($$SELECT public.admin_attention_feedback(
- '39000000-0000-4000-8000-000000000001',6,NULL,ARRAY['重复','重复'])$$,'PT422');
+ '39000000-0000-4000-8000-000000000001',4,NULL,ARRAY['重复','重复'])$$,'PT422');
 SELECT is((public.admin_attention_feedback(
- '39000000-0000-4000-8000-000000000001',6,true,NULL)->>'changed'),
+ '39000000-0000-4000-8000-000000000001',4,true,NULL)->>'changed'),
  'false','setting existing star is idempotent');
 SELECT is((public.admin_update_feedback(
- '39000000-0000-4000-8000-000000000001',6,'in_progress')->>'version'),
- '7','existing business status RPC works on workbench after triage');
+ '39000000-0000-4000-8000-000000000001',4,'in_progress')->>'version'),
+ '5','existing business status RPC works on workbench after triage');
 SELECT is((public.admin_screen_feedback(
- '39000000-0000-4000-8000-000000000001',7,'trash')->>'version'),
- '8','soft delete preserves workbench state for recovery');
+ '39000000-0000-4000-8000-000000000001',5,'trash')->>'version'),
+ '6','soft delete preserves workbench state for recovery');
 SELECT throws_ok($$SELECT public.admin_update_feedback(
- '39000000-0000-4000-8000-000000000001',8,'resolved')$$,
+ '39000000-0000-4000-8000-000000000001',6,'resolved')$$,
  'PT409','NOT_IN_WORKBENCH','trash is hidden from processing mutations');
 SELECT is((public.admin_screen_feedback(
- '39000000-0000-4000-8000-000000000001',8,'restore')->>'queue_state'),
+ '39000000-0000-4000-8000-000000000001',6,'restore')->>'queue_state'),
  'workbench','restore from trash returns to prior workbench stage');
 SELECT ok((SELECT status='in_progress' AND priority='high' AND is_starred
  AND tags=ARRAY['同步','稳定性']::text[] AND deleted_at IS NULL

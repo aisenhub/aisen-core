@@ -179,13 +179,26 @@ try{
   assert.ok(menu.active.includes('用户反馈'),'feedback first-level nav selected');
   assert.ok(!menu.active.includes('用户'),'people first-level nav is not selected');
   assert.equal(menu.secondary,0,'feedback no longer shows people secondary nav');
+  const inboxGeometry=await evaluate("(()=>{const main=document.querySelector('.RaLayout-content')?.getBoundingClientRect();const heading=[...document.querySelectorAll('h1')].find(x=>x.textContent?.includes('反馈收件箱'))?.getBoundingClientRect();const table=document.querySelector('table')?.getBoundingClientRect();return {mainWidth:main?.width,left:main?.left,headingLeft:heading?.left,tableWidth:table?.width}})()");
+  assert.ok(inboxGeometry.headingLeft-inboxGeometry.left<100,
+    'feedback inbox title left aligned with workspace, not centered island');
+  assert.ok(inboxGeometry.tableWidth>inboxGeometry.mainWidth*.73,
+    'feedback inbox table should occupy main workspace width');
   await capture('feedback-inbox-desktop');
   console.log('FB_BROWSER list PASS real AAL2, server feedback row visible');
   await send('Page.navigate',{url:base+'/#/feedback/'+feedbackId+'/show'});
   await visible('收件箱筛选');
   await visible('浏览器真实反馈详情与指派验收');
   await visible('处理历史');
+  assert.equal(await evaluate("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent?.trim()==='处理历史');b?.click();return !!b})()"),true,
+    'history button should open a dialog');
   await visible('反馈提交');
+  assert.ok(await evaluate("!![...document.querySelectorAll('[role=dialog]')].find(x=>x.textContent?.includes('反馈提交'))"),
+    'history must render inside a dialog instead of below the editor');
+  await capture('feedback-history-dialog-desktop');
+  await evaluate("(()=>{const b=[...document.querySelectorAll('[role=dialog] button')].find(x=>x.textContent?.trim()==='关闭');b?.click()})()");
+  // Wait for MUI's exit transition so visual evidence is not dimmed by the departing backdrop.
+  await sleep(300);
   const detailMenu=await evaluate("(()=>({active:[...document.querySelectorAll('.MuiDrawer-paper a.RaMenuItemLink-active')].map(a=>a.textContent?.trim()),secondary:document.querySelectorAll('nav[aria-label$=二级导航]').length}))()");
   assert.ok(detailMenu.active.includes('用户反馈'),'feedback detail retains first-level active state');
   assert.ok(!detailMenu.active.includes('用户'),'feedback detail must not highlight people');
@@ -223,6 +236,15 @@ try{
   const draftSet=await evaluate("(()=>{const el=[...document.querySelectorAll('textarea')].find(x=>x.closest('.MuiFormControl-root')?.textContent?.includes('回复用户')&&!x.getAttribute('aria-hidden'));if(!el)return false;Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(el,"+
     JSON.stringify(draftText)+");el.dispatchEvent(new Event('input',{bubbles:true}));return true})()");
   assert.equal(draftSet,true,'public reply draft editable');
+  const detailGeometry=await evaluate("(()=>{const main=document.querySelector('.RaLayout-content')?.getBoundingClientRect();const card=[...document.querySelectorAll('.MuiCard-root')].find(x=>x.textContent?.includes('反馈内容'))?.getBoundingClientRect();return {mainWidth:main?.width,cardWidth:card?.width}})()");
+  assert.ok(detailGeometry.cardWidth>detailGeometry.mainWidth*.73,
+    'feedback content must occupy workspace rather than half an empty split layout');
+  assert.equal(await evaluate("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent?.includes('星标与标签'));b?.click();return !!b})()"),true,
+    'star and tag editor should open through a button');
+  await visible('添加内部标签');
+  assert.ok(await evaluate("!![...document.querySelectorAll('[role=dialog]')].find(x=>x.textContent?.includes('添加内部标签'))"),
+    'star and tag editor must be in a dialog');
+  await capture('feedback-attention-dialog-desktop');
   const tagSet=await evaluate("(()=>{const el=[...document.querySelectorAll('input')].find(x=>x.closest('.MuiFormControl-root')?.textContent?.includes('添加内部标签'));if(!el)return false;Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(el,'易复现');el.dispatchEvent(new Event('input',{bubbles:true}));return true})()");
   assert.equal(tagSet,true,'structured internal tag input editable');
   assert.equal(await evaluate("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent?.trim()==='添加');if(b&&!b.disabled){b.click();return true}return false})()"),

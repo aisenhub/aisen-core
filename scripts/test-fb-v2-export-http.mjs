@@ -8,8 +8,9 @@ const win=process.platform==='win32';
 const runner=(cmd,args,opts={})=>spawnSync(cmd,args,{encoding:'utf8',timeout:40000,...opts});
 const local=runner(win?'cmd.exe':'pnpm',win?
  ['/d','/s','/c','pnpm dlx supabase status --output json']:
- ['dlx','supabase','status','--output','json']);
-assert.equal(local.status,0,'local Supabase should be running');
+ ['dlx','supabase','status','--output','json'],{timeout:90000});
+assert.equal(local.status,0,'local Supabase should be running: '+
+  String(local.stderr||local.error?.message||'no status output').slice(-500));
 const cfg=JSON.parse(local.stdout);
 assert.equal(cfg.API_URL,'http://127.0.0.1:55321');
 assert.match(cfg.DB_URL,/127\.0\.0\.1:55322/);
