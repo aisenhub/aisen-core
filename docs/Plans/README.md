@@ -10,6 +10,8 @@
 - [D1：数据库、Pro、兑换码与可信 RPC](./aisencore-mvp/d1-database-and-trusted-rpc.md) — **D1 本地准出**：四份迁移从零重建成功，001～005 共 **239/239 pgTAP PASS**，双连接 LCK-01～07 全部通过；真实 JWT/HTTP/MFA 由 D2 验收。
 - [D2：真实 Auth、公共 API 与 TOTP MFA](./aisencore-mvp/d2-auth-public-api-and-mfa.md) — **旧技术工作流，第一阶段需要收口独立可完成内容**：DEC-06 SQL 查询、[006](../../supabase/tests/database/006_admin_user_lookup.test.sql) 47 项 pgTAP，GoTrue/PostgREST/Mailpit 实际 HTTP、签名 ES256 JWT 与 TOTP `aal2` 测试已 PASS；真实 Mailpit 密码找回、签名恢复 JWT、旧密码失效和新密码登录也已 PASS；D2 完整退出门禁（浏览器回调、失设备恢复、全量错误分支、性能）仍未通过。
 - [D3：React-admin（第一阶段交付重点）](./aisencore-mvp/d3-admin-console.md) — 正式 `apps/admin/` Vite/React-admin/TypeScript 已有全资源和主要真实 MFA 浏览器写入回归，仍需**全业务/表格流程、真实前端性能/代码拆分、WCAG 2.2 AA、高品质八维视觉和所有者签收**；不允许把这些任务移交至 AisenLens 本地联调阶段。
+- **[FB-V2 最新施工合同：收件箱 → 处理工作台 + AI ZIP 导出](./aisencore-mvp/fb-v2-inbox-workbench.md)** — 2026-10-26 起优先，已在本地增量实施，第一阶段人工和真实 R2 签收未完成。
+- **[FB 专项：跨 SaaS 用户反馈详细施工与验收计划](./aisencore-mvp/fb-user-feedback-implementation.md)** — FB-01A/B/C 数据/RPC、FB-02 图片安全与补偿、FB-03 Admin 交互、FB-04 本地 Lens/真实 R2 分阶段验证；当前从第一阶段 01A 启动。
   - [D3 专项：Admin 高标准前端完备化计划](./aisencore-mvp/d3-admin-experience-upgrade.md) — 以合成数据完成完整业务交互、八维视觉/无障碍、响应式/动效、真实 E2E 与最终签收；**部分代码及真实测试已通过，整体尚未签收**。
 - [S1：AisenLens 私有备份/Edge/R2](./aisencore-mvp/s1-aisenlens-r2-backup.md) — 第二阶段与 AisenLens 本地实际业务数据共同开发 Core 后端和 Lens 前端；第三阶段验证实际部署端/R2；业务参数待冻结。
 - [D4：整体验收与发布准入](./aisencore-mvp/d4-release-acceptance.md) — 前两阶段不得漏测各自本地可验收项目；第三阶段负责云端部署、生产级跨服务验收与单独发布审批。

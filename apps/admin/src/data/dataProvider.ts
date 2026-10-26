@@ -3,6 +3,9 @@ import { supabase } from '../supabaseClient';
 import { invalidateAdminAccess } from '../auth/authProvider';
 
 const columns: Record<string, { table: string; id: string; fields: string }> = {
+  feedback: { table: 'admin_feedback_summaries', id: 'id', fields: 'id,feedback_no,product_id,user_id,content,category,status,priority,assigned_to,version,created_at,updated_at,resolved_at,closed_at,attachment_count,queue_state,read_at,triaged_at,is_starred,tags,archived_at,deleted_at,deleted_from' },
+  'feedback-events': { table: 'feedback_events', id: 'id', fields: 'id,feedback_id,actor_user_id,event_type,visibility,from_status,to_status,message,created_at' },
+  'feedback-attachments': { table: 'feedback_attachments', id: 'id', fields: 'id,feedback_id,slot,mime_type,size_bytes,created_at' },
   products: { table: 'products', id: 'id', fields: 'id,product_key,name,description,status,created_at,updated_at' },
   memberships: { table: 'product_memberships', id: 'id', fields: 'id,user_id,product_id,status,pre_suspend_status,joined_at,updated_at' },
   grants: { table: 'entitlement_grants', id: 'id', fields: 'id,user_id,product_id,tier,source_type,grant_mode,requested_duration_days,starts_at,ends_at,revoked_at,created_at' },
@@ -79,7 +82,8 @@ async function listRecords(resource: string, opts: {
   if (!allowed.includes(field)) throw new Error('不支持的排序字段');
   let query = supabase.from(s.table).select(s.fields, { count: 'exact' });
   for (const [key, value] of filterRows(resource, opts.filter ?? {})) {
-    query = query.eq(key === 'id' ? s.id : key, value as string);
+    if(resource==='feedback'&&key==='tags') query=query.contains('tags',[String(value)]);
+    else query = query.eq(key === 'id' ? s.id : key, value as string);
   }
   const offset = ((opts.pagination?.page ?? 1) - 1) * (opts.pagination?.perPage ?? 25);
   const { data, error, count } = await query.order(field, {

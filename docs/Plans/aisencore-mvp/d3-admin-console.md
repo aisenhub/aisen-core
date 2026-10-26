@@ -44,9 +44,11 @@
    - **平台管理员与账号限制（`admins` / `restrictions`）及审计日志（`audit-logs` / `membership-events`）**：处理 M1 最后一名合格管理员冲突（`409 STATE_CONFLICT`）友好提示；只读脱敏审计列表。
    - **最小认证辅助页**：`/auth/confirm` 与 `/auth/reset-password`（支持桌面端 AisenLens 用户在手机/任意浏览器点击邮件链接完成验证后提示返回客户端）。
 
+**新增首阶段 D3 正式反馈资源（基础页面与本地自动化已实现，整体验收仍进行中）**：2026-10-26 将「用户反馈」提升为左侧第 5 个一级入口（位于「兑换码」下方、「平台管理」上方），保留 `/feedback`、`/feedback/:id/show`；按产品列表摘要/分类/状态/优先级/分页，详情私有 0～2 图、内部备注与独立公开回复、五态处理与事件时间线，Dashboard 待处理入口。后端依赖公共 PG 三表、本人受限读取/补充、Admin `aal2` RPC、受限 Edge 上传/R2。第一阶段完成可独立测试的 Admin/Core/R2 Mock、浏览器/WCAG/视觉签收；第二阶段 AisenLens 本地真实提交；第三阶段真实 R2/云端验收，详见[TODO FB-01～04](../TODO.md)。
+
 ### 1.3 严禁越界行为（Hard Out-of-Scope）
 - **严禁**引入 Tailwind CSS、Ant Design、shadcn/ui、Redux、Zustand、自定义手写表格或独立路由框架。
-- **严禁**在 Admin 中添加“Free/Pro 功能开关配置”、“业务额度编辑”、“套餐版本克隆（`pro_v2`）”或未批准服务端合同的“用户反馈收件箱后端写入”。
+- **严禁**在 Admin 中添加“Free/Pro 功能开关配置”、“业务额度编辑”、“套餐版本克隆（`pro_v2`）”；新增反馈模块必须按[反馈领域合同](../../architecture/domains/user-feedback.md)实施，不能直接搬用 V6 内存原型的六态，或绕过受保护 RPC。
 - **严禁**在前端代码或 Vite `VITE_*` 环境变量中配置 `service_role` key、数据库直连密码或 R2 Secret Key。
 
 ---

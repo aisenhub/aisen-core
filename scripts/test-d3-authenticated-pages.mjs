@@ -76,12 +76,17 @@ async function ready(url) {
   throw Error('Frontend/Chrome not ready: '+url);
 }
 let seq=0,pending=new Map();
-function send(method,params={}) {
+function send(method,params={},timeoutMs=15000) {
   const id=++seq;
   return new Promise((resolve,reject)=>{
-    pending.set(id,{resolve,reject});
+    const timer=setTimeout(()=>{
+      if(pending.has(id)){pending.delete(id);reject(Error('CDP '+method+' timeout'));}
+    },timeoutMs);
+    pending.set(id,{
+      resolve:value=>{clearTimeout(timer);resolve(value)},
+      reject:error=>{clearTimeout(timer);reject(error)},
+    });
     ws.send(JSON.stringify({id,method,params}));
-    setTimeout(()=>{if(pending.has(id)){pending.delete(id);reject(Error('CDP '+method+' timeout'));}},15000);
   });
 }
 async function evaluate(expression){
@@ -222,14 +227,14 @@ try {
     'topbar must use the new light appearance');
   console.log('SHELL_LIGHT PASS independent panels, left scope, no duplicate header copy');
 
-  // Navigation IA: one workspace group, five first-level tasks and four management children.
+  // Navigation IA: one workspace group, six first-level tasks and four management children.
   const primaryNav=JSON.parse(await evaluate("JSON.stringify([...document.querySelectorAll('.MuiDrawer-paper a[href]')].map(a=>a.textContent?.trim()).filter(Boolean))"));
-  assert.deepEqual(primaryNav,['概览','用户','权益','兑换码','平台管理'],
-    'sidebar has exactly five task-based destinations in the approved order');
+  assert.deepEqual(primaryNav,['概览','用户','权益','兑换码','用户反馈','平台管理'],
+    'sidebar has exactly six task-based destinations, feedback immediately below redemption');
   const sidebarText=String(await evaluate("document.querySelector('.MuiDrawer-paper')?.innerText??''"));
   assert.ok(sidebarText.includes('工作区')&&!sidebarText.includes('业务管理'),
     'workspace is the only navigation group; product is a management child');
-  console.log('NAV_PRIMARY PASS single workspace category, five primary entries, preserved Resource routes');
+  console.log('NAV_PRIMARY PASS one workspace category, six primary entries and preserved Resource routes');
 
   // Local production-preview diagnostic sample, not a Lighthouse/Core Web
   // Vitals signoff. Only aggregate timings and asset sizes; never URL tokens.
@@ -253,7 +258,24 @@ try {
   console.log('P1_SAMPLE recorded headless local production dashboard performance (not Web Vitals signoff)');
   const capture=async(name)=>{
     const jpeg=name.endsWith('.jpg');
-    const r=await send('Page.captureScreenshot',{format:jpeg?'jpeg':'png',...(jpeg?{quality:name.includes('-review')?43:76}:{}),captureBeyondViewport:false});
+    let r;
+    for(let attempt=0;attempt<2;attempt++){
+      try{
+        r=await send('Page.captureScreenshot',{
+          format:jpeg?'jpeg':'png',
+          ...(jpeg?{quality:name.includes('-review')?43:76}:{}),
+          captureBeyondViewport:false,
+        },attempt===0?30000:45000);
+        break;
+      }catch(error){
+        if(attempt===1)throw error;
+        // A single slow headless Chrome frame is not an application failure.
+        // Still fail the suite if the capture remains unresponsive on retry.
+        console.warn('SCREENSHOT_RETRY '+name+' after one CDP timeout');
+        await sleep(400);
+      }
+    }
+    if(!r?.result?.data)throw Error('Screenshot produced no data: '+name);
     writeFileSync(join(dir,name),Buffer.from(r.result.data,'base64'));
   };
   await capture('operator-dashboard-1440.png');
@@ -320,7 +342,13 @@ try {
     'management child uses original audit Resource URL');
   await send('Page.reload',{ignoreCache:true});
   await visible('管理审计');
-  assert.deepEqual(JSON.parse(await evaluate("JSON.stringify([...document.querySelectorAll('nav[aria-label=平台管理二级导航] a[aria-current=page]')].map(e=>e.textContent?.trim()))")),['管理审计'],
+  let selectedManagement=[];
+  for(let n=0;n<65;n++){
+    selectedManagement=JSON.parse(await evaluate("JSON.stringify([...document.querySelectorAll('nav[aria-label=平台管理二级导航] a[aria-current=page]')].map(e=>e.textContent?.trim()))"));
+    if(selectedManagement.length===1&&selectedManagement[0]==='管理审计')break;
+    await sleep(120);
+  }
+  assert.deepEqual(selectedManagement,['管理审计'],
     'management child selection survives reload');
   await send('Runtime.evaluate',{expression:axeBundle});
   await send('Page.navigate',{url:base+'/#/products'});
@@ -405,14 +433,25 @@ try {
     ['restrictions','账号限制','目标账号'],
     ['audit-logs','管理审计','操作类型'],
     ['users','查找账号','请输入邮箱查找账号'],
+    ['feedback','反馈收件箱','收件箱'],
   ];
   for(const [route,title,expected] of morePages){
     await send('Page.navigate',{url:base+'/#/'+route});
     await visible(title);
-    const body=await visible(expected);
+    let body=await visible(expected);
+    if(route==='feedback'){
+      // The primary menu label is visible before the feedback async list settles.
+      for(let n=0;n<75;n++){
+        body=String(await evaluate('document.body?.innerText??""')??'');
+        if(body.includes('收件箱暂无待筛选反馈')||body.includes('收到时间'))break;
+        await sleep(180);
+      }
+    }
     assert.ok(!body.includes('resources.'+route+'.'),route+' untranslated framework keys');
     assert.ok(!body.includes('记录读取失败'),route+' data request failed');
     assert.ok(!body.includes('Cannot read properties'),route+' runtime crashed');
+    if(route==='feedback')assert.ok(body.includes('收件箱暂无待筛选反馈')||body.includes('收到时间'),
+      'feedback list must render either valid records or its localized empty state');
     await axeAudit(route);
     // AC-01: operational lists have no marketing Hero or secondary global switch.
     assert.equal(await evaluate("document.body.innerText.includes('查看全平台')"),false,
@@ -448,6 +487,12 @@ try {
       assert.deepEqual(secondary.map(x=>x.text),section[1],'approved secondary views for '+route);
       assert.equal(secondary.filter(x=>x.current==='page').length,1,'one selected secondary destination for '+route);
     }
+    if(route==='feedback'){
+      const nav=JSON.parse(await evaluate("JSON.stringify((()=>({selected:[...document.querySelectorAll('.MuiDrawer-paper a[href]')].filter(a=>a.textContent?.trim()==='用户反馈'&&a.classList.contains('RaMenuItemLink-active')).length,secondary:document.querySelectorAll('nav[aria-label$=二级导航]').length}))())"));
+      assert.equal(nav.selected,1,'feedback is a selected first-level navigation item');
+      assert.equal(nav.secondary,0,'feedback no longer renders the people secondary navigation');
+      console.log('NAV_FEEDBACK_PRIMARY PASS own selected entry and no people secondary tabs');
+    }
     if(route==='code-batches'){
       const jumped=await evaluate("(()=>{const a=[...document.querySelectorAll('nav[aria-label=兑换码二级导航] a')].find(e=>e.textContent?.includes('兑换码记录'));a?.click();return !!a})()");
       assert.equal(jumped,true,'redemption child navigation actionable');
@@ -458,7 +503,12 @@ try {
       await visible('兑换码记录');
       // Full navigation resets the page-scoped test-only axe injection.
       await send('Runtime.evaluate',{expression:axeBundle});
-      const selected=await evaluate("(()=>[...document.querySelectorAll('nav[aria-label=兑换码二级导航] a')].filter(x=>x.getAttribute('aria-current')==='page').map(x=>x.textContent?.trim()))()");
+      let selected=[];
+      for(let n=0;n<55;n++){
+        selected=await evaluate("(()=>[...document.querySelectorAll('nav[aria-label=兑换码二级导航] a')].filter(x=>x.getAttribute('aria-current')==='page').map(x=>x.textContent?.trim()))()");
+        if(selected.length===1&&selected[0]==='兑换码记录')break;
+        await sleep(120);
+      }
       assert.deepEqual(selected,['兑换码记录'],'redemption selected view remains correct after reload');
       console.log('NAV_RELOAD PASS selected child survives full browser reload');
 
@@ -875,7 +925,13 @@ try {
   // never print/capture/export the actual secret code in QA artifacts.
   async function openIssuanceFromList(){
     await visible('发行数量');
-    const opened=await evaluate("(()=>{const a=[...document.querySelectorAll('.RaLayout-content a[href]')].find(e=>e.textContent?.trim()==='发行兑换码');a?.click();return !!a})()");
+    // The route and lazy-loaded list action can become visible in different frames.
+    // Wait for the actual action rather than treating a table header as page readiness.
+    let opened=false;
+    for(let i=0;i<40&&!opened;i++){
+      opened=await evaluate("(()=>{const a=[...document.querySelectorAll('.RaLayout-content a[href]')].find(e=>e.textContent?.trim()==='发行兑换码');a?.click();return !!a})()");
+      if(!opened)await sleep(150);
+    }
     assert.equal(opened,true,'issuance opens from batch list');
     await visible('目标产品');
     assert.equal(await evaluate("document.querySelectorAll('[role=dialog]').length"),1,
@@ -1141,7 +1197,7 @@ try {
       await visible(title);
       // Below 768px the desktop table header is intentionally replaced by
       // accessible record cards; do not mistake that responsive behavior for a failure.
-      await visible(w<900&&route!=='users'?'第 ':expected);
+      await visible(w<900&&route!=='users'&&route!=='feedback'?'第 ':expected);
       const width=JSON.parse(await evaluate("JSON.stringify({client:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth})"));
       assert.ok(width.scroll<=width.client+12,route+' at '+w+'px overflows document; '+JSON.stringify(width));
       responsiveChecks++;

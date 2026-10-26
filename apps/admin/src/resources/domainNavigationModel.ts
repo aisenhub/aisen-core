@@ -7,7 +7,7 @@ export const domainViews={
 } as const;
 export type DomainResourceName =
   'products'|'memberships'|'users'|'membership-events'|'grants'|
-  'code-batches'|'codes'|'redemptions'|'audit-logs'|'restrictions'|'admins';
+  'code-batches'|'codes'|'redemptions'|'audit-logs'|'restrictions'|'admins'|'feedback';
 export const domainFor:Partial<Record<DomainResourceName,keyof typeof domainViews>>={
   memberships:'people',users:'people',
   'code-batches':'redemption',codes:'redemption',redemptions:'redemption',

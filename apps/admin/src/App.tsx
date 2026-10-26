@@ -7,6 +7,7 @@ import DashboardRoundedIcon from '@mui/icons-material/DashboardRounded';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined';
 import ConfirmationNumberOutlinedIcon from '@mui/icons-material/ConfirmationNumberOutlined';
+import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 
 import { theme } from './theme';
@@ -41,6 +42,9 @@ const RestrictionsList = lazy(() => import('./resources/WorkspaceLists').then(m 
 const AuditList = lazy(() => import('./resources/WorkspaceLists').then(m => ({ default: m.AuditList })));
 const UsersList = lazy(() => import('./resources/WorkspaceLists').then(m => ({ default: m.UsersList })));
 const UserShow = lazy(() => import('./resources/UserShow').then(m => ({ default: m.UserShow })));
+const FeedbackList = lazy(() => import('./resources/FeedbackV2').then(m => ({ default: m.FeedbackInbox })));
+const FeedbackWorkbench = lazy(() => import('./resources/FeedbackV2').then(m => ({ default: m.FeedbackWorkbench })));
+const FeedbackShow = lazy(() => import('./resources/Feedback').then(m => ({ default: m.FeedbackShow })));
 const GrantCreate = lazy(() => import('./resources/GrantCreate').then(m => ({ default: m.GrantCreate })));
 const IssueCodes = lazy(() => import('./resources/IssueCodes').then(m => ({ default: m.IssueCodes })));
 const AccountActions = lazy(() => import('./resources/AccountActions').then(m => ({ default: m.AccountActions })));
@@ -221,6 +225,9 @@ function AdminMenu() {
     <Menu.Item to="/code-batches" primaryText="兑换码"
       sx={domainStyle(current('/code-batches','/codes','/redemptions','/issue-codes'))}
       leftIcon={<ConfirmationNumberOutlinedIcon fontSize="small"/>}/>
+    <Menu.Item to="/feedback" primaryText="用户反馈"
+      sx={domainStyle(current('/feedback'))}
+      leftIcon={<ChatBubbleOutlineRoundedIcon fontSize="small"/>}/>
     <Menu.Item to="/audit-logs" primaryText="平台管理"
       sx={domainStyle(current('/products','/audit-logs','/restrictions','/admins','/account-actions'))}
       leftIcon={<ShieldOutlinedIcon fontSize="small"/>}/>
@@ -280,10 +287,12 @@ export default function App() {
     <Resource name="audit-logs" options={{label:'管理审计'}} list={AuditList} show={AuditShow}/>
     <Resource name="membership-events" options={{label:'成员事件'}} list={EventsList}/>
     <Resource name="users" options={{label:'查找账号'}} list={UsersList} show={UserShow}/>
+    <Resource name="feedback" options={{label:'用户反馈'}} list={FeedbackList} show={FeedbackShow}/>
     <CustomRoutes>
       <Route path="/grant-new" element={<Authenticated><GrantCreate/></Authenticated>}/>
       <Route path="/issue-codes" element={<Authenticated><IssueCodes/></Authenticated>}/>
       <Route path="/account-actions" element={<Authenticated><AccountActions/></Authenticated>}/>
+      <Route path="/feedback/workbench" element={<Authenticated><FeedbackWorkbench/></Authenticated>}/>
     </CustomRoutes>
   </Admin></Suspense>;
 }
