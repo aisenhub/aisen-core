@@ -1,0 +1,158 @@
+{
+  "chrome": "Chrome/155.0.8059.81",
+  "viewport": "1440x900 DPR1",
+  "network": "localhost preview; simulated desktop 150ms RTT/1.6Mbps download/0.72Mbps upload and 4x CPU",
+  "sampling": "5 samples each, cold cache disabled, anonymous login only, no interaction, no AAL2; LCP and CLS are lab observations",
+  "samples": [
+    {
+      "mode": "desktop-unthrottled",
+      "index": 1,
+      "complete": true,
+      "ttfb": 2906.60000000149,
+      "fcp": 4860,
+      "lcp": {
+        "t": 4860,
+        "tag": "H1"
+      },
+      "cls": 0,
+      "dom": 47,
+      "heap": 7446627,
+      "resources": 9
+    },
+    {
+      "mode": "desktop-unthrottled",
+      "index": 2,
+      "complete": true,
+      "ttfb": 72,
+      "fcp": 592,
+      "lcp": {
+        "t": 592,
+        "tag": "H1"
+      },
+      "cls": 0,
+      "dom": 47,
+      "heap": 10455565,
+      "resources": 8
+    },
+    {
+      "mode": "desktop-unthrottled",
+      "index": 3,
+      "complete": true,
+      "ttfb": 47.79999999888241,
+      "fcp": 424,
+      "lcp": {
+        "t": 424,
+        "tag": "H1"
+      },
+      "cls": 0,
+      "dom": 47,
+      "heap": 14395284,
+      "resources": 8
+    },
+    {
+      "mode": "desktop-unthrottled",
+      "index": 4,
+      "complete": true,
+      "ttfb": 32.09999999962747,
+      "fcp": 676,
+      "lcp": {
+        "t": 676,
+        "tag": "H1"
+      },
+      "cls": 0,
+      "dom": 47,
+      "heap": 19157350,
+      "resources": 9
+    },
+    {
+      "mode": "desktop-unthrottled",
+      "index": 5,
+      "complete": true,
+      "ttfb": 25.59999999962747,
+      "fcp": 872,
+      "lcp": {
+        "t": 872,
+        "tag": "H1"
+      },
+      "cls": 0,
+      "dom": 47,
+      "heap": 23661740,
+      "resources": 9
+    },
+    {
+      "mode": "desktop-4x-cpu-slow-network",
+      "index": 1,
+      "complete": true,
+      "ttfb": 262.59999999962747,
+      "fcp": 5152,
+      "lcp": {
+        "t": 5152,
+        "tag": "H1"
+      },
+      "cls": 0,
+      "dom": 47,
+      "heap": 29972842,
+      "resources": 9
+    },
+    {
+      "mode": "desktop-4x-cpu-slow-network",
+      "index": 2,
+      "complete": true,
+      "ttfb": 40.5,
+      "fcp": 4304,
+      "lcp": {
+        "t": 4304,
+        "tag": "H1"
+      },
+      "cls": 0,
+      "dom": 47,
+      "heap": 31532993,
+      "resources": 8
+    },
+    {
+      "mode": "desktop-4x-cpu-slow-network",
+      "index": 3,
+      "complete": true,
+      "ttfb": 109.80000000074506,
+      "fcp": 5336,
+      "lcp": {
+        "t": 5336,
+        "tag": "H1"
+      },
+      "cls": 0,
+      "dom": 47,
+      "heap": 34048238,
+      "resources": 8
+    },
+    {
+      "mode": "desktop-4x-cpu-slow-network",
+      "index": 4,
+      "complete": true,
+      "ttfb": 20.100000001490116,
+      "fcp": 3240,
+      "lcp": {
+        "t": 3240,
+        "tag": "H1"
+      },
+      "cls": 0,
+      "dom": 47,
+      "heap": 40396816,
+      "resources": 9
+    },
+    {
+      "mode": "desktop-4x-cpu-slow-network",
+      "index": 5,
+      "complete": true,
+      "ttfb": 20.59999999962747,
+      "fcp": 6644,
+      "lcp": {
+        "t": 6644,
+        "tag": "H1"
+      },
+      "cls": 0,
+      "dom": 47,
+      "heap": 9596832,
+      "resources": 9
+    }
+  ]
+}

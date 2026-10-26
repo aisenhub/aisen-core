@@ -6,6 +6,7 @@
 | --- | --- |
 | React-admin/MUI 技术框架、组件复用、通用前端实施规则 | [Admin 前端开发总纲](./admin-design-guide.md) |
 | 全局单 Theme、样式一致性、可访问性与设计自由度 | [Admin 统一 UI 质量规范](../../architecture/applications/admin-ui-design-system.md) |
+| 全站性能审查：生产构建、页面覆盖、测量口径与证据要求 | [Admin 全面性能审查提示词](../../prompt/admin-frontend-performance-review.md) |
 | 结构化通用 UX 审核 | [规则索引](./admin-design-rules.md)及 [62 条 JSON 规则](./admin-design-rules.json) |
 | 如何决定何时制作原型、怎样进行用户比选和 AI 开发交接 | [原型与 AI 开发工作流](./interaction-benchmark-workflow.md) |
 | 本次交互原型需要包含的最小验证场景和交付证据 | [原型产物规范](./interaction-benchmark-spec.md) |

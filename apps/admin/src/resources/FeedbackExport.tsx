@@ -15,7 +15,11 @@ const optionLabels:Record<OptionKey,string>={
   identity:'包含反馈人身份（默认关闭）',
 };
 const optionKeys=Object.keys(optionLabels) as OptionKey[];
-export function FeedbackExport({queue,mode}:{queue:'inbox'|'workbench'|'archived'|'trashed';mode:'selected'|'filtered'}){
+export function FeedbackExport({queue,mode,selectedTags=[],priorityFilter='',starFilter=''}:{
+  queue:'inbox'|'workbench'|'archived'|'trashed';
+  mode:'selected'|'filtered';selectedTags?:string[];
+  priorityFilter?:string;starFilter?:string;
+}){
   const {selectedIds,filterValues,total}=useListContext();
   const [product]=useStore<string>('aisencore.current.product','');
   const [open,setOpen]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
@@ -36,12 +40,15 @@ export function FeedbackExport({queue,mode}:{queue:'inbox'|'workbench'|'archived
     if(sensitive&&!sensitiveReview){setSensitiveReview(true);return}
     setBusy(true);setError('');
     try{
-      const filters:Record<string,string|boolean>={};
+      const filters:Record<string,string|boolean|string[]>={};
       if(product)filters.product_id=product;
-      for(const key of ['category','priority','status','is_starred','tags'] as const){
+      for(const key of ['priority','is_starred'] as const){
         const value=filterValues[key];
         if(typeof value==='string'||typeof value==='boolean')filters[key]=value;
       }
+      if(priorityFilter)filters.priority=priorityFilter;
+      if(starFilter)filters.is_starred=starFilter;
+      if(selectedTags.length)filters.tags=selectedTags;
       const payload=mode==='selected'?{
         scope:'selected',queue_state:queue,ids:selectedIds.map(String),options,
       }:{scope:'filtered',queue_state:queue,filters,options};

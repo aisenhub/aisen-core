@@ -48,7 +48,7 @@ const handle=withSupabase({auth:'user'},async(req,ctx)=>{
   if(!parsed||typeof parsed!=='object')return fail('INVALID_BODY',422);
   const input=parsed as {scope?:string;queue_state?:string;
     options?:Record<string,boolean>;ids?:string[];
-    filters?:Record<string,string|boolean>};
+    filters?:Record<string,string|boolean|string[]>};
   const scope=(input.scope??'') as 'selected'|'filtered';
   const queue=input.queue_state??'';
   if(!['selected','filtered'].includes(scope)||
@@ -80,11 +80,19 @@ const handle=withSupabase({auth:'user'},async(req,ctx)=>{
     for(const field of fields){
       const v=input.filters?.[field];
       if(v!==undefined){
+        if(field==='tags'){
+          // Preserve legacy one-tag callers; V3 multi-tag filter is OR.
+          const values=typeof v==='string'?[v]:v;
+          if(!(Array.isArray(values)&&values.length>0&&values.length<=8&&
+            values.every(x=>typeof x==='string'&&x.length>=1&&x.length<=32)))
+            return fail('INVALID_FILTER',422);
+          query=query.overlaps('tags',values);
+          continue;
+        }
         if(typeof v!=='string'&&typeof v!=='boolean')return fail('INVALID_FILTER',422);
         if(field==='product_id'&&(!v||typeof v!=='string'||!uuid.test(v)))
           return fail('INVALID_FILTER',422);
-        if(field==='tags')query=query.contains('tags',[String(v)]);
-        else query=query.eq(field,v);
+        query=query.eq(field,v);
       }
     }
     if(input.filters&&Object.keys(input.filters).some(k=>!fields.includes(k as typeof fields[number])))

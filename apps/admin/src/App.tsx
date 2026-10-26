@@ -44,6 +44,8 @@ const UsersList = lazy(() => import('./resources/WorkspaceLists').then(m => ({ d
 const UserShow = lazy(() => import('./resources/UserShow').then(m => ({ default: m.UserShow })));
 const FeedbackList = lazy(() => import('./resources/FeedbackV2').then(m => ({ default: m.FeedbackInbox })));
 const FeedbackWorkbench = lazy(() => import('./resources/FeedbackV2').then(m => ({ default: m.FeedbackWorkbench })));
+const FeedbackArchived = lazy(() => import('./resources/FeedbackV2').then(m => ({ default: m.FeedbackArchived })));
+const FeedbackTrash = lazy(() => import('./resources/FeedbackV2').then(m => ({ default: m.FeedbackTrash })));
 const FeedbackShow = lazy(() => import('./resources/Feedback').then(m => ({ default: m.FeedbackShow })));
 const GrantCreate = lazy(() => import('./resources/GrantCreate').then(m => ({ default: m.GrantCreate })));
 const IssueCodes = lazy(() => import('./resources/IssueCodes').then(m => ({ default: m.IssueCodes })));
@@ -293,6 +295,8 @@ export default function App() {
       <Route path="/issue-codes" element={<Authenticated><IssueCodes/></Authenticated>}/>
       <Route path="/account-actions" element={<Authenticated><AccountActions/></Authenticated>}/>
       <Route path="/feedback/workbench" element={<Authenticated><FeedbackWorkbench/></Authenticated>}/>
+      <Route path="/feedback/archived" element={<Authenticated><FeedbackArchived/></Authenticated>}/>
+      <Route path="/feedback/trash" element={<Authenticated><FeedbackTrash/></Authenticated>}/>
     </CustomRoutes>
   </Admin></Suspense>;
 }

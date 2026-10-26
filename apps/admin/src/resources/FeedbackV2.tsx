@@ -1,14 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { Datagrid, DateField, FunctionField, List, ReferenceField, SelectInput, TextInput, TextField as RaTextField, useNotify, useRefresh, useStore, useUnselectAll, Confirm } from 'react-admin';
-import { Alert, Box, Button, Card, Chip, MenuItem, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
+import { Datagrid, DateField, FunctionField, List, ReferenceField, TextField as RaTextField, useNotify, useRefresh, useStore, useUnselectAll, useListContext, Confirm } from 'react-admin';
+import { Alert, Autocomplete, Box, Button, Card, Chip, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
 import AttachFileRoundedIcon from '@mui/icons-material/AttachFileRounded';
 import StarRoundedIcon from '@mui/icons-material/StarRounded';
 import InboxOutlinedIcon from '@mui/icons-material/InboxOutlined';
 import TaskAltOutlinedIcon from '@mui/icons-material/TaskAltOutlined';
+import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineRounded';
 import { Link as RouterLink } from 'react-router-dom';
 import { callRpc } from '../data/dataProvider';
 import { FeedbackExport } from './FeedbackExport';
 import { categoryLabels, priorityLabels, statusLabels } from './feedbackLabels';
+import {useFeedbackTags} from './useFeedbackTags';
 
 export type FeedbackV2Record={
   id:string;feedback_no:number;product_id:string;user_id:string;content:string;
@@ -16,6 +19,7 @@ export type FeedbackV2Record={
   read_at?:string|null;priority:string|null;status:string|null;is_starred:boolean;
   tags:string[];version:number;created_at:string;updated_at:string;
   attachment_count?:number;assigned_to?:string|null;
+  last_handled_by?:string|null;
 };
 export function FeedbackStatus({status}:{status:string|null}){
   const color=status==='resolved'||status==='closed'?'success':
@@ -27,7 +31,11 @@ export function FeedbackStatus({status}:{status:string|null}){
       color:color==='info'?'info.dark':color==='warning'?'warning.dark':undefined}}/>;
 }
 
-export function FeedbackQueueTabs({active}:{active:'inbox'|'workbench'}){
+export type FeedbackQueue='inbox'|'workbench'|'archived'|'trashed';
+const queueNames:Record<FeedbackQueue,string>={
+  inbox:'收件箱',workbench:'处理工作台',archived:'已归档',trashed:'回收站',
+};
+export function FeedbackQueueTabs({active}:{active:FeedbackQueue}){
   return <Tabs value={active} aria-label="反馈业务视图"
     sx={{minHeight:44,mb:2,borderBottom:1,borderColor:'divider',
       '& .MuiTab-root':{minHeight:44,px:{xs:1.5,sm:2.5},mr:1,fontWeight:700}}}>
@@ -35,9 +43,13 @@ export function FeedbackQueueTabs({active}:{active:'inbox'|'workbench'}){
       icon={<InboxOutlinedIcon fontSize="small"/>} iconPosition="start"/>
     <Tab component={RouterLink} to="/feedback/workbench" value="workbench" label="处理工作台"
       icon={<TaskAltOutlinedIcon fontSize="small"/>} iconPosition="start"/>
+    <Tab component={RouterLink} to="/feedback/archived" value="archived" label="已归档"
+      icon={<ArchiveOutlinedIcon fontSize="small"/>} iconPosition="start"/>
+    <Tab component={RouterLink} to="/feedback/trash" value="trashed" label="回收站"
+      icon={<DeleteOutlineIcon fontSize="small"/>} iconPosition="start"/>
   </Tabs>;
 }
-function FeedbackSummary({item,queue}:{item:FeedbackV2Record;queue:'inbox'|'workbench'}) {
+function FeedbackSummary({item,queue}:{item:FeedbackV2Record;queue:FeedbackQueue}) {
   return <Box sx={{minWidth:0,py:.25}}>
     <Stack direction="row" spacing={.8} sx={{mb:.5,alignItems:'center'}}>
       <Typography variant="caption" sx={{fontWeight:800,color:'primary.main',fontVariantNumeric:'tabular-nums'}}>#{item.feedback_no}</Typography>
@@ -55,54 +67,84 @@ function FeedbackSummary({item,queue}:{item:FeedbackV2Record;queue:'inbox'|'work
         <AttachFileRoundedIcon sx={{fontSize:13}} aria-hidden/>
         <Typography variant="caption">{item.attachment_count}</Typography>
       </Stack>}
-      {queue==='workbench'&&item.tags.length>0&&
+      {item.tags.length>0&&
         <Typography variant="caption" noWrap sx={{maxWidth:160}}>#{item.tags.join(' #')}</Typography>}
     </Stack>
   </Box>;
 }
-function Queue({queue}:{queue:'inbox'|'workbench'}){
+function QueueEmpty({queue}:{queue:FeedbackQueue}){
+  const {total,isPending}=useListContext();
+  if(isPending||total!==0)return null;
+  return <Card variant="outlined" sx={{width:'100%',px:{xs:3,md:4},py:{xs:4,md:5},textAlign:'left',mt:1}}>
+    <Typography component="h2" variant="h6">
+      {queue==='workbench'?'暂无进入处理工作台的反馈':
+        queue==='archived'?'没有匹配的已归档反馈':
+        queue==='trashed'?'没有匹配的回收站反馈':'当前没有匹配的收件箱反馈'}
+    </Typography>
+    <Typography color="text.secondary" variant="body2" sx={{mt:.75}}>
+      可以重置筛选条件，或切换队列与产品范围。
+    </Typography>
+  </Card>;
+}
+function Queue({queue}:{queue:FeedbackQueue}){
   const [product]=useStore<string>('aisencore.current.product','');
-  const [inboxState,setInboxState]=useState<'inbox'|'archived'|'trashed'>('inbox');
   const active=queue==='workbench';
-  const viewQueue=active?'workbench':inboxState;
+  const viewQueue=queue;
   const unselectAll=useUnselectAll('feedback');
+  const [labels,setLabels]=useState<string[]>([]);
+  const [priority,setPriority]=useState('');
+  const [starFilter,setStarFilter]=useState('');
+  const {tags:tagOptions,error:tagError}=useFeedbackTags(product);
   // React-admin keeps bulk selections per resource rather than per queue.
   // Never carry selections into a different product or workflow stage.
-  useEffect(()=>{unselectAll()},[viewQueue,product,unselectAll]);
-  return <Box sx={{px:{xs:2,md:3,lg:4},pt:{xs:2,md:3},pb:6,minWidth:0,maxWidth:1580,mx:'auto'}}>
-    <Typography component="h1" variant="h4" sx={{mb:2}}>
-      {active?'处理工作台':'反馈收件箱'}
+  useEffect(()=>{unselectAll()},[viewQueue,product,priority,starFilter,labels,unselectAll]);
+  return <Box sx={{px:{xs:2,md:3,lg:4.5},pt:{xs:2,lg:2.5},pb:6,
+    width:'100%',maxWidth:1720,mx:'auto',minWidth:0,boxSizing:'border-box'}}>
+    <Typography component="h1" sx={{fontSize:{xs:22,md:26},fontWeight:740,mb:1.5}}>
+      {queueNames[queue]}
     </Typography>
     <FeedbackQueueTabs active={queue}/>
-    {!active?<Stack direction="row" spacing={1} sx={{mb:2,flexWrap:'wrap'}}>
-      {([['inbox','待筛选'],['archived','已归档'],['trashed','回收站']] as const).map(([key,label])=><Button
-        key={key} size="small" variant={inboxState===key?'contained':'text'}
-        aria-pressed={inboxState===key} sx={{minHeight:34,borderRadius:5}}
-        onClick={()=>setInboxState(key)}>{label}</Button>)}
-    </Stack>:null}
     <List resource="feedback" perPage={20} sort={{field:active?'updated_at':'created_at',order:'DESC'}}
-      filter={{...(product?{product_id:product}:{}),queue_state:viewQueue}}
-      filters={active?[
-        <SelectInput key="status" source="status" label="处理状态" choices={Object.entries(statusLabels).map(([id,name])=>({id,name}))} alwaysOn />,
-        <SelectInput key="priority" source="priority" label="优先级" choices={Object.entries(priorityLabels).map(([id,name])=>({id,name}))} alwaysOn />,
-        <SelectInput key="is_starred" source="is_starred" label="星标" choices={[{id:'true',name:'已星标'},{id:'false',name:'未星标'}]} alwaysOn />,
-        <TextInput key="tags" source="tags" label="包含标签" alwaysOn />,
-      ]:[
-        <SelectInput key="category" source="category" label="类型" choices={Object.entries(categoryLabels).map(([id,name])=>({id,name}))} alwaysOn />,
-      ]}
+      filter={{...(product?{product_id:product}:{}),queue_state:viewQueue,
+        ...(priority?{priority}:{}),...(starFilter?{is_starred:starFilter}:{}),
+        ...(labels.length?{tags:labels}:{})}}
       title={false} actions={false} exporter={false} sx={{
-        '& .RaList-main':{minWidth:0},
-        '& .RaList-filterForm':{gap:1,alignItems:'center',flexWrap:'wrap',mb:1,
-          '& .MuiFormControl-root':{mb:0}},
+        width:'100%',minWidth:0,
+        '& .RaList-main':{minWidth:0,width:'100%'},
         '& .RaList-content':{overflow:'hidden',boxShadow:'none'},
       }}
-      empty={<Card variant="outlined" sx={{p:{xs:3,md:5},textAlign:'center'}}>
-        <Typography component="h2" variant="h6">{active?'暂无进入处理工作台的反馈':viewQueue==='archived'?'没有已归档反馈':viewQueue==='trashed'?'回收站为空':'收件箱暂无待筛选反馈'}</Typography>
-      </Card>}>
-      <Stack direction="row" sx={{mb:1.5,justifyContent:'flex-end'}}>
-        <FeedbackExport queue={viewQueue} mode="filtered"/>
+      empty={false}>
+      <Stack direction="row" sx={{width:'100%',mb:1.5,alignItems:'center',
+        gap:1.25,flexWrap:'wrap'}}>
+        <TextField select size="small" label="优先级" value={priority}
+          onChange={e=>setPriority(e.target.value)}
+          sx={{width:{xs:'100%',sm:155},flex:{sm:'0 0 155px'}}}>
+          <MenuItem value="">全部优先级</MenuItem>
+          {Object.entries(priorityLabels).map(([value,name])=>
+            <MenuItem key={value} value={value}>{name}</MenuItem>)}
+        </TextField>
+        <TextField select size="small" label="星标" value={starFilter}
+          onChange={e=>setStarFilter(e.target.value)}
+          sx={{width:{xs:'100%',sm:135},flex:{sm:'0 0 135px'}}}>
+          <MenuItem value="">全部</MenuItem>
+          <MenuItem value="true">已星标</MenuItem>
+          <MenuItem value="false">未星标</MenuItem>
+        </TextField>
+        <Autocomplete multiple size="small" options={tagOptions} value={labels}
+          onChange={(_,value)=>setLabels(value)}
+          renderInput={params=><TextField {...params} label="标签筛选" placeholder="选择已有标签"/>}
+          sx={{width:{xs:'100%',sm:280},minWidth:{sm:220},
+            flex:{sm:'1 1 280px'},maxWidth:{sm:480}}}/>
+        <Button size="small" onClick={()=>{setLabels([]);setPriority('');setStarFilter('')}}>
+          重置
+        </Button>
+        <Box sx={{ml:{sm:'auto'}}}>
+          <FeedbackExport queue={viewQueue} mode="filtered" selectedTags={labels}
+            priorityFilter={priority} starFilter={starFilter}/>
+        </Box>
       </Stack>
-      <Datagrid rowClick="show" bulkActionButtons={<FeedbackExport queue={viewQueue} mode="selected"/>}
+      {tagError&&<Alert severity="warning" sx={{mb:1}}>标签选项未加载成功，其他筛选仍可使用。</Alert>}
+      <Datagrid rowClick="show" bulkActionButtons={<FeedbackExport queue={viewQueue} mode="selected" selectedTags={labels}/>}
         sx={{
           '& .MuiTableCell-root':{wordBreak:'normal',whiteSpace:'normal',verticalAlign:'middle'},
           '& .MuiTableCell-head':{whiteSpace:'nowrap'},
@@ -120,23 +162,24 @@ function Queue({queue}:{queue:'inbox'|'workbench'}){
         }}>
         <FunctionField<FeedbackV2Record> source="feedback_no" label="反馈"
           render={item=><FeedbackSummary item={item} queue={queue}/>}/>
-        {active?<FunctionField<FeedbackV2Record> source="status" label="处理状态"
-          render={item=><FeedbackStatus status={item.status}/>}/>:null}
-        {active?<FunctionField<FeedbackV2Record> source="priority" label="优先级"
+        <FunctionField<FeedbackV2Record> source="priority" label="优先级"
           render={item=><Chip size="small" label={priorityLabels[item.priority??'']??'—'}
             color={item.priority==='urgent'?'error':item.priority==='high'?'warning':'default'}
             variant="outlined" sx={{color:item.priority==='urgent'?'error.dark':
-              item.priority==='high'?'warning.dark':undefined}}/>}/>:null}
+              item.priority==='high'?'warning.dark':undefined}}/>}/>
         <ReferenceField source="product_id" reference="products" label="所属产品" link={false} emptyText="—">
           <RaTextField source="name"/>
         </ReferenceField>
         <DateField source={active?'updated_at':'created_at'} label={active?'最近更新':'收到时间'} showTime/>
       </Datagrid>
+      <QueueEmpty queue={queue}/>
     </List>
   </Box>;
 }
 export function FeedbackInbox(){return <Queue queue="inbox"/>}
 export function FeedbackWorkbench(){return <Queue queue="workbench"/>}
+export function FeedbackArchived(){return <Queue queue="archived"/>}
+export function FeedbackTrash(){return <Queue queue="trashed"/>}
 
 function actionError(e:unknown){
   return (e as {status?:number}).status===409?'记录已更新，请刷新后操作。':
@@ -160,28 +203,26 @@ export function FeedbackScreening({record}:{record:FeedbackV2Record}){
     finally{setBusy(false)}
   };
   const inbox=record.queue_state==='inbox';
-  return <Card variant="outlined" sx={{p:{xs:2,md:3}}}>
+  return <Card variant="outlined" sx={{p:{xs:2,md:3},width:'100%'}}>
     <Typography component="h2" variant="h6" sx={{mb:2}}>收件箱筛选</Typography>
-    {inbox?<Stack spacing={2}>
+    {inbox?<Box sx={{display:'flex',gap:1.5,alignItems:'center',flexWrap:'wrap'}}>
       <TextField select size="small" label="分配优先级" value={priority}
-        onChange={e=>setPriority(e.target.value)}>
+        onChange={e=>setPriority(e.target.value)} sx={{width:{xs:'100%',sm:210}}}>
         {Object.entries(priorityLabels).map(([id,label])=><MenuItem key={id} value={id}>{label}</MenuItem>)}
       </TextField>
-      <Button fullWidth variant="contained" disabled={busy} onClick={()=>void act('triage')}>
+      <Button variant="contained" disabled={busy} onClick={()=>void act('triage')}>
         {busy?'正在处理…':'分配并进入工作台'}
       </Button>
-      <Stack direction="row" spacing={1} sx={{flexWrap:'wrap',gap:1}}>
-        <Button variant="outlined" disabled={busy} onClick={()=>void act('archive')}>归档</Button>
-        {!record.read_at?<Button disabled={busy} onClick={()=>void act('read')}>标记已读</Button>:null}
-        <Button color="error" sx={{color:'error.dark'}} disabled={busy}
-          onClick={()=>setConfirmAction('trash')}>移入回收站</Button>
-      </Stack>
-    </Stack>:<Stack spacing={1.5}>
-      <Typography color="text.secondary">当前阶段：{record.queue_state==='archived'?'已归档':'回收站'}</Typography>
+      <Button variant="outlined" disabled={busy} onClick={()=>void act('archive')}>归档</Button>
+      {!record.read_at?<Button disabled={busy} onClick={()=>void act('read')}>标记已读</Button>:null}
+      <Button color="error" sx={{color:'error.dark'}} disabled={busy}
+        onClick={()=>setConfirmAction('trash')}>移入回收站</Button>
+    </Box>:<Box sx={{display:'flex',gap:1.5,alignItems:'center',flexWrap:'wrap'}}>
+      <Typography color="text.secondary" variant="body2">当前阶段：{record.queue_state==='archived'?'已归档':'回收站'}</Typography>
       <Button variant="contained" disabled={busy} onClick={()=>void act('restore')}>恢复到原阶段</Button>
       {record.queue_state==='archived'?<Button color="error" sx={{color:'error.dark'}} disabled={busy}
         onClick={()=>setConfirmAction('trash')}>移入回收站</Button>:null}
-    </Stack>}
+    </Box>}
     <Confirm isOpen={confirmAction==='trash'} title="移入回收站"
       content="反馈将从当前列表移除，但仍可在回收站恢复。"
       confirm="确认移入" cancel="取消" confirmColor="warning"
@@ -192,7 +233,7 @@ export function FeedbackScreening({record}:{record:FeedbackV2Record}){
 }
 const sameTags=(a:readonly string[],b:readonly string[])=>
   a.length===b.length&&a.every((value,index)=>value===b[index]);
-export function FeedbackAttention({record}:{record:FeedbackV2Record}){
+export function FeedbackAttention({record,onClose}:{record:FeedbackV2Record;onClose:()=>void}){
   const notify=useNotify(),refresh=useRefresh();
   const [star,setStar]=useState(record.is_starred);
   const [tags,setTags]=useState<string[]>([...record.tags]);
@@ -226,13 +267,13 @@ export function FeedbackAttention({record}:{record:FeedbackV2Record}){
         p_is_starred:star,p_tags:nextTags,
       });
       setTagInput('');
-      notify('星标及标签已保存',{type:'success'});refresh();
+      notify('星标及标签已保存',{type:'success'});refresh();onClose();
     }catch(e){setError(actionError(e))}
     finally{setBusy(false)}
   };
-  return <Card variant="outlined" sx={{p:{xs:2,md:3}}}>
+  return <Box>
     <Stack direction="row" sx={{mb:2,justifyContent:'space-between',alignItems:'center'}}>
-      <Typography component="h2" variant="h6">星标与标签</Typography>
+      <Typography variant="subtitle1">关注此反馈</Typography>
       <Button size="small" variant={star?'contained':'outlined'} disabled={busy} onClick={()=>setStar(!star)}
         aria-pressed={star} startIcon={<StarRoundedIcon/>}>{star?'已星标':'加星标'}</Button>
     </Stack>
@@ -252,9 +293,25 @@ export function FeedbackAttention({record}:{record:FeedbackV2Record}){
         <Button variant="outlined" disabled={busy||!candidate||inputInvalid}
           onClick={addTag} sx={{mt:.2,flexShrink:0}}>添加</Button>
       </Stack>
-      <Button variant="outlined" disabled={busy||invalid||!changed} onClick={()=>void save()}>
-        {busy?'正在保存…':'保存星标和标签'}</Button>
       {error?<Alert severity="error">{error}</Alert>:null}
     </Stack>
-  </Card>;
+    <DialogActions sx={{px:0,pb:0,pt:2}}>
+      <Button disabled={busy} onClick={onClose}>取消</Button>
+      <Button variant="contained" disabled={busy||invalid||!changed} onClick={()=>void save()}>
+        {busy?'正在保存…':'保存星标和标签'}
+      </Button>
+    </DialogActions>
+  </Box>;
+}
+
+export function FeedbackAttentionDialog({open,record,onClose}:{
+  open:boolean;record:FeedbackV2Record;onClose:()=>void
+}){
+  return <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm"
+    aria-labelledby="feedback-attention-title">
+    <DialogTitle id="feedback-attention-title">星标与标签</DialogTitle>
+    <DialogContent dividers sx={{pt:2}}>
+      {open&&<FeedbackAttention record={record} onClose={onClose}/>}
+    </DialogContent>
+  </Dialog>;
 }
