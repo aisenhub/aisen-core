@@ -44,6 +44,14 @@
 
 用户主动提交所声明目标产品与兑换码调用 `redeem_code(product_key, code)`：无成员时可在同一个数据库事务中创建 `active` 与 `join` 事件，`left`/`suspended` 则不消费码。**未来支付 Webhook/补单不是用户主动使用**，只写可信授权来源，不调用 ensure，不恢复成员。精确分支只以[计费权益 §5](../domains/billing-and-entitlements.md#5-授权与产品成员状态的关系唯一权威)为准。
 
+### 3.4 跨 SaaS 用户反馈（FB-V2 双阶段与受控 ZIP；真实 R2/人工验收未完成）
+
+反馈不是成员创建或 Pro 校验入口。登录且邮箱确认、未全局 blocked 的用户（包括尚未加入对应产品者）由 SaaS 本人 JWT 提交 `product_key`、`request_id`、正文与 0～2 图；专用受保护 `feedback-submit` Edge 检查认证/产品/上传字节并写私有 R2，小图元数据与反馈原文由仅可信服务角色可调用的 `feedback_submit_from_edge` RPC 同事务落库，**新反馈固定 `queue_state=inbox` 且 `priority/status=NULL`**。Admin 只能先在 `admin_screen_feedback` 选择优先级晋升至 `workbench` 才能调用五态处理/负责人接口；阅读/归档/软删除、恢复、星标/标签均为独立受保护 RPC。两视图可调用 `feedback-export` Edge，基于真实 JWT/AAL2 和 RLS 重新核验范围，返回含正文/原图/可选事件字段的 ZIP，原图缺失则拒绝。详情见[FB-V2 实施计划](../../Plans/aisencore-mvp/fb-v2-inbox-workbench.md)。失败/超时按同 `request_id` 查询恢复，R2 单侧残留必须由受控清理处理。
+
+本人通过列白名单的受限读取入口查看自己的反馈和公开回复，可用 `reply_to_feedback` 追加文字；Admin 通过 RLS/PostgREST 查询，使用 `admin_update_feedback` 单事务处理状态、备注、公开回复及审计；私有图片由 `feedback-image-access` Edge 再核验本人/当前 `aal2` 管理员后短期授权。准确状态、权限、五态转换、幂等键、异常/清理和 Admin 信息架构以[用户反馈领域](../domains/user-feedback.md)为准，不借用 `check_access` 或产品 Pro 资格作为提交权限。SQL RPC 与 Edge 入口已编码，数据库 pgTAP、Edge 静态类型检查已通过；**本地 Edge 运行时已启动并完成真实 GoTrue JWT 的零图文字提交、重放/冲突、伪图/三图与 429 的 HTTP 验证；真实 R2 的一/两图上传与完整异常验收仍未完成**。不能把已编码接口当作已上线服务。
+
+**已增加的逻辑入口**：`feedback_submit_preflight(product_key, request_id)` 供本人上传前按账号/目标产品和幂等请求号验证，并仅返回活动 `product_id` 与候选 5 条/小时上限（避免直接授予 `products` SELECT），真实入库在同用户 L1 锁内复验，避免预检并发竞态；`my_feedback` 本人 DTO 返回 `version` 和受限附件 ID（不是 R2 key）；管理员单独调用 `admin_assign_feedback(feedback_id, expected_version, assigned_to)` 指派/取消当前合格管理员并留下事件和最小审计。当前 SQL 角色模拟、Edge 类型检查已通过，另有 6/6 本地 Auth 真签名 JWT/AAL1 HTTP 权限断言通过且临时用户已清理；**已有真实 Edge 零图 JWT HTTP、Admin AAL2 真 HTTP 和反馈专属 Chrome 操作 PASS；完整图片 HTTP/R2 与 AisenLens 客户端及人工验收仍待验证**。
+
 ## 4. 准入复核与缓存
 
 - 公共准入的**唯一检查顺序**及业务错误分类见[API 契约 §2、§4](./api-contract-and-mvp-acceptance.md)。`check_access` 不生成成员、不扣减额度、不代表具体资源授权，也不签发跨请求有效的产品许可证。

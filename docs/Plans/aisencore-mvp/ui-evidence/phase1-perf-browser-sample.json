@@ -1,14 +1,14 @@
 {
   "context": "single headless Chrome local production-preview authenticated navigation; no throttling",
   "sample": {
-    "domContentLoadedMs": 116,
-    "loadEventMs": 116,
-    "ttfbMs": 3,
-    "resourceRequests": 20,
-    "assetsRequested": 11,
-    "scriptAssetRequests": 11,
-    "sameOriginTransferBytes": 377495,
-    "jsDecodedBytes": 1219116
+    "domContentLoadedMs": 1600,
+    "loadEventMs": 1600,
+    "ttfbMs": 223,
+    "resourceRequests": 54,
+    "assetsRequested": 0,
+    "scriptAssetRequests": 0,
+    "sameOriginTransferBytes": 0,
+    "jsDecodedBytes": 0
   },
   "limitations": "Exploratory sample only; LCP/INP/CLS, P95, cold/warm repeated tests, 10k rows still NOT RUN"
 }

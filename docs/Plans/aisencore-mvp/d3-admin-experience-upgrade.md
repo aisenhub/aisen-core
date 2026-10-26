@@ -51,7 +51,7 @@ supabase/config.toml 的 [db.seed] enabled=false；当前 scripts 没有给 Admi
 | 响应式/视觉 QA | 主题基础色，未见业务截图矩阵 | 全路由多断点与交互状态截图、无障碍、性能、用户视觉签收 | P0 |
 | 本地体验素材 | 真实后端几乎空库 | 本地幂等、持久、可清理的 synthetic fixtures；数据/空态/技术错误可复现 | P0 |
 
-**明确非缺口/不做**：V6 离线原型中的反馈收件箱尚无获批服务端合同；也不建设公共 plans、Free/Pro 特性额度、其他 SaaS 私有数据、第二套权限系统。不可为“页面丰满”而臆造后端。
+**2026-10-25 新增缺口（尚未实现）**：跨 SaaS 用户反馈合同已收敛在[反馈长期架构](../../architecture/domains/user-feedback.md)；反馈列表/详情/受权图片/五态/内部备注/用户回复及可信后端纳入第一阶段，按 [TODO FB-01～04](../TODO.md) 另行验收。V6 的六态模拟不是正式实现。仍不建设公共 plans、Free/Pro 特性额度、其他 SaaS 私有数据或第二套权限系统。
 
 ## 2. 设计方案候选：AisenCore Operator Studio
 

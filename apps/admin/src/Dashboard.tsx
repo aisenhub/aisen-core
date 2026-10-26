@@ -8,12 +8,14 @@ import LayersOutlinedIcon from '@mui/icons-material/LayersOutlined';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined';
 import ConfirmationNumberOutlinedIcon from '@mui/icons-material/ConfirmationNumberOutlined';
+import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 
 const metrics = [
   { label: '产品', route: '/products', icon: <LayersOutlinedIcon/>, scope: '全平台' },
   { label: '成员关系', route: '/memberships', icon: <GroupsOutlinedIcon/> },
   { label: 'Pro 授权', route: '/grants', icon: <WorkspacePremiumOutlinedIcon/> },
   { label: '发行批次', route: '/code-batches', icon: <ConfirmationNumberOutlinedIcon/> },
+  { label: '待筛选反馈', route: '/feedback', icon: <ChatBubbleOutlineRoundedIcon/> },
 ];
 const actions = [
   { label:'新建产品', route:'/products/create' },
@@ -57,8 +59,9 @@ export function Dashboard() {
   const members=useGetList('memberships',{...common,filter,sort:{field:'joined_at',order:'DESC'}});
   const grants=useGetList('grants',{...common,filter});
   const batches=useGetList('code-batches',{...common,filter});
+  const feedback=useGetList('feedback',{...common,filter:{...filter,queue_state:'inbox'},sort:{field:'updated_at',order:'DESC'}});
   const audit=useGetList('audit-logs',{...common,pagination:{page:1,perPage:5},filter:{}});
-  const queries=[products,members,grants,batches];
+  const queries=[products,members,grants,batches,feedback];
   return <Box sx={{maxWidth:1720,width:'100%',minWidth:0,mx:'auto',px:{xs:2,md:3,lg:4.5},pt:{xs:2.5,md:3},pb:8}}>
     <Stack direction={{xs:'column',sm:'row'}} spacing={1.2} sx={{justifyContent:"space-between",alignItems:{xs:"flex-start",sm:"center"},mb:2.5}}>
       <Box>
@@ -71,7 +74,7 @@ export function Dashboard() {
         管理审计
       </Button>
     </Stack>
-    <Box sx={{display:'grid',gridTemplateColumns:{xs:'repeat(2,minmax(0,1fr))',lg:'repeat(4,minmax(0,1fr))'},
+    <Box sx={{display:'grid',gridTemplateColumns:{xs:'repeat(2,minmax(0,1fr))',lg:'repeat(5,minmax(0,1fr))'},
       '@media(max-width:360px)':{gridTemplateColumns:'1fr'},gap:{xs:1.3,md:2},mb:{xs:3.5,md:4.5}}}>
       {metrics.map((m,i)=><StatCard key={m.route} {...m} value={queries[i].total}
         pending={queries[i].isPending} error={queries[i].isError}/>)}
