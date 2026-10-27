@@ -22,6 +22,8 @@ MVP 尽量用 Supabase 官方 Auth SDK 的登录、令牌刷新、登出与密�
 
 **低请求量会话原则（MVP）**：由 SDK 集中管理 `getSession` / `onAuthStateChange` 及必要刷新；`getSession` 读取本地存储且必要时可能联网，不等于可信服务器验签。采用非对称签名 JWT 时，`getClaims` 可以通过可缓存 JWKS 验签，而 `getUser` 会访问 Auth 服务器，因此禁止对每次 render、页面导航、Pro 按钮或 Admin 列表访问重复调用 `getUser`。长期信任边界见[管理员领域](../domains/platform-admin-and-account-lifecycle.md)与[数据库访问](../database/database-access-and-transactions.md)，施工测试见阶段 Plan；普通用户 MVP **不强制 MFA**。
 
+**Lens 当前接入边界**：可选昵称用 Auth 用户可编辑资料跨产品显示，不新增资料表，也不信其 metadata 作权限。登出显式 local；切号/登出仅增加必要凭据锁定、释放未持久保存会话 Key、在途任务完成或明确取消、旧响应失效，保留加密凭据和项目。不得因此改 AI/Provider/项目算法或启用新的 Pro/第二项目门槛。人工注销渠道留待上线前确定，未确定不展示可成功申请的按钮。
+
 ## 3. 邮箱确认、找回密码与账户恢复
 
 - Supabase Auth 项目配置 **Confirm Email=on** 作为“确认邮箱后才可登录正式受保护业务”的唯一执行机制；应用负责提示和正确回调，不另造应用层 `email_verified` 访问判断。注册时不自动创建产品成员。
@@ -38,7 +40,7 @@ MVP 尽量用 Supabase 官方 Auth SDK 的登录、令牌刷新、登出与密�
 - Access JWT 与刷新令牌生命周期独立。撤销刷新令牌或禁用登录不代表已签发 JWT 当场失效；对平台封禁、产品封禁、Admin 敏感操作分别读取可信当前限制/成员/管理状态。Admin 已完成 `aal2` 的标签页不应因另一标签页重复密码登录被无条件覆盖降至 `aal1`；真实降级必须暂停管理请求并引导正常 MFA。设备失窃/因子重置须核验旧 JWT 残余窗口，在受保护服务端入口有可测试的紧急撤权手段或等效运维隔离，不把简单 `signOut` 误认为即刻失效。
 - MVP 无需强制“一人单设备”、跨设备踢下线或自定义会话数据库。多设备允许并存，按 Supabase Auth 原生刷新和到期机制运作；安全敏感操作可在必要时校验会话 ID 的最新状态。
 - 临时网络不可用时不能把“未能在线验证”误认为用户被封禁；云端新受保护操作不默认放行，本地离线免费功能继续可用；本地 Pro 按启动联网 + 关键操作合理复核，不能承诺无限离线授权。
-- **权益查询与 Auth 刷新分开**：`check_access` 是数据库只读权益 RPC，不要求每次查询先 `getUser()` 或强制 refresh JWT；本地 Pro 按需、single-flight 去重，15 分钟是待测新鲜度而非固定轮询。Auth Admin Edge 另有可信资格查询例外；MFA 与角色不因减少客户端请求而削弱。
+- **权益查询与 Auth 刷新分开**：`check_access` 是数据库只读权益 RPC，不要求每次查询先 `getUser()` 或强制 refresh JWT；本地 Pro 按需、single-flight 去重，最多 15 分钟是已采纳待实测的本地快照窗口，允许短时断网开始新纯本地 Pro，但新 AI/云操作必须在线核验；具体业务入口本轮不实施，且不是固定轮询。Auth Admin Edge 另有可信资格查询例外；MFA 与角色不因减少客户端请求而削弱。
 
 ## 5. 跨产品身份与会话安全
 

@@ -2,7 +2,7 @@
 
 > **用途**：本清单是 [阶段过渡优化计划 B0-03](./phase-transition-optimization-plan-2026-10-27.md) 的**实现核对结果**，不是第二份长期 API 业务合同。准入/稳定错误/状态唯一权威为 [API 契约](../../architecture/backend/api-contract-and-mvp-acceptance.md)、[反馈 V3 领域规则](../../architecture/domains/user-feedback.md)与[当前需求](../../spec/requirements.md)。
 >
-> **证据范围**：2026-10-27 静态读取本地 `E:\Projects\Aisencore`、`main` @ `7735052e` 的 SQL 迁移、Edge 入口与 Admin 代码；**本次没有启动真实 JWT/HTTP 服务、没有测试 AisenLens 客户端、没有连接 R2 云环境**。`CODED` 表示在本仓库有源码，不等于部署或双端 PASS。AisenLens 本地仓库的路径、接口调用与版本仍 **NOT VERIFIED**。
+> **证据范围**：2026-10-27 双仓 SQL/Edge/Admin 与 Lens 源码、路径/提交/入口已静态核对，详见[双仓审查](../aisenlens-aisencore-local-integration/2026-10-27-cross-repository-audit-and-integration-plan.md)。Core 代码基线7735052e，文档合入后4f698d5，Lens c83de232；两端真实 JWT/HTTP/客户端联调及云 R2 **NOT RUN**。本轮业务决定已确认、只改文档；CODED 不等于运行或验收。
 
 ## 1. 环境与鉴权边界
 
@@ -21,7 +21,7 @@
 | 本人 `leave_product(p_product_key text)` / `rejoin_product(p_product_key text)` | 产品 key | 主动退出 / 明确重新加入，`membership_status`、`changed`；不得由登录/查询/付款回调自动 rejoin；恢复成员状态不会自动恢复过期 Pro | 同一 [成员 RPC](../../../supabase/migrations/20261024032247_trusted_rpcs_and_locking.sql)；真实并发/旧请求负例待双端测试 |
 | 本人 `redeem_code(p_product_key text,p_code text)` | **两参**：目标产品 + 用户输入兑换码 | 预期成功 **HTTP 200 + `ok:true,grant_id,tier,starts_at,ends_at`**；预期拒绝/限流 **HTTP 200 + `ok:false,code,retry_after_seconds?`**；认证 401 与技术故障 5xx 不伪装业务拒绝。新账号可与合法兑换同事务首次加入，left/suspended 不能偷重入 | [兑换 RPC](../../../supabase/migrations/20261024033040_redemption_and_grant_rpcs.sql)；**不存在可供客户端使用的旧 `redeem_code(code)` 单参合同**，需核对 UI 的失败重试/本人授权查询 |
 
-**注意**：`check_access` 的 `allowed:false` 不是浏览器 403；`redeem_code` 的 `ok:false` 不是 HTTP 请求失败。HTTP 503、无响应/超时为未知，前端不能写入错误成功提示、盲换 `request_id` 或错误视为已取消 Pro。RLS 与 RPC 仍需真实 JWT 负例验证。
+**注意**：`check_access` 的 `allowed:false` 不是浏览器 403；`redeem_code` 的 `ok:false` 不是 HTTP 请求失败。读503为不可核验，写结果无法确定才UNKNOWN；成员按当前关系恢复，兑换只有两参、同用户/产品/同码重试，不添加request_id；反馈/备份才按原请求号恢复。不能假成功或将故障视为取消Pro。RLS 与 RPC 仍需真实 JWT 负例验证。
 
 ## 3. 反馈 V3 本人入口与 Edge（CODED，双端 NOT RUN）
 
@@ -36,19 +36,21 @@
 
 ## 4. AisenLens 专用私有 JSON 配置备份：设计已批准，**当前未编码准出**
 
-- [S1 方案](./s1-aisenlens-r2-backup.md)定义受限 JSON 白名单、JWT/Pro 检查、DB 配额原子预留、Edge 对 R2 final 条件写、pending/ready 和失败对账、客户端选版本→差异预览→按类别恢复；但当前 `supabase/functions` 已有入口只有 `feedback-submit`、`feedback-image-access` 和 `feedback-export`，**没有可供 AisenLens 调用的专用备份 Edge API**。不得把反馈图片上传路径误作配置备份已实现。
-- `U09/U10/U11` 的字段白名单、最大字节数、版本数/保留期、断网 Pro 新任务与 15 分钟候选窗口**未冻结**；正式确定前不得写死为生产合同。
+- [S1 方案](./s1-aisenlens-r2-backup.md)实施当前完整分析模板的专属RPC/Edge、20份原子预留、唯一条件写及失败对账，手动完整差异后整体恢复个人模板；现有三条反馈Edge不能充当备份入口，专属备份仍未编码准出。
+- U09/U10/U11 的业务方向已收敛：20份、5MiB已采纳待测、到期取回/删除、正常服务无年龄删除、完整个人恢复，以及短时断网新纯本地Pro有效快照暂按最多15分钟测试。剩余是全层schema固化、运行参数/权限实测和代码，不再等待所有者重复决定；新AI/云请求在线核验，AI/去水印/第二项目门槛本轮不改。
 - 视频、拉片项目/时间轴、AI 输出、用户 API Key/Token 不得进入公共 Core 或该 JSON 备份，AI 分析不经过 Core 服务端。
 
-## 5. 真正进入双端联调前的对照项目（均未开始）
+**新增已确认实现差距**：昵称使用Auth用户可编辑资料仅显示；注销渠道上线前确定。有效永久Pro拒兑其他码且不耗码尚未写入SQL。反馈错误误报403、产品/回收站查询与旧回复写路径清理、隔离对象入口仍待实现；本人查询只作必要恢复，不新增客户端历史/进度/回复页。现有安全列Grant历史可复用，不造新接口。
+
+## 5. 双端联调前的对照项目（静态已核对，真实运行未执行）
 
 | 项目 | 当前 Core 侧 | 待读取/实测的 Lens 侧 | 准出 |
 | --- | --- | --- | --- |
-| 本地仓库/构建/测试 | SQL 迁移与 Admin/Edge 已有部分分层证据 | **NOT VERIFIED**：仓库路径、分支、代码状态、启动命令 | 版本、环境和测试身份固定，可独立启动 |
-| 本人 Auth/注册/成员 | public RPC 签名已核对 | **NOT VERIFIED**：令牌获取、成员首次加入时机、离线 Free 请求量 | 401/blocked/left/suspended/跨产品和同号并发实测 |
-| Pro/兑换码 | 成员、资格、两参兑换契约已核对 | **NOT VERIFIED**：UI 自有业务权限、状态码分支、兑换码幂等告知 | 200 + `allowed/ok`、503/UNKNOWN、到期/撤权测试 |
-| 反馈 V3 | Edge/RPC CODED，历史本地零图与部分 Chrome 已有记录 | **NOT VERIFIED**：上传/本人状态展示/附件异常 | 真客户端 0/1/2 图与 Admin V3 交叉检查，区分隔离存储/真 R2 |
-| 配置备份/恢复 | 仅 S1 设计与安全边界，Core 专用 Edge 未编码 | **NOT VERIFIED**：实际 schema、配置类别、版本合并/冲突策略 | 双端先冻结 U09/U10/U11，再施工和测试 |
+| 本地仓库/构建/测试 | SQL/Admin/Edge已有分层证据 | 路径/版本/入口静态已核对；实际隔离配置、构建/启动待本轮验证 | 固定实施版本与环境，可独立启动 |
+| 本人 Auth/注册/成员 | public签名已核对 | 尚无真实服务接线；普通登录/反馈不ensure，local登出及最小凭据/在途任务接线待做 | JWT/blocked/left/suspended/切号与离线Free真实测试 |
+| Pro/兑换码 | 签名已核对；新增永久拒兑保护未实现 | 资格/安全历史/同码恢复待接；不做本轮业务Pro门槛 | 200业务拒绝/限流/到期/撤权/首响丢失及并发 |
+| 反馈 V3 | Edge/RPC CODED，错误/查询/旧写路径缺口仍在 | 已确认邮箱本人文字+最多两图、必要原号恢复；不建历史页 | 真0/1/2图及AdminV3，隔离对象与真R2分开 |
+| 配置备份/恢复 | 专属Edge/RPC未编码 | 现有仅模板v1/完整个人恢复已静态确认；云适配待做 | 5MiB/20份/到期取回及部分失败、恢复冲突 |
 | 发布条件 | 第一阶段签收与安全/性能/人工门禁仍 OPEN | **NOT RUN** | 先处置 P0/P1，再有明确第二阶段准入授权 |
 
 **联调执行入口**：[唯一 TODO](../TODO.md)的 `LENS-01～07`，以及[第二阶段具体顺序](./phase2-aisenlens-local-integration-plan.md)。本清单仅为 Core 侧静态核对，不把后续预期值标成已签约/已测试。

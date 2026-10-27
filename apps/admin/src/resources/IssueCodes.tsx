@@ -3,7 +3,7 @@ import {
   Alert, Box, Button, Card, CardContent, Checkbox, Dialog, DialogActions,
   DialogContent, DialogTitle, FormControlLabel, Stack, TextField, Typography,
 } from '@mui/material';
-import { useNotify, useRefresh } from 'react-admin';
+import { useGetOne, useNotify, useRefresh, useStore } from 'react-admin';
 import { supabase } from '../supabaseClient';
 import { callRpc } from '../data/dataProvider';
 import { ProductPicker } from './ProductPicker';
@@ -24,12 +24,18 @@ function readPending(): Pending | null {
     return data;
   } catch { return null; }
 }
-export function IssueCodes({embedded=false,onSafetyChange,onCompleted}:{
+export function IssueCodes({embedded=false,onSafetyChange,onCompleted,onRequestClose}:{
   embedded?:boolean;onSafetyChange?:(v:OperationSafety)=>void;onCompleted?:()=>void;
+  onRequestClose?:()=>void;
 }={}) {
   const notify=useNotify();
   const refresh=useRefresh();
+  const [scope]=useStore<string>('aisencore.current.product','');
+  const scopedProduct=useGetOne('products',{id:scope},{enabled:!!scope});
+  const scopeConfirmed=!scope||(!scopedProduct.isPending&&!scopedProduct.isError&&
+    String(scopedProduct.data?.id)===scope);
   const [productId,setProductId]=useState('');
+  const targetProductId=scope||productId;
   const [quantity,setQuantity]=useState(1);
   const [duration,setDuration]=useState(30);
   const [uses,setUses]=useState(1);
@@ -48,9 +54,12 @@ export function IssueCodes({embedded=false,onSafetyChange,onCompleted}:{
 
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (busy || pending) return;
+    if (busy||pending||!targetProductId||!scopeConfirmed||
+      !Number.isInteger(quantity)||quantity<1||quantity>1000||
+      !Number.isInteger(duration)||duration<1||duration>36500||
+      !Number.isInteger(uses)||uses<1||uses>100000) return;
     const meta: Pending={
-      requestId:crypto.randomUUID(),productId:productId.trim(),quantity,duration,
+      requestId:crypto.randomUUID(),productId:targetProductId.trim(),quantity,duration,
       maxRedemptions:uses,expiresAt:expiry?new Date(expiry).toISOString():null,
       note:note||null,startedAt:Date.now(),
     };
@@ -163,37 +172,68 @@ export function IssueCodes({embedded=false,onSafetyChange,onCompleted}:{
     if(embedded)onCompleted?.();
   }
   return <OperationLayout title="发行兑换码" embedded={embedded}>
-    {(!embedded||!plain)&&<Card variant="outlined"><CardContent>
-      <Stack component="form" onSubmit={submit} spacing={2}>
-        {pending && <Alert severity="warning">
-          <Typography sx={{ fontWeight: 650 }}>有待核实的发码请求：{pending.requestId}</Typography>
-          {resolved==='unknown'?'发行结果未知，请先核对原请求，勿重复发行。':
-           resolved==='present'?'批次已存在，但明文不可恢复。先撤销后另行创建新批次。':
-           resolved==='absent'?'未查询到相同请求编号；仅在确认后可使用原编号按流程重试。':
-           '旧批次已撤销。现在可单独开始新的发行请求。'}
-          <Stack direction="row" spacing={1} sx={{mt:1}}>
-            <Button disabled={busy} onClick={()=>void inspectPending()} size="small">核对批次状态</Button>
-            {resolved==='absent' &&
+    {(!embedded||!plain)&&<Card variant="outlined" sx={{maxWidth:720}}><CardContent>
+      <Stack component="form" onSubmit={submit} spacing={2.5}>
+        {pending&&<Alert severity="warning" sx={{'& .MuiAlert-message':{width:'100%',minWidth:0}}}>
+          <Typography sx={{fontWeight:700}}>有待核实的发码请求</Typography>
+          <Typography variant="caption" component="div" sx={{overflowWrap:'anywhere',mb:.5}}>
+            请求编号：{pending.requestId}
+          </Typography>
+          <Typography variant="body2">{resolved==='unknown'?'发行结果未知，请先核对原请求，勿重复发行。':
+            resolved==='present'?'批次已存在，但明文不可恢复。先撤销后另行创建新批次。':
+            resolved==='absent'?'未查询到相同请求编号；仅在确认后可使用原编号按流程重试。':
+            '旧批次已撤销。现在可单独开始新的发行请求。'}</Typography>
+          <Stack direction="row" spacing={1} useFlexGap sx={{mt:1,flexWrap:'wrap'}}>
+            <Button disabled={busy} onClick={()=>void inspectPending()} size="small" variant="outlined">核对批次状态</Button>
+            {resolved==='absent'&&
               <Button disabled={busy} onClick={()=>void retryOriginal()} size="small">以相同编号重试</Button>}
-            {resolved==='present' &&
+            {resolved==='present'&&
               <Button color="error" disabled={busy} onClick={()=>setConfirmRevoke(true)} size="small">撤销已有批次</Button>}
-            {resolved==='revoked' && <Button onClick={forgetPending} size="small">另行开始新请求</Button>}
+            {resolved==='revoked'&&<Button onClick={forgetPending} size="small">另行开始新请求</Button>}
           </Stack>
         </Alert>}
-        <ProductPicker value={productId} onChange={setProductId} disabled={busy||!!pending} />
-        <TextField label="生成数量" required type="number" value={quantity} slotProps={{ htmlInput: { min:1,max:1000 } }}
-          onChange={e=>setQuantity(Number(e.target.value))}/>
-        <TextField label="每码授予 Pro 天数" required type="number" value={duration}
-          slotProps={{ htmlInput: { min:1,max:36500 } }} onChange={e=>setDuration(Number(e.target.value))}/>
-        <TextField label="每码最大核销次数" required type="number" value={uses}
-          slotProps={{ htmlInput: { min:1,max:100000 } }} onChange={e=>setUses(Number(e.target.value))}/>
-        <TextField label="兑换码到期日（可选）" type="datetime-local" value={expiry}
-          slotProps={{ inputLabel: { shrink: true } }} onChange={e=>setExpiry(e.target.value)}/>
-        <TextField label="备注（可选）" value={note} onChange={e=>setNote(e.target.value)} />
-        <Button variant="contained" type="submit" disabled={busy||!!pending||!productId||quantity<1||!Number.isInteger(quantity)||
-            !Number.isInteger(duration)||duration<1||!Number.isInteger(uses)||uses<1}>
-          {busy?'提交中…':'确认创建兑换码'}
-        </Button>
+        {scope?<Box sx={{px:2,py:1.5,border:'1px solid',borderColor:'divider',borderRadius:2,
+          bgcolor:'action.hover',minWidth:0}}>
+          <Typography variant="caption" color="text.secondary" component="div">当前发行平台</Typography>
+          <Typography variant="body1" sx={{fontWeight:700,overflowWrap:'anywhere'}}>
+            {scopedProduct.isPending?'正在加载对应平台…':
+              !scopeConfirmed?'无法确认当前平台':
+              String(scopedProduct.data?.name)}
+          </Typography>
+          {scopeConfirmed&&<Typography variant="caption" color="text.secondary">
+            {String(scopedProduct.data?.product_key)}
+          </Typography>}
+          {!scopedProduct.isPending&&!scopeConfirmed&&<Alert severity="error" sx={{mt:1}}>
+            当前平台读取失败，无法安全发行。请检查网络或管理员权限。
+          </Alert>}
+        </Box>:
+          <ProductPicker value={productId} onChange={setProductId} disabled={busy||!!pending}/>}
+        <Box sx={{display:'grid',gridTemplateColumns:{xs:'minmax(0,1fr)',sm:'repeat(2,minmax(0,1fr))'},
+          gap:2,minWidth:0}}>
+          <TextField label="生成数量" required type="number" value={quantity} disabled={busy||!!pending}
+            slotProps={{htmlInput:{min:1,max:1000}}} onChange={e=>setQuantity(Number(e.target.value))}/>
+          <TextField label="每码授予 Pro 天数" required type="number" value={duration} disabled={busy||!!pending}
+            slotProps={{htmlInput:{min:1,max:36500}}} onChange={e=>setDuration(Number(e.target.value))}/>
+          <TextField label="每码最大核销次数" required type="number" value={uses} disabled={busy||!!pending}
+            slotProps={{htmlInput:{min:1,max:100000}}} onChange={e=>setUses(Number(e.target.value))}/>
+          <TextField label="兑换码到期日（可选）" type="datetime-local" value={expiry} disabled={busy||!!pending}
+            slotProps={{inputLabel:{shrink:true}}} onChange={e=>setExpiry(e.target.value)}/>
+          <TextField label="备注（可选）" value={note} disabled={busy||!!pending}
+            onChange={e=>setNote(e.target.value)} sx={{gridColumn:{sm:'1 / -1'}}}/>
+        </Box>
+        <Box sx={{display:'flex',justifyContent:embedded?'space-between':'flex-end',
+          alignItems:'center',gap:1.5,flexWrap:'wrap'}}>
+          {embedded&&<Button color="inherit" onClick={onRequestClose} disabled={busy}>
+            {pending?'稍后处理':'取消'}
+          </Button>}
+          <Button variant="contained" type="submit" sx={{minWidth:164,width:'auto'}}
+            disabled={busy||!!pending||!targetProductId||!scopeConfirmed||
+              !Number.isInteger(quantity)||quantity<1||quantity>1000||
+              !Number.isInteger(duration)||duration<1||duration>36500||
+              !Number.isInteger(uses)||uses<1||uses>100000}>
+            {busy?'提交中…':'确认创建兑换码'}
+          </Button>
+        </Box>
       </Stack>
     </CardContent></Card>}
     {embedded?(plain&&<Box role="region" aria-label="首次明文兑换码">
@@ -204,12 +244,16 @@ export function IssueCodes({embedded=false,onSafetyChange,onCompleted}:{
           bgcolor:'background.default',p:2,borderRadius:1,maxHeight:340,overflow:'auto'}}>
           {plain?.join('\n')}
         </Box>
-        <Button onClick={()=>void copyAll()}>复制全部</Button>
-        <Button onClick={()=>downloadPlain('txt')}>下载 TXT</Button>
-        <Button onClick={()=>downloadPlain('csv')}>下载 CSV</Button>
+        <Stack direction="row" spacing={1} useFlexGap sx={{flexWrap:'wrap'}}>
+          <Button variant="outlined" onClick={()=>void copyAll()}>复制全部</Button>
+          <Button onClick={()=>downloadPlain('txt')}>下载 TXT</Button>
+          <Button onClick={()=>downloadPlain('csv')}>下载 CSV</Button>
+        </Stack>
         <FormControlLabel control={<Checkbox checked={saved} onChange={(_,v)=>setSaved(v)}/>}
           label="我已安全保存本次明文兑换码"/>
-        <Button variant="contained" disabled={!saved} onClick={closePlain}>清除明文并关闭</Button>
+        <Box sx={{display:'flex',justifyContent:'flex-end'}}>
+          <Button variant="contained" disabled={!saved} onClick={closePlain}>清除明文并关闭</Button>
+        </Box>
       </Stack>
     </Box>):<Dialog open={!!plain} onClose={()=>{}} aria-labelledby="codes-title">
       <DialogTitle id="codes-title">兑换码已成功创建</DialogTitle>
@@ -220,9 +264,11 @@ export function IssueCodes({embedded=false,onSafetyChange,onCompleted}:{
             bgcolor:'background.default',p:2,borderRadius:1,maxHeight:340,overflow:'auto'}}>
             {plain?.join('\n')}
           </Box>
-          <Button onClick={()=>void copyAll()}>复制全部</Button>
-          <Button onClick={()=>downloadPlain('txt')}>下载 TXT</Button>
-          <Button onClick={()=>downloadPlain('csv')}>下载 CSV</Button>
+          <Stack direction="row" spacing={1} useFlexGap sx={{flexWrap:'wrap'}}>
+            <Button variant="outlined" onClick={()=>void copyAll()}>复制全部</Button>
+            <Button onClick={()=>downloadPlain('txt')}>下载 TXT</Button>
+            <Button onClick={()=>downloadPlain('csv')}>下载 CSV</Button>
+          </Stack>
           <FormControlLabel control={<Checkbox checked={saved} onChange={(_,v)=>setSaved(v)}/>}
             label="我已安全保存本次明文兑换码"/>
         </Stack>

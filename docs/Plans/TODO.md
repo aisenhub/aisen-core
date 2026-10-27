@@ -16,15 +16,17 @@
 
 ## B. 第二阶段｜AisenLens 本地端实际对接与双端开发
 
-> 详见 [AisenLens 本地联调准备与验收方案](./aisencore-mvp/phase2-aisenlens-local-integration-plan.md)。必须使用 **AisenLens 客户端实际操作产生的数据**，不得以 `seed:admin-demo` 冒充联调。尚未核验 AisenLens 本地仓库和客户端现状，下面属于待做事项，不是已确认的兼容事实。
+**详细施工入口**：[双仓总计划](./aisenlens-aisencore-local-integration/00-integration-master-plan.md)统一调度；LENS-01～03对应[身份/成员](./aisenlens-aisencore-local-integration/02-stage2-auth-and-membership.md)，LENS-04对应[权益/兑换](./aisenlens-aisencore-local-integration/03-stage2-entitlements-and-redemption.md)，LENS-05对应[反馈](./aisenlens-aisencore-local-integration/04-stage2-feedback.md)，LENS-06对应[模板备份](./aisenlens-aisencore-local-integration/05-stage2-template-backup.md)，LENS-07对应[组合回归](./aisenlens-aisencore-local-integration/06-stage2-integration-acceptance.md)。第一阶段余项按[对接前详细计划](./aisenlens-aisencore-local-integration/01-stage1-core-readiness.md)修验；不在阶段文件另建状态台账。
 
-- [ ] **LENS-01｜P0｜双端代码/运行环境摸底**：确认 AisenLens 本地端目录、分支、启动方法、数据库及身份配置；对照 AisenCore 现有端口、JWT/URL、产品 key、CORS/回调和隔离策略。**准出**：双方可启动、均指向明确隔离的本地服务，未使用开发秘密上传公网。
-- [ ] **LENS-02｜P0｜冻结最小跨端接口合同**：Core 侧源码静态接口清单已整理（参见上面的链接），但 AisenLens 客户端接口、实际 JWT/HTTP 兼容与双端字段/状态/错误、身份和产品范围**仍未验证**；不得创造旧接口兼容层。**准出**：两端同一份接口矩阵，正/负例与责任边界明确。
-- [ ] **LENS-03｜P0｜统一身份、产品成员与跨 SaaS 隔离**：真实客户端注册/登录、邮件确认、会话刷新/登出、首次合法加入 `aisenlens`、退出/暂停/blocked、同一账号多产品隔离、离线 Free 零非必要请求及旧 token 拒绝。**准出**：端到端真实请求与服务端状态/审计一致。
-- [ ] **LENS-04｜P0｜Pro 资格与兑换闭环**：本地 AisenLens 权益显示/准入、到期/撤销即时复核、免费离线行为、真实兑换码输入/重复/过期/限流/UNKNOWN 恢复和产品级 Grant。**准出**：成功、无权和故障均可复现，业务授权绝不由前端自行认定。
-- [ ] **LENS-05｜P1｜反馈客户端与后台往返**：AisenLens 提交文字及 0/1/2 图、本人查看受限进度（当前 V3 不新增交互式回复）、Admin 四队列分诊/工作台/归档/回收站、受限附件/ZIP；跨产品、撤权、503、幂等、重试和异常清理。**准出**：真实本地客户端请求贯通，隔离对象/真实云对象证据分开。
-- [ ] **LENS-06｜P0｜本地配置备份/恢复专项**：按 [S1 方案](./aisencore-mvp/s1-aisenlens-r2-backup.md)实现配额预留、JWT/Pro/白名单小 JSON 校验、Edge 唯一条件写、pending/ready 与失败对账；客户端可选版本、分类差异预览、按类替换恢复，断网/重放不泄密。真实云 R2/正式密钥仅在授权的第三阶段验收。
-- [ ] **LENS-07｜P0｜第二阶段退出验收**：逐项执行适用的 I-01～28、R-01～15、REV-DEC02/04/06、反馈与 UI 负例；记录 AisenLens 真正交互的数据出处、日志、截图、QA 清理、失败复验和所有者签收。**准出**：两端功能、权限、故障恢复均有真实证据。
+> 双方仓库/技术栈/入口已静态核对，范围与业务决定已确认；运行配置、真实请求和双端验收仍 NOT RUN。见[本地联调方案](./aisencore-mvp/phase2-aisenlens-local-integration-plan.md)和[双仓审查](./aisenlens-aisencore-local-integration/2026-10-27-cross-repository-audit-and-integration-plan.md)。当前仅授权同步文档，真实验收须以客户端操作数据取证，不用 demo seed 替代。
+
+- [ ] **LENS-01｜P0｜隔离运行基线**：静态路径/入口已核对；仍需固定实际两仓 HEAD/工作区、启动与运行实例、JWT/URL/产品 key/CORS/邮件回调、隔离 DB/对象及公开配置。**准出**：实际可启动且仅指向明确本地服务，不重置已有数据。
+- [ ] **LENS-02｜P0｜实际接口/错误与文档决策落地**：已确认范围及业务规则，仍需将当前 RPC/DTO、错误分类、同码/原号恢复、身份/产品、schema/实际参数与双端代码测试对齐；不新增兼容层。**准出**：单一接口矩阵与真实正负例；不因文档确认将实现记完成。
+- [ ] **LENS-03｜P0｜身份、成员与最小生命周期接线**：真实注册/登录/邮件/刷新/local登出；首次合法产品操作才ensure，left/suspended/blocked及跨产品/离线Free/旧token边界。昵称复用Auth显示资料；切号锁保险库、释放会话Key、保留加密凭据/项目，任务先完成或明确取消、旧响应不串号。**准出**：两端状态/审计一致；不改AI/Provider/项目算法，不开放未定渠道的注销成功按钮。
+- [ ] **LENS-04｜P0｜资格显示与兑换**：check_access + 本人安全列历史、到期/撤销/故障；实施同产品有效永久 Pro 拒兑其他码且不耗码的锁内保护及同码恢复/并发负例。**准出**：真实客户端/RPC/Grant 一致；本轮不启用 AI/去水印/第二项目门槛，不宣称全部 Pro 功能验收。
+- [ ] **LENS-05｜P1｜单向反馈及管理闭环**：确认邮箱的本人文字+最多两图、原号恢复、Admin V3 四队列/私图/ZIP；先修上游错误误报403、产品/回收站查询语义、隔离对象入口与引用安全对账，清理已无用途的旧回复写路径/调用者。**准出**：真实本地请求与故障负例，无客户端历史/进度/回复页面，无联系邮箱字段，隔离对象与真实 R2 分层。
+- [ ] **LENS-06｜P0｜完整分析模板云备份**：按[S1](./aisencore-mvp/s1-aisenlens-r2-backup.md)固化全层白名单并测 5 MiB；实现每账号/产品20份原子预留、同号/条件写/对账/删除；create需Pro，到期可取回/删除但仍查Core准入；手动完整差异后整体替换个人模板，不分类、不改项目、不按年龄删ready。**准出**：客户端及对象/配额故障可恢复；真实云 R2 第三阶段授权后验收。
+- [ ] **LENS-07｜P0｜第二阶段退出验收**：逐项执行适用的 I-01～28、R-01～16、REV-DEC02/04/06、反馈与 UI 负例；记录 AisenLens 真正交互的数据出处、日志、截图、QA 清理、失败复验和所有者签收。**准出**：两端功能、权限、故障恢复均有真实证据；R-16为新增永久Pro拒兑验收，尚未实施或运行。
 
 ## C. 第三阶段｜实际部署与上线（不得提前执行）
 
@@ -34,8 +36,7 @@
 
 ## D. 待项目所有者/产品端冻结的决策（不是默认开发许可）
 
-- [ ] **DEC-OPS｜P1**：主管理员/备用 TOTP 恢复责任、批量发码上限和有效期、管理员与账号注销操作流程。
-- [ ] **DEC-LENS｜P0（开始备份前）**：备份 JSON 字段白名单、字节限额（256 KiB 仅候选）、版本数（10 仅候选）/保留期、Pro 离线新任务策略（U11）与 15 分钟新鲜度窗口。
+- [ ] **DEC-OPS｜P1（正式发行/上线前）**：主管理员/备用 TOTP 恢复责任、正式发码批量上限/有效期/永久码发行权限、人工注销渠道与留存/通知政策。先沿用隔离本地测试参数；注销具体渠道明确留待上线前，不阻塞本地账号接入，不假报受理。
 - [ ] **DEC-CLOUD｜P2**：域名/回调、SMTP 服务、反滥用政策、用户反馈大小/速率/留存、R2 回收、法定数据保留与隐私响应。
 
 ## 维护规则

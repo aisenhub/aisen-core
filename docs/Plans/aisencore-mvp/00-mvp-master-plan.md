@@ -4,6 +4,8 @@
 
 **阶段过渡（2026-10-27）**：项目所有者宣布第一阶段基本结束，当前正在汇总验收残余及第二阶段本地对接准备。交付门槛仍由[三阶段总则](./three-stage-delivery-gates.md)约束，所有 OPEN/BLOCKED 项以[唯一未完成任务](../TODO.md)为准。AisenLens 双端还未实际联调。
 
+**双仓对接子计划**：[本地对接总执行计划](../aisenlens-aisencore-local-integration/00-integration-master-plan.md)与[分阶段详细索引](../aisenlens-aisencore-local-integration/README.md)承接本次Core主导的实际顺序、修改边界、测试矩阵和准出。本文件仍是平台唯一MVP总计划，TODO仍是唯一开放任务入口；新计划不构成代码/云端实施或阶段签收许可。
+
 **当前专项**：[Admin UI 质量审查](./admin-frontend-ui-production-readiness-audit-and-remediation-plan-2026-10-27.md)、[性能优化计划](./admin-frontend-performance-optimization-plan-2026-10-26.md)、[反馈 V3 四队列](./feedback-v3-lightweight-implementation.md)、[AisenLens 小 JSON 备份 S1](./s1-aisenlens-r2-backup.md)与[第二阶段本地联调方案](./phase2-aisenlens-local-integration-plan.md)。旧 FB-V1/V2 已结束的五态/回复 UI 方案不再是施工依据；[FB-V2 记录](./fb-v2-inbox-workbench.md)只保存 ZIP 与旧安全测试背景，早期一次性过程计划从活动目录移除并通过 Git 历史恢复。
 
 ## 1. 当前事实、目标与阶段边界
@@ -31,10 +33,12 @@
 | **D1 数据库/RPC（以第一阶段为主）** | [D1](./d1-database-and-trusted-rpc.md) | 本地隔离 PG 和首迁移/35 测试可复现 | 目标结构/RLS/GRANT/RPC、pgTAP 正反例与 LCK-01～07 双连接断言 PASS；SQL 失败原子回滚/限流持久化 |
 | **D2 Auth/API/MFA（第一阶段基础，第二阶段联调）** | [D2](./d2-auth-public-api-and-mfa.md) | 可并行准备完整本地 Auth；受保护接口的联调要等各自 D1 安全合同稳定 | 完整 GoTrue JWT、真实 HTTP、`aal1/aal2` 管理门禁、Auth 会话与用户查询正负例 PASS |
 | **D3 React-admin（第一阶段必须交付）** | [D3](./d3-admin-console.md)（[前端高标准完备化专项](./d3-admin-experience-upgrade.md)） | 前端脚手架、Theme 可在 D2 后端联调期间准备；正式写操作必须等待对应后端安全验证 | `apps/admin/` 完整工程、可长期使用的本地合成场景、全资源功能闭环、构建/类型检查、真实浏览器 E2E、首响明文/UNKNOWN、无障碍与所有者 UI 评审 PASS |
-| **S1 AisenLens/R2（第二阶段开发，第三阶段云端验收）** | [S1](./s1-aisenlens-r2-backup.md) | 相关 Core Pro/JWT API 已真实验证；U09/U10 确认真实备份白名单/额度/留存；U11 决定断网新 Pro 任务规则 | 独立 Edge 元数据/R2 故障对账、属主 ACL 和真实 R2 测试；AisenLens 客户端由其仓库独立验收 |
+| **S1 AisenLens/R2（第二阶段开发，第三阶段云端验收）** | [S1](./s1-aisenlens-r2-backup.md) | 第一阶段签收；相关 Core JWT/资格安全验证；完整模板白名单固化、5 MiB 实测准备，20 份/到期取回已确认 | 专属 Edge/原子配额/对象失败对账、owner ACL 与真实 Lens；本轮不实现 AI/去水印/第二项目门槛 |
 | **D4 发布准入（跨阶段验收，第三阶段完成上线验收）** | [D4](./d4-release-acceptance.md) | 对声明的发布范围，其相关阶段均已验收；可在开发过程中逐项积累证据 | 全链路 I/R/REV、恢复/注销、性能和生产配置核查，发布审批独立于测试 PASS |
 
 **阶段归属和发布范围明确化**：即使暂未对接 AisenLens，第一阶段也要把 Admin 功能/表格/无障碍/性能/视觉做到可交付并签收；第二阶段才改用真实本地业务路径产生的数据、补齐双端联调；第三阶段才实际配置在线环境。若首发承诺 AisenLens 私有备份，S1 不能跳过。所有者未明确批准前不连接生产/云环境、不推送 Git、不创建云资源。
+
+**当前所有者决定**：Core 主导的 WebApp 后端接入；本轮文档同步，不改代码/数据库。20 份/完整模板整体个人恢复、有效永久 Pro 拒兑不耗码、登录确认后文字及最多两图反馈、Auth 显示昵称和最小凭据生命周期接线已确认；AI/去水印/第二项目门槛及支付不在本次实施范围，注销渠道上线前确定。决定与实现差距见[双仓审查](../aisenlens-aisencore-local-integration/2026-10-27-cross-repository-audit-and-integration-plan.md)，不降低第一阶段门禁。
 
 ## 3. 执行子里程碑（每项需独立证据）
 
@@ -51,8 +55,8 @@
 | 进入阶段前 | 待确认内容 | 当前可做的工作 |
 | --- | --- | --- |
 | D1 发码生产规则 / D3 操作界面 | 单批数量上限、码自身到期、永久码发行权限、真实管理员/备用 MFA 管理责任 | 可写最小正确数据库约束与合成安全用例；**100/批等候选值不是最终运营合同** |
-| S1 实际私有备份 | U09 的版本化字段白名单、JSON 字节数及配额；U10 的数量/保留时间 | 可写备份状态机与隔离 Mock 测试，不向真实用户开放存储；**256 KiB、10 版是候选** |
-| AisenLens 本地 Pro 接入 | U11 的断网能否启动新纯本地 Pro 任务和缓存新鲜度 | 可落实启动/关键操作按需校验与 single-flight；**15 分钟是候选**，云端操作始终复核 |
+| S1 实际私有备份 | 20 份、完整个人恢复、到期取回/删除及正常服务无年龄删除已定；5 MiB 为已采纳待实测上限 | 后续固化嵌套白名单/类型长度并测接口、配额与恢复；当前仅改文档，专属代码仍未完成 |
+| AisenLens 本地 Pro 接入 | 短时断网新纯本地任务可复用有效快照，暂按最多 15 分钟测试，新 AI/云请求在线核验 | 实测时效与撤权；业务入口本轮不改，昵称/Auth 资料和必要登出/切号凭据接线按范围实施 |
 | D4 公开运营 | 生产域名/回调、SMTP/发件身份、反滥用、人工账号注销渠道/合法留存、密钥/备份/恢复责任 | 可准备本地演练与配置清单，不连接生产 |
 
 ## 5. 交付规则、验证记录与计划生命周期
