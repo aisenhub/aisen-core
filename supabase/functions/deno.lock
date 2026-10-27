@@ -1,6 +1,7 @@
 {
   "version": "5",
   "specifiers": {
+    "jsr:@matmen/imagescript@3.3.0": "3.3.0",
     "jsr:@supabase/functions-js@*": "2.118.0",
     "npm:@aws-sdk/client-s3@3.1156.0": "3.1156.0",
     "npm:@aws-sdk/s3-request-presigner@3.1156.0": "3.1156.0",
@@ -9,6 +10,9 @@
     "npm:openai@^4.52.5": "4.104.0"
   },
   "jsr": {
+    "@matmen/imagescript@3.3.0": {
+      "integrity": "4d07414aeeb3e4cd31d1f75033ea89fe86fbde1ddfdffd76f564c5675de0c618"
+    },
     "@supabase/functions-js@2.118.0": {
       "integrity": "5f5494c5a288a7f03d0f9a2b591a39465d80cc7fcf44a85f5fb533b555b0580a",
       "dependencies": [

@@ -112,8 +112,8 @@ try{
     200,'trusted replay').replayed,true);
   ok(await rpc('feedback_submit_from_edge',{...body,p_content:'changed'},
     null,true),409,'same ID different content is rejected');
-  const owner=ok(await rpc('my_feedback',{},a.access),200,'owner read');
-  const stranger=ok(await rpc('my_feedback',{},b.access),200,'stranger read');
+  const owner=ok(await rpc('my_feedback',{p_product_key:productKey},a.access),200,'owner read');
+  const stranger=ok(await rpc('my_feedback',{p_product_key:productKey},b.access),200,'stranger read');
   assert.equal(owner.length,1);assert.equal(stranger.length,0);
   assert.equal(owner[0].version,1);
   assert.ok(!JSON.stringify(owner).includes('object_key'));

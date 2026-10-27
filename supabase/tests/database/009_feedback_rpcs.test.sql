@@ -16,7 +16,7 @@ SELECT has_view('public','admin_feedback_summaries','AAL2 feedback summary is a 
 SELECT ok((SELECT c.reloptions @> ARRAY['security_invoker=true']
    FROM pg_class c WHERE c.oid='public.admin_feedback_summaries'::regclass),
   'Admin summary uses invoker RLS instead of definer bypass');
-SELECT has_function('public','my_feedback',ARRAY['uuid'],'self feedback list present');
+SELECT has_function('public','my_feedback',ARRAY['text','uuid'],'scoped self feedback list present');
 SELECT has_function('public','my_feedback_events',ARRAY['uuid'],'public event list present');
 SELECT has_function('public','reply_to_feedback',ARRAY['uuid','text','integer'],'self reply present');
 SELECT has_function('public','admin_update_feedback',
@@ -79,8 +79,8 @@ GRANT SELECT ON pg_temp.fb_test_refs TO authenticated;
 
 SELECT set_config('request.jwt.claims','{"aal":"aal1"}',true);
 SET LOCAL ROLE authenticated;
-SELECT is(jsonb_array_length(public.my_feedback()),1,'owner may list only own feedback');
-SELECT is(public.my_feedback()->0->>'version','1',
+SELECT is(jsonb_array_length(public.my_feedback('fb2_product')),1,'owner may list only own feedback');
+SELECT is(public.my_feedback('fb2_product')->0->>'version','1',
   'self feedback DTO includes optimistic reply version');
 SELECT is((SELECT count(*)::integer FROM public.admin_feedback_summaries),0,
   'AAL1 ordinary user cannot enumerate Admin feedback summary');
@@ -92,12 +92,12 @@ RESET ROLE;
 
 SELECT set_config('request.jwt.claim.sub','18000000-0000-4000-8000-000000000002',true);
 SET LOCAL ROLE authenticated;
-SELECT is(jsonb_array_length(public.my_feedback()),1,'different user sees only their own image feedback');
-SELECT is(jsonb_array_length(public.my_feedback()->0->'attachments'),2,
+SELECT is(jsonb_array_length(public.my_feedback('fb2_product')),1,'different user sees only their own image feedback');
+SELECT is(jsonb_array_length(public.my_feedback('fb2_product')->0->'attachments'),2,
   'self DTO contains two attachment IDs without storage keys');
-SELECT ok(public.my_feedback()->0->'attachments'->0 ? 'id',
+SELECT ok(public.my_feedback('fb2_product')->0->'attachments'->0 ? 'id',
   'self DTO supplies attachment identifier for signed GET');
-SELECT ok(NOT (public.my_feedback()->0->'attachments'->0 ? 'object_key'),
+SELECT ok(NOT (public.my_feedback('fb2_product')->0->'attachments'->0 ? 'object_key'),
   'self DTO does not leak a storage object key');
 SELECT throws_ok($$SELECT public.my_feedback_events(
  (SELECT id FROM pg_temp.fb_test_refs))$$,'PT403');

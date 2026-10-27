@@ -7,15 +7,42 @@ export const cors = {
 };
 export const json=(value:unknown,status=200)=>Response.json(value,{status,headers:cors});
 export const fail=(message:string,status:number)=>json({message},status);
+// An Auth service failure is not evidence of an unconfirmed email.
+export function feedbackIdentityFailure(
+  error:unknown,user:{email_confirmed_at?:string|null}|null|undefined):Response|null{
+  if(error)return fail('IDENTITY_LOOKUP_UNAVAILABLE',503);
+  if(!user)return fail('AUTH_REQUIRED',401);
+  if(!user.email_confirmed_at)return fail('VERIFIED_EMAIL_REQUIRED',403);
+  return null;
+}
+// Only explicit business authorization errors are 401/403. SQL/transport
+// failures must remain 503, without exposing the upstream error message.
+export function feedbackRpcReadFailure(error:{code?:string}|null,
+  denied:string,unavailable:string):Response{
+  if(error?.code==='PT401')return fail('AUTH_REQUIRED',401);
+  if(error?.code==='PT403')return fail(denied,403);
+  return fail(unavailable,503);
+}
 function r2(){
+  const mode=Deno.env.get('R2_FEEDBACK_STORAGE_MODE');
+  const testEndpoint=Deno.env.get('R2_FEEDBACK_TEST_ENDPOINT');
+  // This is an explicit local-only S3 seam for independent Edge tests.
+  // Never accept arbitrary endpoints: doing so risks SSRF or leaking keys.
+  const isLocal=mode==='local-test';
+  if((mode&&!isLocal)||(testEndpoint&&!isLocal)||
+    (isLocal&&!/^http:\/\/(?:127\.0\.0\.1|localhost|host\.docker\.internal):[0-9]{2,5}$/.test(
+      testEndpoint??'')))throw new Error('INVALID_FEEDBACK_STORAGE_MODE');
   const account=Deno.env.get('R2_ACCOUNT_ID');
-  const key=Deno.env.get('R2_ACCESS_KEY_ID');
-  const secret=Deno.env.get('R2_SECRET_ACCESS_KEY');
+  // Never reuse production Cloudflare credentials for the local fixture.
+  const key=Deno.env.get(isLocal?'R2_FEEDBACK_TEST_ACCESS_KEY_ID':'R2_ACCESS_KEY_ID');
+  const secret=Deno.env.get(isLocal?'R2_FEEDBACK_TEST_SECRET_ACCESS_KEY':'R2_SECRET_ACCESS_KEY');
   const bucket=Deno.env.get('R2_FEEDBACK_BUCKET');
-  if(!account||!key||!secret||!bucket)throw new Error('R2_NOT_CONFIGURED');
+  if((!isLocal&&!account)||!key||!secret||!bucket)
+    throw new Error('R2_NOT_CONFIGURED');
   return {bucket,client:new S3Client({region:'auto',
-    endpoint:'https://'+account+'.r2.cloudflarestorage.com',
+    endpoint:isLocal?testEndpoint!:'https://'+account+'.r2.cloudflarestorage.com',
     credentials:{accessKeyId:key,secretAccessKey:secret},
+    ...(isLocal?{forcePathStyle:true,maxAttempts:1}:{}),
   })};
 }
 export function detectMime(data:Uint8Array):{mime:string;ext:string}|null{

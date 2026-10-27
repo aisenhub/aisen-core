@@ -51,7 +51,7 @@ def main():
         jwt = login["access_token"]
         print("AUTH confirmed temporary local user: PASS"); tests += 1
 
-        code, rows = http("POST", "/rest/v1/rpc/my_feedback", anon, {}, jwt)
+        code, rows = http("POST", "/rest/v1/rpc/my_feedback", anon, {"p_product_key": "aisenlens"}, jwt)
         assert code == 200 and rows == [], "own feedback must start empty and be readable"
         print("MY_FEEDBACK owned-only RPC: PASS"); tests += 1
 

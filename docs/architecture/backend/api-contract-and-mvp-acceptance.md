@@ -59,7 +59,7 @@
   - 当前 Pro 的判断由同用户/同产品 `starts_at <= trusted_now`、未撤销、`ends_at IS NULL OR ends_at > trusted_now` 的 Grant 动态聚合；其他有效 Pro 存在时不因一条撤销误降级；未来授权不得提前生效。无任何授权不要求创建 Free Grant。
   - **不再返回** Features/Limits、capability 权限、额度上限或业务消耗；业务功能和资源属主由 SaaS 的可信执行端决定。即使 `allowed=true` 也不代表可以导出 4K 或读取任何资源。纯本地匿名 Free 不调用此在线查询。
   - 已认证且可以可信判定的允许/拒绝均 HTTP 200 + allowed/reason；无效令牌用 401，身份/授权查询故障用 5xx/503，**不可错误地把故障变成 `tier=free` 或业务拒绝**；本 RPC 无写入副作用。
-- **`RedeemCode(product_key, code)`**：仅兑现当前产品 Pro 与首次保存的期限；同用户同码重放按 `REDEEM_ALREADY_USED`，不得重复授权。已确认的新规则：同产品已有当前有效永久 Pro 时拒绝兑换其他周期/永久码，不耗码、不建成员/Grant；周期续期与管理员直授独立。**当前 SQL 尚缺永久拒兑保护**，须同步锁内检查、稳定业务拒绝及并发测试，不新增 request_id 参数或兼容签名。
+- **`RedeemCode(product_key, code)`**：仅兑现当前产品 Pro 与首次保存的期限；同用户同码重放按 `REDEEM_ALREADY_USED`，不得重复授权。已确认的新规则：同产品已有当前有效永久 Pro 时拒绝兑换其他周期/永久码，不耗码、不建成员/Grant；周期续期与管理员直授独立。**R-16 SQL 迁移已编码**（本地回滚事务 pgTAP 93/93 PASS，含新增 16 项；真实 HTTP/竞争 NOT RUN）；拒绝返回 `ok=false,code=REDEEM_LIFETIME_ACTIVE`，迁移尚未持久部署，不新增 request_id 参数或兼容签名。
 - **上线前唯一新合同（项目根 `AGENTS.md` 强制规则）**：公开兑换只实现 `redeem_code(product_key,code)`；更新当前全部调用方及测试，**不实现/不保留旧 `redeem_code(code)` 的兼容入口、别名或灰度分支**。若本地草案已有旧签名，直接替换并确保其不可执行，不需要旧客户端版本发布序列；只针对当前接口执行错误侧信道与 RPC 权限负向验证。
 - **`GrantEntitlement`（DEC-05）**：以当前产品 `tier=pro` + `mode=duration` 正天数（同用户同产品 Pro 周期可信续期）或 `mode=explicit_window` 完整起止/显式永久 + actor-scoped request_id 受控发放；不通过 plan_id/Features/Limits 执行发放，不默认把缺失结束时间设为永久。
 - **成员变更**：成功返回新状态；不向客户端透露 `pre_suspend_status` 或内部管理原因；重复无状态变化请求不重复写事件。
@@ -89,6 +89,7 @@
 | `ENTITLEMENT_REQUIRED` | 403（`CheckAccess` 为 200 + reason） | 缺少所需权益 | 保留正常 Free 能力 |
 | `REDEEM_CODE_INVALID` | 400（兑换 RPC 业务拒绝为 HTTP 200） | 码不存在、已撤销、已过期或已用尽（不细分，避免泄露码状态） | 提示核对码 |
 | `REDEEM_ALREADY_USED` | 409（兑换 RPC 业务拒绝为 HTTP 200） | 本人已兑换过该码 | 查询本人授权 |
+| `REDEEM_LIFETIME_ACTIVE` | 409（兑换 RPC 业务拒绝为 HTTP 200） | 该产品已有当前有效永久 Pro，不能再兑换其他有效码；不消耗码 | 展示已有永久资格，不再次提交其他码 |
 | `RESOURCE_FORBIDDEN` | 403 | SaaS 业务资源权限不足（由 SaaS 返回） | 不泄露他人内容 |
 | `STATE_CONFLICT` | 409 | 非法或竞争的状态转换 | 读取当前状态后交互 |
 | `INVALID_INPUT` | 400/422 | 参数不合法 | 修正输入 |

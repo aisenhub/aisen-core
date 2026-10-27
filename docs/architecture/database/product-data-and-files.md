@@ -37,7 +37,7 @@
 
 **本地执行进度**：已新增并应用 `20261025125835_feedback_foundation.sql`、`20261025131845_feedback_trusted_rpcs.sql`、`20261025133511_feedback_upload_idempotency.sql`，三表/RLS、本人与管理员可信 RPC/审计和图片元数据幂等约束；`008/009` 及原有数据库测试共 **397/397 pgTAP PASS**。Edge/R2 私有上传、短签名代码已存在，但**真实 Edge 的零图文字提交 HTTP/匿名拒绝/幂等/限流已测试，隔离 S3 协议替身 1/2 图条件写已测试；真实 R2 文件、孤儿长期清理与注销删除未验收**。
 
-**最新局部合同**：Admin 读取经 `admin_feedback_summaries` 的 `security_invoker` 视图保留真实 RLS，只有已认证提交者可通过受限 RPC 获取自己的附件 ID/图片 MIME/大小，R2 key 仍由 Edge 内部使用。任何同请求号且内容一致的并发上传均可能共享同一私有对象，失败后**不得即时删除**，必须延迟且在引用审查后清理；未提供实际运行的孤儿 janitor，生产上线前不可视为验收通过。 `feedback_referenced_keys(text[])` 新增最小权限的服务端引用检查，数据库角色负例已通过；真实 R2 列表枚举、延迟审计/回收、告警和 TOCTOU 证明仍未完成，不能把 RPC 存在当成已交付 janitor。
+**最新局部合同**：Admin 读取经 `admin_feedback_summaries` 的 `security_invoker` 视图保留真实 RLS，只有已认证提交者可通过受限 RPC 获取自己的附件 ID/图片 MIME/大小，R2 key 仍由 Edge 内部使用。任何同请求号且内容一致的并发上传均可能共享同一私有对象，失败后**不得即时删除**，必须延迟且在引用审查后清理；新增源码 `_shared/feedback-orphan-audit.ts` 实现服务端可调用的 S3 **只读分页/最少7天观察窗口/按 service_role RPC 检查引用**审计路径；使用本机S3模拟RPC验证，无删对象接口或调度器，未对真实 DB、云R2/TOCTOU做验证；生产上线前仍不可视为 janitor 验收通过。 `feedback_referenced_keys(text[])` 新增最小权限的服务端引用检查，数据库角色负例已通过；真实 R2 列表枚举、延迟审计/回收、告警和 TOCTOU 证明仍未完成，不能把 RPC 存在当成已交付 janitor。
 
 ## Aisenlens 私有配置备份：长期可信边界（G-03 / M-03 / X-02）
 

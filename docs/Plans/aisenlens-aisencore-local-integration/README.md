@@ -1,6 +1,6 @@
 # AisenCore × AisenLens｜双仓对接执行入口
 
-> 2026-10-27：已建立详细总计划和阶段工作包，当前仅文档规划，代码实施/真实联调未执行。第一阶段正式签收仍OPEN，云端/推送/部署/公开上线无本轮许可。
+> 2026-10-27：所有者明确授权进入 Core×Lens 第二阶段本地联合开发，先对 55322 原本地数据库做完整仓库外备份并精准清理测试数据，仅留一个管理员与两个真实 active 平台。R-16/F06 SQL 已正式应用**仅本地开发库**，安装后 209/209 pgTAP 回滚回归 PASS；Core GoTrue JWT→Edge→PostgreSQL 零图反馈创建/重放/拒绝/配额 真实 HTTP PASS，临时账号已清理。F07 本机含图 S3 15/15 Deno PASS，且 Lens 真正从浏览器登录官方 GoTrue，跨仓调用反馈零图 Edge/DB + local signout 浏览器 1/1 PASS；Lens Chrome 两图→Core Edge→DB→隔离本机 S3 和 Core 1/2 图私图/临时 Admin AAL2 ZIP 均 PASS（[专项证据](./2026-10-27-f07-private-s3-e2e-evidence.md)）；Core GoTrue+Mailpit 确认邮件/密码恢复 PASS，Lens 8443 运行时白名单尚未载入；真实云 R2、Admin UI、完整故障对账及第一阶段遗留人工签收仍 NOT RUN；云端/推送/部署/公开上线无本轮许可。
 
 ## 先读与权威
 
@@ -20,7 +20,7 @@
 | 第二阶段E | [06 组合回归与本地签收](./06-stage2-integration-acceptance.md) | 真客户端主路径、跨模块故障/数据保护、UI/性能/证据与所有者签收 |
 | 第三阶段 | [07 云端验证/发布准入](./07-stage3-cloud-and-release.md) | 另获许可后配置/部署、真实SMTP/R2/跨环境/运维、独立公开上线批准 |
 
-A～E只是第二阶段内工作包，不能当新增交付阶段。每份均列入场输入、修改位置、先失败测试、具体步骤/行为矩阵、证据与退出条件；所有新增运行记录NOT RUN。
+A～E只是第二阶段内工作包，不能当新增交付阶段。每份均列入场输入、修改位置、先失败测试、具体步骤/行为矩阵、证据与退出条件；第二阶段 A～E 真实跨端运行记录仍 NOT RUN，第一阶段 R-16 独立 SQL 验证见 01。
 
 ## 当前边界与长期合同
 
@@ -30,7 +30,7 @@ Core为主要优化对象，Lens仅WebApp后端相关模块/必要接线，不�
 
 长期权威：[需求](../../spec/requirements.md)、[架构](../../architecture/README.md)、[API](../../architecture/backend/api-contract-and-mvp-acceptance.md)、[Core实际清单](../aisencore-mvp/phase2-core-integration-contract-inventory-2026-10-27.md)。旧第二阶段/S1入口只做技术索引，实际施工细则集中到本目录对应文件。
 
-## 本次计划编制检查
+## 计划编制时的历史检查（不是本轮 R-16 施工验收）
 
 2026-10-27审查修订：备份终态重放/清理互斥归入文件架构，异浏览器邮件纳入A-T03B，人工注销演练纳入3-05，性能判据按测试规范在实现前冻结；原审查重复施工/验收矩阵已收缩为索引。仅文档修订，所有新增行为验证仍NOT RUN，不改变阶段签收状态。Core全仓81份Markdown、816个文件链接、14个锚点检查0错误；git diff --check通过。未改代码、未操作数据库/云环境，未删除文件。
 

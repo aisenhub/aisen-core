@@ -291,6 +291,34 @@ async function main() {
     'invalid code issuance fails HTTP 422');
   console.log('D2-M1 PASS: immediate blocked checks, redeem 200, writes 403 and invalid input 422');
 
+  // R-16: real GoTrue-signed AAL2 Admin Grant, user JWT RPC rejection
+  // and authoritative DB side effects; never log the first-response code.
+  const lifetimeGrant=check(await rpc('admin_grant_entitlement',{
+    p_target_user_id:userId,p_product_id:createdProductId,p_tier:'pro',
+    p_mode:'explicit_window',p_duration_days:null,
+    p_starts_at:new Date(Date.now()-10000).toISOString(),p_ends_at:null,
+    p_is_lifetime:true,p_reason:'D2 R-16 lifetime protection',
+    p_request_id:'d2-r16-grant-'+runId},a2.access_token),200,'R-16 Admin lifetime grant');
+  assert.ok(lifetimeGrant.grant_id,'current lifetime Grant created');
+  const r16Batch=check(await rpc('admin_create_codes',{
+    p_product_id:createdProductId,p_tier:'pro',p_quantity:1,
+    p_grant_duration_days:30,p_is_lifetime:false,p_max_redemptions_per_code:1,
+    p_code_expires_at:null,p_request_id:'d2-r16-code-'+runId,p_note:null},
+    a2.access_token),200,'R-16 fresh duration code');
+  assert.equal(r16Batch.codes.length,1,'one ephemeral code');
+  const r16Denied=check(await rpc('redeem_code',{
+    p_product_key:productKey,p_code:r16Batch.codes[0]},
+    user.access_token),200,'R-16 HTTP business refusal');
+  assert.equal(r16Denied.ok,false,'R-16 rejected not HTTP failure');
+  assert.equal(r16Denied.code,'REDEEM_LIFETIME_ACTIVE','R-16 stable business code');
+  assert.equal(Number(sql('SELECT redeemed_count FROM public.redemption_codes WHERE batch_id='+
+    q(r16Batch.batch_id))),0,'R-16 code not consumed');
+  assert.equal(Number(sql('SELECT count(*) FROM public.redemptions WHERE user_id='+
+    q(userId)+' AND product_id='+q(createdProductId))),0,'R-16 no redemption fact');
+  assert.equal(Number(sql('SELECT count(*) FROM public.entitlement_grants WHERE user_id='+
+    q(userId)+' AND product_id='+q(createdProductId))),1,'R-16 no duplicate Grant');
+  console.log('R-16 HTTP PASS: signed JWT refusal, code/Grant/redemption unchanged');
+
   check(await rpc('admin_block_account',
     {p_target_user_id:adminBId,p_reason:'D2 blocked admin test'},a2.access_token),200,
     'qualified admin blocks another admin');

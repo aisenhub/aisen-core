@@ -90,9 +90,9 @@ try{
   const normal=await edge('feedback-submit',form('Edge zero-image real JWT'),token);
   assert.equal(normal.status,201,'valid JWT 0-image submit: '+normal.status+
     ' '+JSON.stringify(normal.data).slice(0,200)+'; '+errors.slice(-900));
-  assert.equal(normal.data.status,'new');
+  assert.equal(normal.data.status,'received');
   const id=normal.data.id;
-  const self=await api('/rest/v1/rpc/my_feedback',{},token);
+  const self=await api('/rest/v1/rpc/my_feedback',{p_product_key:productKey},token);
   assert.equal(self.status,200);
   assert.equal(self.data.filter(x=>x.id===id).length,1);
   assert.equal(self.data.find(x=>x.id===id).attachment_count,0);
@@ -114,7 +114,7 @@ try{
   console.log('FB_EDGE_AUTH invalid image and >2 photos both rejected HTTP 422');
   const access=await edge('feedback-image-access',
     JSON.stringify({attachment_id:randomUUID()}),token);
-  assert.equal(access.status,403,'private image ID not owned/absent');
+  assert.equal(access.status,403,'private image ID not owned/absent '+JSON.stringify(access.data).slice(0,250)+'; '+errors.slice(-1000));
   console.log('FB_EDGE_AUTH private missing image 403 PASS');
   for(let index=0;index<4;index++){
     const added=await edge('feedback-submit',form('Edge accepted report '+index,[],randomUUID()),token);
