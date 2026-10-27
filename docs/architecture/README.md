@@ -18,7 +18,7 @@
 - **backend/**：逻辑接口、可信授权、调用时序和 API 行为；需要业务规则时引用 domains。
 - **database/**：逻辑表、唯一性/外键、RLS/事务和数据存储归属；需要业务语义时引用 domains。
 - **2026-10-23 唯一会员资格边界**：[身份/Pro 与 SaaS 功能职责分离](./domains/membership-qualification-boundary.md)；各 SaaS 的导出、AI、备份额度策略独立，公共后端只管理身份、成员和 Pro 授权/有效期。
-- **用户反馈唯一业务合同**：[跨 SaaS 用户反馈系统](./domains/user-feedback.md)；公共 PostgreSQL 保存正文与处理轨迹，R2 保存最多两张私有图片，Admin 统一处理；最新 FB-V2 已本地添加收件箱/处理工作台分诊约束、Admin 双页面与服务器端 ZIP 导出初版，数据库 437/437 pgTAP、ZIP 单测及零图真实 JWT HTTP 验证通过；含图 R2、完整浏览器/人工签收和云端仍未完成。
+- **用户反馈唯一业务合同**：[跨 SaaS 用户反馈系统](./domains/user-feedback.md)；公共 PostgreSQL 保存正文与处理轨迹，R2 保存最多两张私有图片，Admin 统一处理；当前反馈 V3 四队列轻量流程/受保护 ZIP 已本地实现并取得部分真实 AAL2 Chrome 和 462/462 pgTAP 历史 PASS，V2 五态/负责人/公开回复只留历史数据读取；AisenLens 真客户端、真实私有 R2 含图、人工 WCAG/视觉/性能及线上签收仍开放。
 - **applications/**：用户和管理员应用交互、本地优先和跨 SaaS 会话；调用 backend 接口。内部平台管理门面参见 [Admin 管理前端架构](./applications/admin-console.md)。
 - **infrastructure/**：确认的技术平台和部署承载方式，不把技术选型当作业务规则。
 - **development/**（[开发资料](../development/README.md)）：教程、接入指南、测试实践和模板，不承载新的架构决定。

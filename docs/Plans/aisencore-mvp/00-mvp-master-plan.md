@@ -1,13 +1,10 @@
 # AisenCore MVP｜正式开发总计划
 
-> 状态：**新三阶段中的第一阶段执行中，尚未达到交付签收**；更新 2026-10-24。本文件是**唯一 MVP 总计划入口**。项目所有者确定的交付顺序及质量门槛以 **[三阶段开发与交付验收总则](./three-stage-delivery-gates.md)** 为准：第一阶段 Admin 和可独立完成的 Core 高标准交付（合成测试数据）；第二阶段 AisenLens 本地真实业务数据与双端联调；第三阶段 Admin/Supabase/AisenLens 部署端上线验收。**D1/D2/D3/S1/D4 仅为技术工作流编号，不能代替这三道交付门禁。** 业务和安全权威优先级：[当前需求](../../spec/requirements.md) → [长期架构](../../architecture/README.md) → [AGENTS](../../../AGENTS.md) → 本执行计划；真实代码/测试决定进度，当前剩余工作见 [TODO](../TODO.md)。
+> 状态：**项目所有者宣布第一阶段基本结束，正在第二阶段准备；完整交付签收仍待补齐**；更新 2026-10-24。本文件是**唯一 MVP 总计划入口**。项目所有者确定的交付顺序及质量门槛以 **[三阶段开发与交付验收总则](./three-stage-delivery-gates.md)** 为准：第一阶段 Admin 和可独立完成的 Core 高标准交付（合成测试数据）；第二阶段 AisenLens 本地真实业务数据与双端联调；第三阶段 Admin/Supabase/AisenLens 部署端上线验收。**D1/D2/D3/S1/D4 仅为技术工作流编号，不能代替这三道交付门禁。** 业务和安全权威优先级：[当前需求](../../spec/requirements.md) → [长期架构](../../architecture/README.md) → [AGENTS](../../../AGENTS.md) → 本执行计划；真实代码/测试决定进度，当前剩余工作见 [TODO](../TODO.md)。
 
-**2026-10-24 第一阶段深度审查的正式施工基线**：[第一阶段完整整改总计划与专项施工单](./phase1-delivery-remediation-plan.md)；按 W0～W7 完成性能拆分、表格、业务操作、WCAG、响应式、八维视觉与交付回归。该文件是本总计划之下的实施清单，不能被理解为第一阶段已经通过。
+**阶段过渡（2026-10-27）**：项目所有者宣布第一阶段基本结束，当前正在汇总验收残余及第二阶段本地对接准备。交付门槛仍由[三阶段总则](./three-stage-delivery-gates.md)约束，所有 OPEN/BLOCKED 项以[唯一未完成任务](../TODO.md)为准。AisenLens 双端还未实际联调。
 
-**2026-10-25 新增业务设计**：跨 SaaS 用户反馈正式合同已写入[用户反馈长期架构](../../architecture/domains/user-feedback.md)，未改变三阶段交付顺序。数据库/RPC、可独立实现的受限 Edge 测试边界与完整 Admin 页面属第一阶段；AisenLens 客户端真实反馈操作属第二阶段；真实 R2/线上安全与成本验收属第三阶段。执行清单见 [TODO FB-01～04](../TODO.md)。
-**FB 正式专项执行细目**：[跨 SaaS 反馈施工计划](./fb-user-feedback-implementation.md) 进一步划分 FB-01A/B/C、FB-02A/B、FB-03A/B/C、FB-04A/B，后端安全通过后才联通 Admin 和上传，不能因计划已创建就标记功能完成。
-
-**FB-V2（2026-10-26）最新施工：** 本地新增收件箱/工作台阶段数据库迁移及可信分诊、星标/标签、保护导出审计 RPC，11 文件 437/437 pgTAP PASS；Admin 双视图与 ZIP Edge 编码，真 JWT/AAL2 处理 Chrome 与 0 图 ZIP HTTP 测试通过，含图 R2 及人工阶段签收未完成。详见 [FB-V2 当前计划](./fb-v2-inbox-workbench.md)。\n\n**FB 当前局部实施证据（2026-10-25）**：已在本地隔离库应用反馈系列增量迁移，反馈三表/RLS、本人与 Admin 可信 RPC、Edge 上传/访问与 Admin 页面初版（含可选负责人指派）已编码，开发候选提交限流在 SQL 预检及提交事务内生效；**9 个 SQL 测试文件 397/397 PASS**，Admin 正式生产构建/TS 与 Lint PASS，Edge Deno 类型检查与图片辅助 5/5 单测 PASS，且临时 GoTrue 用户真实签名 JWT/AAL1 HTTP 权限测试 **6/6 PASS、已清理**。**真实 Edge 零图文字提交 JWT HTTP/409/422/429 PASS、隔离 S3 条件写/503 模拟 6/6 Deno PASS、完整 D3 AAL2 Chrome/74 组视口回归 PASS**；**仍缺一/两图的完整 Edge→R2 上传/私有读取、孤儿定时引用对账、真实 R2、空库全回放及第一阶段人工签收**。详见[FB 实施记录](./fb-user-feedback-implementation.md)。
+**当前专项**：[Admin UI 质量审查](./admin-frontend-ui-production-readiness-audit-and-remediation-plan-2026-10-27.md)、[性能优化计划](./admin-frontend-performance-optimization-plan-2026-10-26.md)、[反馈 V3 四队列](./feedback-v3-lightweight-implementation.md)、[AisenLens 小 JSON 备份 S1](./s1-aisenlens-r2-backup.md)与[第二阶段本地联调方案](./phase2-aisenlens-local-integration-plan.md)。旧 FB-V1/V2 已结束的五态/回复 UI 方案不再是施工依据；[FB-V2 记录](./fb-v2-inbox-workbench.md)只保存 ZIP 与旧安全测试背景，早期一次性过程计划从活动目录移除并通过 Git 历史恢复。
 
 ## 1. 当前事实、目标与阶段边界
 
@@ -15,7 +12,7 @@
 - **D2 已验证部分**：[DEC-06 受限 Auth 身份 SQL RPC](../../../supabase/migrations/20261024045105_admin_user_lookup.sql) 已在本地应用、[006](../../../supabase/tests/database/006_admin_user_lookup.test.sql) 47/47 PASS（数据库累计 **286/286 pgTAP PASS**）。[真实 Auth/HTTP/MFA 自动化](../../../scripts/test-d2-auth-api-mfa.mjs) 在本地 GoTrue/Kong/PostgREST/Mailpit 测试通过，包括 ES256 JWKS 验签、邮件确认、TOTP `aal2`、M1 管理撤权/blocked 旧 JWT 拒绝、HTTP 401/403/409/422/业务 200，以及真实密码找回邮件、签名恢复 JWT、更改密码/旧密码失效。
 - **D3 已验证部分**：正式 React-admin/Vite/MUI 位于 [`apps/admin/`](../../../apps/admin/README.md)，已有全业务列表与详情、主要写入 RPC、真实 Chrome 密码→TOTP→AAL2、429/503 故障注入、生产构建预览 E2E；`pnpm typecheck/build/lint`、锁文件、审计与前端安全扫描通过。**这些局部 PASS 绝不等于第一阶段交付签收**：全部模块与表格/流程的边界、完整无障碍/WCAG、八维视觉逐页评审、前端真实性能与代码拆分优化基线、所有者签收仍有缺口；详见 [逐项矩阵](./d3-acceptance-matrix.md)。
 - **尚未完成**：第一阶段所有模块的完整交付级异常/业务/无障碍/视觉/性能签收、完整 AUTH-P01～P12 与失设备恢复及数据库 Lint；第二阶段 AisenLens 本地实际业务通信、双端开发、备份/Edge/R2 模块；第三阶段线上 Supabase/Admin/AisenLens、真实 SMTP/R2/发布安全与灾备验收。任何局部 JWT/浏览器 PASS **不能冒充前一阶段完成，更不能视作生产发布许可**。
-- **MVP 目标**：可信 Core 身份/成员/Pro 资格、兑换与管理；统一 Auth 与受保护 HTTP API；独立 Admin；跨 SaaS 按产品的用户反馈（文字 + 最多两图、状态处理/回复闭环，当前已设计未实现）；首发 AisenLens 的本地优先准入与非敏感小型私有配置备份；分环境验收与明确的发布审批。
+- **MVP 目标**：可信 Core 身份/成员/Pro 资格、兑换与管理；统一 Auth 与受保护 HTTP API；独立 Admin；跨 SaaS 按产品的用户反馈（文字 + 最多两图、当前 V3 四队列轻量处理、受控 ZIP，已本地编码但仍有真实图片及客户端验收缺口）；首发 AisenLens 的本地优先准入与非敏感小型私有配置备份；分环境验收与明确的发布审批。
 - **不做**：公共 `plans`、SaaS 功能/额度配置、`check_access(...,capability)`、第二套 JWT/Node API、AI 代理、Redis/通用插件、独立客服工单平台与复杂自动派单/邮件通知。反馈具体边界以[用户反馈长期架构](../../architecture/domains/user-feedback.md)为准，绝不把 V6 模拟结果算成上线能力。
 
 ## 2. 三阶段交付门禁与技术工作流映射

@@ -1,6 +1,6 @@
 # 公共 API 与独立 SaaS 接入时序
 
-> 状态：MVP **调用路径、信任边界与异常行为的已确定逻辑架构**，尚未实施。**操作清单、输入输出、状态码与验收的唯一权威**是[API 契约与验收](./api-contract-and-mvp-acceptance.md)；本文不另立操作清单或错误码表。业务状态权威见[成员生命周期](../domains/membership-lifecycle.md)、[权益与兑换码](../domains/billing-and-entitlements.md)。
+> 状态：MVP **调用路径、信任边界与异常行为的已确定逻辑架构**；Core 部分受保护 RPC、真实 JWT/HTTP 和 Admin 交互已经本地实施并测试，但 AisenLens 真客户端互通与完整负例/生产验收尚未执行。**操作清单、输入输出、状态码与验收的唯一权威**是[API 契约与验收](./api-contract-and-mvp-acceptance.md)；本文不另立操作清单或错误码表。业务状态权威见[成员生命周期](../domains/membership-lifecycle.md)、[权益与兑换码](../domains/billing-and-entitlements.md)。
 
 ## 1. 参与方及责任边界
 
@@ -19,10 +19,10 @@
 ## 2. 公共读取与变更调用路径
 
 - **登录与重置密码**：各应用直接用 Supabase Auth SDK；不新建登录、刷新、确认邮件或 SSO 接口。
-- **只读**：`get_my_products`、`check_access` 由调用方携带有效用户 JWT 访问公共 RPC；前者查看本人产品概览，后者无副作用地检查指定产品/能力。已认证且可可信计算时，`check_access` 的准入拒绝返回 **HTTP 200 + `allowed=false/reason`**，认证失败为 401、可信计算故障为 503/5xx；不在只读路径隐式加入。管理列表则由 React-admin 复用 Data API 的筛选、排序和分页，依靠管理员 RLS；Auth 用户的邮箱/ID 查找通过只读 Edge Function。
+- **只读**：`get_my_products`、`check_access` 由调用方携带有效用户 JWT 访问公共 RPC；前者查看本人产品概览，后者无副作用地检查指定产品的成员与 Pro 准入资格，不接受功能键或额度请求。已认证且可可信计算时，`check_access` 的准入拒绝返回 **HTTP 200 + `allowed=false/reason`**，认证失败为 401、可信计算故障为 503/5xx；不在只读路径隐式加入。管理列表则由 React-admin 复用 Data API 的筛选、排序和分页，依靠管理员 RLS；Auth 用户的受限 UUID/精确邮箱查询目前由经 AAL2/管理员资格保护的只读 PostgreSQL RPC 实现；若真实权限或性能不符合合同，才按已批准的条件改用受保护 Edge 查询。
 - **状态变更**：`ensure_membership`、`leave_product`、`rejoin_product`、`redeem_code` 和管理函数均是单次受保护 PostgreSQL RPC；函数内按当前状态执行锁定、写入、审计。Edge Function 的多个独立 Supabase SDK 调用不是事务，不能代替此路径。
 - **未来消费型功能的安全门槛，而非新增当前接口**：如果产品确实需要按次扣减/容量预留，应由产品可信端计算有效费用/字节数并经受保护事务完成 actor/资源属主/当前权益核验、正数/边界条件、行锁与幂等，不能让浏览器传任意 `cost_amount` 后直接 UPDATE；同请求重复提交不能二次扣费。Aisenlens R2 现有 `ready+reserved` 预留、final 校验与补偿必须遵守该原则。受保护原子事务及失败边界见[可信 RPC 长期合同](../database/rpc-security-and-locking-contract.md)；**不在本轮新增 `consume_quota`、公共积分账本或 Edge AI 代理**。
-- **权益与额度**：公共 `check_access` 返回允许性及所需功能/上限，不扣减、预留产品用量；产品对自己的数据拥有计数和执行职责，见[权益专项](../domains/billing-and-entitlements.md#3-mvp-权益逻辑模型)。
+- **权益与额度**：公共 `check_access` 返回可信准入、产品级 Free/Pro 资格与拒绝原因，**不返回 SaaS 具体功能/额度**，不扣减或预留产品用量；产品对自己的数据拥有计数和执行职责，见[权益专项](../domains/billing-and-entitlements.md#3-mvp-轻量产品会员资格逻辑模型)。
 
 ## 3. 首次合法接入时序
 
@@ -44,13 +44,13 @@
 
 用户主动提交所声明目标产品与兑换码调用 `redeem_code(product_key, code)`：无成员时可在同一个数据库事务中创建 `active` 与 `join` 事件，`left`/`suspended` 则不消费码。**未来支付 Webhook/补单不是用户主动使用**，只写可信授权来源，不调用 ensure，不恢复成员。精确分支只以[计费权益 §5](../domains/billing-and-entitlements.md#5-授权与产品成员状态的关系唯一权威)为准。
 
-### 3.4 跨 SaaS 用户反馈（FB-V2 双阶段与受控 ZIP；真实 R2/人工验收未完成）
+### 3.4 跨 SaaS 反馈与当前 V3 四队列（真实 AisenLens/R2 含图未验收）
 
-反馈不是成员创建或 Pro 校验入口。登录且邮箱确认、未全局 blocked 的用户（包括尚未加入对应产品者）由 SaaS 本人 JWT 提交 `product_key`、`request_id`、正文与 0～2 图；专用受保护 `feedback-submit` Edge 检查认证/产品/上传字节并写私有 R2，小图元数据与反馈原文由仅可信服务角色可调用的 `feedback_submit_from_edge` RPC 同事务落库，**新反馈固定 `queue_state=inbox` 且 `priority/status=NULL`**。Admin 只能先在 `admin_screen_feedback` 选择优先级晋升至 `workbench` 才能调用五态处理/负责人接口；阅读/归档/软删除、恢复、星标/标签均为独立受保护 RPC。两视图可调用 `feedback-export` Edge，基于真实 JWT/AAL2 和 RLS 重新核验范围，返回含正文/原图/可选事件字段的 ZIP，原图缺失则拒绝。详情见[FB-V2 实施计划](../../Plans/aisencore-mvp/fb-v2-inbox-workbench.md)。失败/超时按同 `request_id` 查询恢复，R2 单侧残留必须由受控清理处理。
+反馈是独立于成员加入与 Pro 检查的受限本人提交入口。已登录、邮箱确认且未 blocked 的用户使用本人 JWT、`product_key`、`request_id`、正文和最多 2 张图片请求 `feedback-submit` Edge；可信 `feedback_submit_from_edge` RPC 将本人/产品/图片元数据与反馈状态在 PostgreSQL 单事务内保存，图片经受控私有 R2 路径存储。新反馈先进入 `inbox`；读取本人 DTO 不返回 R2 key、内部审计或他人反馈，重放/异常按相同 request ID 核查，不能把 R2/DB 当成原子事务。
 
-本人通过列白名单的受限读取入口查看自己的反馈和公开回复，可用 `reply_to_feedback` 追加文字；Admin 通过 RLS/PostgREST 查询，使用 `admin_update_feedback` 单事务处理状态、备注、公开回复及审计；私有图片由 `feedback-image-access` Edge 再核验本人/当前 `aal2` 管理员后短期授权。准确状态、权限、五态转换、幂等键、异常/清理和 Admin 信息架构以[用户反馈领域](../domains/user-feedback.md)为准，不借用 `check_access` 或产品 Pro 资格作为提交权限。SQL RPC 与 Edge 入口已编码，数据库 pgTAP、Edge 静态类型检查已通过；**本地 Edge 运行时已启动并完成真实 GoTrue JWT 的零图文字提交、重放/冲突、伪图/三图与 429 的 HTTP 验证；真实 R2 的一/两图上传与完整异常验收仍未完成**。不能把已编码接口当作已上线服务。
+**当前 Admin V3**：`inbox` 可预设优先级、星标、标签、私有备注后经 `admin_feedback_v3` 受保护事务进入 `workbench`；归档来自工作台、回收站软删可恢复 `deleted_from` 原阶段。旧 V2 的五态/负责人/对用户公开回复字段与历史事件保留只读数据兼容，不再成为新 Admin 可编辑流程；旧 RPC 不能绕过 V3 队列保护。Admin 列表采用 RLS/PostgREST，写入复核当前 AAL2、管理员资格、账号状态、`expected_version`、锁序与最小审计，切换产品时不复用过时操作范围。
 
-**已增加的逻辑入口**：`feedback_submit_preflight(product_key, request_id)` 供本人上传前按账号/目标产品和幂等请求号验证，并仅返回活动 `product_id` 与候选 5 条/小时上限（避免直接授予 `products` SELECT），真实入库在同用户 L1 锁内复验，避免预检并发竞态；`my_feedback` 本人 DTO 返回 `version` 和受限附件 ID（不是 R2 key）；管理员单独调用 `admin_assign_feedback(feedback_id, expected_version, assigned_to)` 指派/取消当前合格管理员并留下事件和最小审计。当前 SQL 角色模拟、Edge 类型检查已通过，另有 6/6 本地 Auth 真签名 JWT/AAL1 HTTP 权限断言通过且临时用户已清理；**已有真实 Edge 零图 JWT HTTP、Admin AAL2 真 HTTP 和反馈专属 Chrome 操作 PASS；完整图片 HTTP/R2 与 AisenLens 客户端及人工验收仍待验证**。
+`feedback-export` Edge 对所选/筛选范围重新鉴权后输出必要正文/原图和按开关选择的受限历史，内部评论和直接身份默认关闭；敏感选择重新确认且范围变化必须失效。私图读取使用 `feedback-image-access` Edge 再鉴权；上传、ZIP 和失败对账区分隔离 S3 替身与真实 R2。历史真实零图 JWT HTTP、Admin AAL2 Chrome、V3 462/462 pgTAP 有部分 PASS 记录，**但完整一两张图真实 R2、AisenLens 客户端提交/回看、人工 WCAG/视觉与生产验收仍开放**。具体状态、安全与测试以[反馈领域唯一合同](../domains/user-feedback.md)和[V3 当前专项](../../Plans/aisencore-mvp/feedback-v3-lightweight-implementation.md)为准。
 
 ## 4. 准入复核与缓存
 
@@ -64,6 +64,6 @@
 
 - 各 SaaS 以公共不可变 `user_id` 关联自己的项目/文件；业务库可以共用或独立。若业务数据库在**另一个 Supabase Project**，其 RLS 不自动接受 AisenCore JWT；默认由该 SaaS 自己的后端验证公共 JWT，再按自己可信的业务数据库凭据访问并执行资源授权。另一个选择是在 AisenCore Project 内使用独立的产品 Schema，必须验证 Schema 暴露与 RLS 边界。不可把两个项目的 Auth/RLS 当作天然互认。
 - 机器调用、邀请审批/私有产品、公共计量账本、跨域无感 SSO、长任务强制即时撤销与自动支付回调，仍在真实需求进入相应阶段时设计；**R2 私有备份需求已确定，**Aisenlens 限定 JSON 已批准由受保护 Edge 校验并写 R2 final**，幂等、配额和跨系统补偿遵守[产品文件架构](../database/product-data-and-files.md)**，不代表相关 Edge Function 或 Bucket 已部署。
-- 本文描述的是**待实施的架构**，不代表 PostgreSQL 函数、RLS、Edge Function、环境或 SaaS 客户端已经存在。
+- 本文同时描述已编码的 AisenCore 公共服务与待第二阶段实现的真实 AisenLens 双端连接；已有本地分层 PASS 不等于完整验收、R2 实际部署或生产许可。
 
 相关：[API 契约](./api-contract-and-mvp-acceptance.md) · [数据库事务与权限](../database/database-access-and-transactions.md) · [管理员控制台](../applications/admin-console.md) · [统一会话](../applications/auth-and-multi-saas-sessions.md)。

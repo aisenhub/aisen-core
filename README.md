@@ -6,13 +6,13 @@ AisenCore（Aisen 公共核心服务）为多个彼此独立的 SaaS 产品统�
 
 ## 开发分为三个交付阶段
 
-项目目前处于**第一阶段：对接 AisenLens 本地开发环境之前的完整交付**。使用隔离 Supabase 和合成测试数据，必须完成 Admin **所有模块的业务操作、表格、流程、异常状态、全站无障碍和高标准八维视觉验收**，并优先完成前端性能、路由/依赖拆包和代码质量；达到可交付标准、经项目所有者签收后才能进入下一阶段。已通过的局部测试不等于第一阶段签收。
+项目所有者已于 **2026-10-27 宣布第一阶段基本结束**，当前处于**第一阶段未签收事项核对与第二阶段 AisenLens 本地端联调准备期**。使用隔离 Supabase 和合成测试数据，必须完成 Admin **所有模块的业务操作、表格、流程、异常状态、全站无障碍和高标准八维视觉验收**，并优先完成前端性能、路由/依赖拆包和代码质量；达到可交付标准、经项目所有者签收后才能进入下一阶段。已通过的局部测试不等于第一阶段签收。
 
 **第二阶段**才与 AisenLens 本地开发环境联调，改用 AisenLens 客户端**真实操作产生的本地业务数据**而非合成 demo 作为验收依据，**同步完善 AisenCore 后端及 AisenLens 前端**，测试跨模块/端的 Auth、成员、Pro、兑换、备份等通信及故障恢复；第二阶段全部通过后进入部署测试。
 
 **第三阶段**才配置和部署 Admin、Supabase 和 AisenLens 的线上环境，在真实部署端测试所有功能、跨服务通信、性能、安全、邮件、私有存储与备份恢复。部署、推送与正式上线仍须项目所有者**单独明确授权**。
 
-完整任务边界与逐阶段签收标准见 **[三阶段开发与交付验收总则](./docs/Plans/aisencore-mvp/three-stage-delivery-gates.md)**、[MVP 总计划](./docs/Plans/aisencore-mvp/00-mvp-master-plan.md)和[TODO](./docs/Plans/TODO.md)。原 D1/D2/D3/S1/D4 是技术工作流编号，不代表新的交付阶段数量。
+当前全部开放任务见 [唯一未完成任务清单](./docs/Plans/TODO.md)，首次本地对接安排见 [第二阶段联调准备方案](./docs/Plans/aisencore-mvp/phase2-aisenlens-local-integration-plan.md)。完整任务边界与逐阶段签收标准见 **[三阶段开发与交付验收总则](./docs/Plans/aisencore-mvp/three-stage-delivery-gates.md)**、[MVP 总计划](./docs/Plans/aisencore-mvp/00-mvp-master-plan.md)和[TODO](./docs/Plans/TODO.md)。原 D1/D2/D3/S1/D4 是技术工作流编号，不代表新的交付阶段数量。
 
 ## 快速开始：本地开发与体验
 

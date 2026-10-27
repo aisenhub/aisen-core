@@ -1,6 +1,6 @@
 # AisenCore 主架构
 
-> 状态：基于当前[统一需求](../spec/requirements.md)的已确定逻辑架构，D1 本地开发已启动（完整服务与上线尚未实现）。专项入口见[架构总索引](./README.md)。
+> 状态：基于当前[统一需求](../spec/requirements.md)的已确定逻辑架构，D1/D2/D3 与反馈 Edge 的本地实现已有分层测试证据；AisenLens 真客户端、私有配置备份 Edge/R2 与第三阶段线上部署仍未验收。专项入口见[架构总索引](./README.md)。
 
 ## 1. 定位、边界与设计原则
 
@@ -32,7 +32,7 @@ AisenCore 是多个**独立 SaaS 产品**共用的轻量公共底座。原则是
 
 PostgreSQL 与 R2 是**并列的数据承载**；一般私有文件仍可经授权签发临时凭证后由客户端直传，但**DEC-02 已批准 Aisenlens 受限非敏感小 JSON 配置备份经可信 Edge 校验后写入 R2 的明确例外**。这是**逻辑依赖关系**，不是强制所有客户端经过同一服务器转发业务数据或文件。比如本地拉片的 AI 输入由客户端按用户选择直接交给第三方模型；其本地视频和 AI 结果不经公共平台，Aisenlens 小 JSON 配置备份由 Edge 受保护中转校验并写 R2，恢复下载可短期签名后从 R2 直取。
 
-**R2 已批准方案与实施门禁**：DEC-02 确认由现有 Supabase Edge Functions 承担 Aisenlens 非敏感小 JSON 校验和 R2 final 条件写，不增加未批准的 Cloudflare Worker；服务器按请求 ID/用户/产品保留最小元数据及原子预留，DB/R2 失败由对账者补偿，绝不宣称跨系统原子性。**方案已批准但 Edge/R2/数据库尚未实现或实测**，白名单、大小、版本保留及清理策略见[产品数据/文件长期架构](./database/product-data-and-files.md)。
+**R2 已批准方案与实施门禁**：DEC-02 确认由现有 Supabase Edge Functions 承担 Aisenlens 非敏感小 JSON 校验和 R2 final 条件写，不增加未批准的 Cloudflare Worker；服务器按请求 ID/用户/产品保留最小元数据及原子预留，DB/R2 失败由对账者补偿，绝不宣称跨系统原子性。**该 AisenLens 专用备份路线已批准，但备份专用 Edge/R2/元数据尚未完成双端实现与实测；反馈 Edge 是另一条已编码的独立功能，不能混为备份准出**，白名单、大小、版本保留及清理策略见[产品数据/文件长期架构](./database/product-data-and-files.md)。
 
 | 架构分类 | 权威职责 | 详细设计 |
 | --- | --- | --- |
