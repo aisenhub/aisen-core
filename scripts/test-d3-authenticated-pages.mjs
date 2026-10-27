@@ -161,10 +161,14 @@ try {
     if(payload.method==='Fetch.requestPaused'){
       const req=payload.params;
       const faultRpc=injectedFault?.rpc??'admin_create_codes';
-      const targeted=req.request?.url?.includes('/rest/v1/rpc/'+faultRpc)&&req.request?.method==='POST';
-      const fault=targeted && injectedFault && !injectedFault.used ? injectedFault : null;
+      const targeted=injectedFault?.readTable?
+        req.request?.url?.includes('/rest/v1/'+injectedFault.readTable)&&req.request?.method==='GET':
+        req.request?.url?.includes('/rest/v1/rpc/'+faultRpc)&&req.request?.method==='POST';
+      const fault=targeted && injectedFault &&
+        (injectedFault.remaining>0||!injectedFault.used) ? injectedFault : null;
       if(fault){
         fault.used=true;
+        if(fault.remaining>0)fault.remaining--;
         const body=Buffer.from(JSON.stringify({message:'Synthetic local browser QA failure',code:'QA_INJECTED'})).toString('base64');
         void send('Fetch.fulfillRequest',{requestId:req.requestId,responseCode:fault.status,
           responseHeaders:[{name:'Access-Control-Allow-Origin',value:'*'},
@@ -388,6 +392,15 @@ try {
   assert.ok(actionTarget?.includes('/account-actions?user_id='+demoUserId),
     'User360 governance action must preserve the verified target account');
   console.log('NAV_USER360 PASS scoped account-governance action route');
+  const historyTarget=await evaluate("(()=>[...document.querySelectorAll('a[href]')].find(e=>e.textContent?.includes('查看完整授权历史'))?.getAttribute('href')??null)()");
+  assert.ok(historyTarget?.includes('/grants?user_id='+demoUserId),
+    'UI12 User360 history link must preserve exact UUID without any email in URL');
+  assert.ok(!historyTarget.includes('@'),'UI12 account history URL must not contain an email address');
+  await send('Page.navigate',{url:base+historyTarget});
+  await visible('授权记录');
+  const grantPrefill=await evaluate("(()=>[...document.querySelectorAll('input')].some(x=>x.value==="+JSON.stringify(demoUserId)+"))()");
+  assert.equal(grantPrefill,true,'UI12 server filtered grant history must prefill exact account UUID');
+  console.log('UI12_USER_HISTORY PASS verified UUID-only User360 -> Grants deep link');
   // Verify the destination form, not merely the href. It may be entered
   // directly after a user has been identified by an authorized lookup.
   await send('Page.navigate',{url:base+'/#/account-actions?user_id='+demoUserId});
@@ -433,7 +446,7 @@ try {
     ['restrictions','账号限制','目标账号'],
     ['audit-logs','管理审计','操作类型'],
     ['users','查找账号','请输入邮箱查找账号'],
-    ['feedback','反馈收件箱','收件箱'],
+    ['feedback','收件箱','收件箱'],
   ];
   for(const [route,title,expected] of morePages){
     await send('Page.navigate',{url:base+'/#/'+route});
@@ -443,14 +456,14 @@ try {
       // The primary menu label is visible before the feedback async list settles.
       for(let n=0;n<75;n++){
         body=String(await evaluate('document.body?.innerText??""')??'');
-        if(body.includes('收件箱暂无待筛选反馈')||body.includes('收到时间'))break;
+        if(body.includes('当前没有匹配的收件箱反馈')||body.includes('收到时间'))break;
         await sleep(180);
       }
     }
     assert.ok(!body.includes('resources.'+route+'.'),route+' untranslated framework keys');
     assert.ok(!body.includes('记录读取失败'),route+' data request failed');
     assert.ok(!body.includes('Cannot read properties'),route+' runtime crashed');
-    if(route==='feedback')assert.ok(body.includes('收件箱暂无待筛选反馈')||body.includes('收到时间'),
+    if(route==='feedback')assert.ok(body.includes('当前没有匹配的收件箱反馈')||body.includes('收到时间'),
       'feedback list must render either valid records or its localized empty state');
     await axeAudit(route);
     // AC-01: operational lists have no marketing Hero or secondary global switch.
@@ -524,6 +537,47 @@ try {
     await capture('operator-'+route+'-1440.png');
     console.log('AUTHENTICATED_PAGE PASS '+route+' '+expected);
   }
+
+  // UI-04: distinguish known HTTP read failures from empty records, and retry
+  // with the original deep-link filter after the injection is removed.
+  for(const [status,message] of [[429,'请求过于频繁'],[503,'数据服务暂时不可用']]){
+    await send('Page.navigate',{url:base+'/#/memberships?user_id='+demoUserId+'&qa_error='+status});
+    await visible('条记录');
+    await send('Fetch.enable',{patterns:[{
+      urlPattern:'*://127.0.0.1:55321/rest/v1/product_memberships*',requestStage:'Request',
+    }]});
+    // React-admin may retry a failed GET. Keep the fault active until an
+    // observable error is rendered; do not inject into an unrelated first paint.
+    injectedFault={status,used:false,remaining:20,readTable:'product_memberships'};
+    const refreshed=await evaluate("(()=>{const b=document.querySelector('button[aria-label=\"刷新数据\"]');b?.click();return !!b})()");
+    assert.equal(refreshed,true,'explicit list refresh requests real GET');
+    let failedBody='';
+    for(let i=0;i<125;i++){
+      failedBody=String(await evaluate('document.body?.innerText??""'));
+      if(failedBody.includes(message))break;
+      await sleep(240);
+    }
+    assert.ok(failedBody.includes(message),
+      'UI-04 GET '+status+' not visibly surfaced; intercepted='+
+      injectedFault.used+' remaining='+injectedFault.remaining+
+      ' interceptionError='+(interceptionFailure??'none'));
+    assert.equal(injectedFault.used,true,'read-only '+status+' injected into actual GET');
+    assert.ok(failedBody.includes('重试读取'),'temporary read failure offers retry');
+    assert.ok(!failedBody.includes('暂无匹配的成员关系'),'failed read cannot masquerade as an empty list');
+    const originalInput=await evaluate("(()=>[...document.querySelectorAll('input')].some(x=>x.value==="+JSON.stringify(demoUserId)+"))()");
+    assert.equal(originalInput,true,'read failure must preserve exact original search filter');
+    await send('Fetch.disable'); injectedFault=null;
+    const retried=await evaluate("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent?.includes('重试读取'));b?.click();return !!b})()");
+    assert.equal(retried,true,'original safe GET can be retried');
+    for(let i=0;i<70;i++){
+      const text=String(await evaluate('document.body?.innerText??""'));
+      if(!text.includes(message)&&text.includes('条记录'))break;
+      await sleep(160);
+    }
+    assert.equal((await evaluate('document.body?.innerText??""')).includes(message),false,
+      'read recovery removes stale error while preserving the filter');
+  }
+  console.log('UI04_READ_ERRORS PASS actual GET 429/503, nonempty-vs-error, original filter, safe retry');
 
 
   // Domain navigation is responsive. Management records remain global even
@@ -640,14 +694,14 @@ try {
   assert.equal(sortClicked,true,'sortable header is an interactive control');
   // React Query may temporarily replace the table with a loading card.
   // Check the final DOM instead of treating a fixed 600ms delay as an SLA.
-  let asc=null;
+  let asc=null,actualDates=[];
   for(let i=0;i<100;i++){
     asc=await evaluate("(()=>{const th=[...document.querySelectorAll('th')].find(e=>e.textContent?.includes('加入日期'));return th?.getAttribute('aria-sort')??null})()");
-    if(asc==='ascending')break;
+    actualDates=JSON.parse(await evaluate("JSON.stringify([...document.querySelectorAll('tbody tr')].map(tr=>Date.parse(tr.querySelectorAll('td')[3]?.innerText??'')).filter(n=>Number.isFinite(n)))"));
+    if(asc==='ascending'&&actualDates.length>5&&actualDates.every((v,i)=>i===0||v>=actualDates[i-1]))break;
     await sleep(180);
   }
   assert.equal(asc,'ascending','sort direction must become ascending after backend reload');
-  const actualDates=JSON.parse(await evaluate("JSON.stringify([...document.querySelectorAll('tbody tr')].map(tr=>Date.parse(tr.querySelectorAll('td')[3]?.innerText??'')).filter(n=>Number.isFinite(n)))"));
   assert.ok(actualDates.length>5,'real member rows remain after server-sort');
   assert.ok(actualDates.every((v,i)=>i===0||v>=actualDates[i-1]),'membership joined_at is sorted ascending by backend');
   console.log('T1 PASS real Chrome column sort + aria-sort + ascending server results');
@@ -676,6 +730,24 @@ try {
   const globalMemberCount=Number(globalMemberText.match(/共\s*(\d+)\s*条记录/)?.[1]??0);
   assert.ok(globalMemberCount>=48,'all baseline synthetic demo members should be visible regardless of other temporary fixtures');
   console.log('SCOPED_EMPTY_RECOVERY PASS aisenlens -> 全平台 '+globalMemberCount+' records');
+  // UI-05: rapidly change scopes while requests are in flight. A late result
+  // for the previous scope must never be presented as current data.
+  async function selectWorkScope(label){
+    const opened=await evaluate("(()=>{const x=[...document.querySelectorAll('[role=combobox]')].find(e=>e.getAttribute('aria-label')?.startsWith('切换管理产品范围'));x?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,button:0}));return !!x})()");
+    assert.equal(opened,true,'UI05 selector stays actionable after scope changes');
+    await sleep(140);
+    const clicked=await evaluate("(()=>{const x=[...document.querySelectorAll('[role=option]')].find(e=>e.textContent?.includes("+JSON.stringify(label)+"));x?.click();return !!x})()");
+    assert.equal(clicked,true,'UI05 target scope '+label+' selectable');
+  }
+  await selectWorkScope('aisenlens');
+  await selectWorkScope('全平台视角');
+  await selectWorkScope('aisenlens');
+  await visible('当前产品暂无成员关系');
+  assert.equal(await evaluate("document.body?.innerText.includes('共 48 条记录')"),false,
+    'UI05 stale global records must not be rendered into empty product scope');
+  await selectWorkScope('全平台视角');
+  await visible('共 '+globalMemberCount+' 条记录');
+  console.log('UI05_RAPID_SCOPE PASS latest scope selected and prior rows not misattributed');
 
 
   await send('Page.navigate',{url:base+'/#/users'});
@@ -1085,6 +1157,7 @@ try {
     await send('Page.navigate',{url:base+'/#/account-actions?user_id='+qaOrdUserId});
     await visible('平台账号操作');
     await visible(qaOrdEmail);
+    await visible('当前状态：平台账号');
     const opened=await evaluate("(()=>{const x=[...document.querySelectorAll('[role=combobox]')].find(e=>e.closest('.MuiFormControl-root')?.textContent?.includes('管理操作')) ?? [...document.querySelectorAll('[role=combobox]')].at(-1);x?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,button:0}));return !!x})()");
     assert.equal(opened,true,'Account action combobox');
     await sleep(150);
@@ -1095,7 +1168,19 @@ try {
     await send('Input.insertText',{text:'隔离身份治理自动验收'});
     const reviewed=await evaluate("(()=>{const b=[...document.querySelectorAll('button')].find(b=>b.textContent?.includes('核对目标与操作'));const ok=!!b&&!b.disabled;if(ok)b.click();return ok})()");
     assert.equal(reviewed,true,'Account review gating');
-    await visible('请核对后单独提交');
+    const summary=await visible('请核对后单独提交');
+    const transitions={
+      '封禁平台账号':'未封禁 → 已封禁',
+      '解除平台封禁':'已封禁 → 未封禁',
+      '授予平台管理员资格':'无有效管理员资格 → 有效平台管理员',
+      '撤销平台管理员资格':'有效平台管理员 → 无有效管理员资格',
+    };
+    assert.ok(summary.includes('作用范围：全平台，不受顶部产品筛选影响。'),
+      'high-risk confirmation must state global impact');
+    assert.ok(summary.includes(transitions[name]),
+      'high-risk confirmation must show verified before/after status for '+name);
+    assert.ok(summary.includes(qaOrdEmail),
+      'high-risk confirmation must identify the verified target account');
     const submitted=await evaluate("(()=>{const b=[...document.querySelectorAll('button')].find(b=>b.textContent?.includes('提交管理操作'));const ok=!!b&&!b.disabled;if(ok)b.click();return ok})()");
     assert.equal(submitted,true,'Reviewed account submission');
     for(let i=0;i<48;i++){

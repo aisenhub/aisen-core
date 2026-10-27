@@ -25,10 +25,11 @@ import PersonSearchOutlinedIcon from '@mui/icons-material/PersonSearchOutlined';
 import { auditActionLabel, auditTargetLabel } from '../adminCopy';
 import { DomainNavigation } from './DomainNavigation';
 import { domainFor, domainViews } from './domainNavigationModel';
+import { formatAdminCalendarDate, formatAdminInstant } from '../dateDisplay';
 
 type ResourceName = 'memberships'|'grants'|'code-batches'|'codes'|'redemptions'|
   'membership-events'|'admins'|'restrictions'|'audit-logs'|'users';
-type Kind='user'|'product'|'date'|'status'|'code'|'id'|'number'|'text'|'grant-state'|'code-state';
+type Kind='user'|'product'|'date'|'instant'|'status'|'code'|'id'|'number'|'text'|'grant-state'|'code-state';
 type Field={key:string;label:string;kind:Kind};
 type Config={
   title:string;eyebrow:string;description:string;icon:React.ReactNode;fields:Field[];
@@ -47,28 +48,28 @@ const configs:Record<ResourceName,Config>={
     hint:'成员暂停仅影响指定产品，与平台级账号封禁互相独立。'},
   grants:{title:'授权记录',eyebrow:'ENTITLEMENTS / PRO',icon:<WorkspacePremiumOutlinedIcon/>,sort:'created_at',scoped:true,show:true,
     description:'查看权益的授权来源、有效期限和撤销状态。',
-    fields:[field('user_id','授权账号','user'),field('product_id','所属产品','product'),field('id','权益状态','grant-state'),field('starts_at','生效日期','date'),field('ends_at','结束日期','date'),field('revoked_at','撤销日期','date')],
+    fields:[field('user_id','授权账号','user'),field('product_id','所属产品','product'),field('id','权益状态','grant-state'),field('starts_at','生效时刻','instant'),field('ends_at','结束时刻','instant'),field('revoked_at','撤销时刻','instant')],
     search:{field:'user_id',label:'精确授权用户 UUID'},
     selectFilter:{field:'source_type',label:'授权来源',values:[['admin','管理员'],['redeem_code','兑换码']]},
     action:{label:'新增 Pro 授权',to:'/grant-new'},hint:'列表包含历史记录，过期和撤销授权不等于当前可用。'},
   'code-batches':{title:'发行批次',eyebrow:'ISSUANCE / BATCHES',icon:<ConfirmationNumberOutlinedIcon/>,sort:'created_at',scoped:true,show:true,
     description:'每一次批量发行都对应唯一请求编号与清晰的业务归属。',
-    fields:[field('request_id','请求编号','code'),field('product_id','适用产品','product'),field('quantity','发行数量','number'),field('grant_duration_days','权益天数','number'),field('created_at','发行时间','date')],
+    fields:[field('request_id','请求编号','code'),field('product_id','适用产品','product'),field('quantity','发行数量','number'),field('grant_duration_days','权益天数','number'),field('created_at','发行时间','instant')],
     action:{label:'发行兑换码',to:'/issue-codes'},search:{field:'request_id',label:'准确请求编号'},
     hint:'安全限制：兑换码明文仅在首次发行响应出现，此处只展示批次摘要。'},
   codes:{title:'兑换码记录',eyebrow:'REDEMPTION / SECURITY',icon:<VerifiedUserOutlinedIcon/>,sort:'created_at',scoped:true,show:true,
     description:'安全查看码前缀、核销次数和到期及撤销状态。',
-    fields:[field('code_prefix','安全前缀','code'),field('product_id','所属产品','product'),field('id','码状态','code-state'),field('redeemed_count','已核销','number'),field('max_redemptions','使用上限','number'),field('expires_at','到期时间','date'),field('revoked_at','撤销时间','date')],
+    fields:[field('code_prefix','安全前缀','code'),field('product_id','所属产品','product'),field('id','码状态','code-state'),field('redeemed_count','已核销','number'),field('max_redemptions','使用上限','number'),field('expires_at','到期时间','instant'),field('revoked_at','撤销时间','instant')],
     search:{field:'batch_id',label:'精确批次 UUID'},
     action:{label:'发行新批次',to:'/issue-codes'},hint:'不会显示完整兑换码明文、码哈希，也不支持二次获取。'},
   redemptions:{title:'核销记录',eyebrow:'REDEMPTION / HISTORY',icon:<FactCheckOutlinedIcon/>,sort:'created_at',scoped:true,
     description:'核销是一项可追溯的权益事实，记录对应账号、产品及生效授权。',
-    fields:[field('user_id','核销账号','user'),field('product_id','所属产品','product'),field('code_id','安全码编号','id'),field('grant_id','授权编号','id'),field('created_at','核销时间','date')],
+    fields:[field('user_id','核销账号','user'),field('product_id','所属产品','product'),field('code_id','安全码编号','id'),field('grant_id','授权编号','id'),field('created_at','核销时间','instant')],
     search:{field:'grant_id',label:'精确授权 UUID'},
     hint:'撤销兑换码不影响已经核销生效的授权。'},
   'membership-events':{title:'成员事件',eyebrow:'LIFECYCLE / EVENTS',icon:<EventNoteOutlinedIcon/>,sort:'created_at',
     description:'完整查看成员加入、退出、暂停及恢复的时间轨迹。',
-    fields:[field('membership_id','对应成员','id'),field('action','事件类型','status'),field('from_status','之前','status'),field('to_status','之后','status'),field('created_at','发生时间','date')],
+    fields:[field('membership_id','对应成员','id'),field('action','事件类型','status'),field('from_status','之前','status'),field('to_status','之后','status'),field('created_at','发生时间','instant')],
     search:{field:'membership_id',label:'精确成员关系 UUID'},
     hint:'事件为全平台历史记录，本视图不受产品作用域切换影响。'},
   admins:{title:'管理员权限',eyebrow:'GOVERNANCE / ACCESS',icon:<AdminPanelSettingsOutlinedIcon/>,sort:'created_at',show:true,
@@ -83,7 +84,7 @@ const configs:Record<ResourceName,Config>={
     action:{label:'账号管理操作',to:'/account-actions'},hint:'平台封禁与产品成员暂停的影响范围不同。'},
   'audit-logs':{title:'管理审计',eyebrow:'GOVERNANCE / AUDIT',icon:<HistoryOutlinedIcon/>,sort:'created_at',show:true,
     description:'按时间回溯业务管理命令、目标及处理理由。',
-    fields:[field('action','操作类型','text'),field('actor_user_id','操作者','user'),field('target_type','对象类型','text'),field('target_id','目标编号','id'),field('created_at','执行时间','date')],
+    fields:[field('action','操作类型','text'),field('actor_user_id','操作者','user'),field('target_type','对象类型','text'),field('target_id','目标编号','id'),field('created_at','执行时间','instant')],
     search:{field:'target_id',label:'精确目标 UUID'},
     hint:'demo_fixture_preview 是合成演示记录，不能作为真实合规审计证据。'},
   users:{title:'查找账号',eyebrow:'IDENTITY / LOOKUP',icon:<PersonSearchOutlinedIcon/>,sort:'id',show:true,
@@ -93,18 +94,13 @@ const configs:Record<ResourceName,Config>={
 };
 type Item=Record<string,unknown>&{id:string|number};
 const text=(value:unknown)=>value==null||value===''?'—':String(value);
-function formatDate(value:unknown){
-  if(!value)return '—';
-  const date=new Date(String(value));
-  return Number.isNaN(date.valueOf())?'—':date.toLocaleDateString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit'});
-}
 function State({value}:{value:unknown}){
   const key=typeof value==='boolean'?(value?'active':'revoked'):String(value??'');
   const zh:Record<string,string>={active:'正常',suspended:'暂停',left:'已退出',blocked:'已封禁',revoked:'已撤销',
     draft:'草稿',join:'加入',leave:'退出',suspend:'暂停',restore:'恢复',pro:'Pro'};
   const good=['active','join','restore'].includes(key),bad=['suspended','blocked','revoked','suspend'].includes(key);
-  return <Chip label={zh[key]??(key||'—')} size="small" sx={{fontWeight:750,
-    bgcolor:good?'#e5f5ed':bad?'#fff0e8':'#f0f2f7',color:good?'#176b4a':bad?'#a15d2c':'#57677d'}}/>;
+  return <Chip label={zh[key]??(key||'—')} size="small" variant="outlined"
+    color={good?'success':bad?'warning':'default'} sx={{fontWeight:750}}/>;
 }
 function CellValue({item,field,userMap,productMap}:{item:Item;field:Field;userMap:Map<string,string>;productMap:Map<string,string>}){
   const [now]=useState(()=>Date.now());
@@ -124,7 +120,8 @@ function CellValue({item,field,userMap,productMap}:{item:Item;field:Field;userMa
       expired=!!item.expires_at&&Date.parse(String(item.expires_at))<=now;
     return <State value={revoked?'revoked':used?'已用尽':expired?'已过期':'可核销'}/>;
   }
-  if(field.kind==='date')return <Typography variant="body2" sx={{whiteSpace:'nowrap'}}>{formatDate(raw)}</Typography>;
+  if(field.kind==='date'||field.kind==='instant')return <Typography variant="body2" sx={{whiteSpace:'nowrap'}}>
+    {field.kind==='instant'?formatAdminInstant(raw):formatAdminCalendarDate(raw)}</Typography>;
   if(field.kind==='number')return <Typography sx={{fontVariantNumeric:'tabular-nums',fontWeight:740}}>{text(raw)}</Typography>;
   if(field.kind==='user')return <Typography variant="body2" sx={{fontWeight:680,overflowWrap:'anywhere'}}>
     {userMap.get(value)??(value?value.slice(0,8)+'…':'—')}</Typography>;
@@ -153,6 +150,18 @@ function EmptyScene({title,scoped,idle}:{title:string;scoped:boolean;idle:boolea
           '尝试调整筛选条件。'}
     </Typography>
   </Card>;
+}
+function readFailureMessage(error:unknown){
+  const status=(error as {status?:number}|null)?.status;
+  if(status===401)return '登录会话已失效，请重新登录后读取记录。';
+  if(status===403)return '当前管理员资格或 TOTP 验证不满足读取要求，请重新验证权限。';
+  if(status===409)return '记录状态已变化，请刷新列表后重新核对。';
+  if(status===429)return '请求过于频繁，请稍后重试。';
+  if(status===503)return '数据服务暂时不可用，请稍后重试。';
+  const message=error instanceof Error?error.message:'';
+  if(/failed to fetch|network|fetch failed|超时|timeout|网络|连接中断/i.test(message))
+    return '网络连接或响应超时，记录尚未读取成功。请检查网络后重试。';
+  return '记录读取失败，未能确认当前数据。请稍后重试。';
 }
 export function ResourceWorkspace({resource}:{resource:ResourceName}){
   const [params]=useSearchParams();
@@ -196,6 +205,10 @@ function ResourceWorkspaceView({resource}:{resource:ResourceName}){
   const query=useGetList(resource,{
     pagination:{page,perPage:20},sort:{field:sortField,order:sortOrder},filter
   },{enabled:!idle,refetchOnWindowFocus:false});
+  // React Query may keep retrying a 503 while retaining cached rows. Surface
+  // the first failed attempt instead of reporting those rows as current.
+  const failedRead=!idle&&(query.isError||(query.isFetching&&query.failureCount>0));
+  const readError=query.error??query.failureReason;
   const rows=useMemo(()=>(query.data??[]) as Item[],[query.data]);
   const userIds=useMemo(()=>[...new Set(rows.flatMap(r=>['user_id','actor_user_id','granted_by']
     .map(k=>r[k]).filter(Boolean).map(String)))].slice(0,100),[rows]);
@@ -205,7 +218,7 @@ function ResourceWorkspaceView({resource}:{resource:ResourceName}){
   const userMap=new Map((identities.data??[]).map(r=>[String(r.id),text(r.email)]));
   const productMap=new Map((products.data??[]).map(r=>[String(r.id),text(r.name)]));
   const total=query.total??0;
-  const pageOutOfRange=page>1&&!query.isPending&&!query.isError&&page>Math.max(1,Math.ceil(total/20));
+  const pageOutOfRange=page>1&&!query.isPending&&!failedRead&&page>Math.max(1,Math.ceil(total/20));
   const changeSort=(field:string)=>{
     if(resource==='users')return; // identity lookup deliberately does not offer enumeration or sortable listings
     if(sortField===field)setSortOrder(old=>old==='ASC'?'DESC':'ASC');
@@ -229,7 +242,8 @@ function ResourceWorkspaceView({resource}:{resource:ResourceName}){
     <Stack direction={{xs:'column',md:'row'}} spacing={2} sx={{alignItems:{md:'center'},justifyContent:'space-between',mb:1.5}}>
       <Box sx={{minWidth:0}}>
         <Typography component="div" sx={{fontSize:13,fontWeight:660,color:'text.secondary',whiteSpace:'nowrap'}} role="status" aria-live="polite">
-          {idle?'等待完整邮箱查询':query.isPending?'正在加载记录':query.isFetching?'正在更新记录 · 共 '+total+' 条':'共 '+total+' 条记录 · 第 '+page+' 页'}
+          {idle?'等待完整邮箱查询':failedRead?'记录读取失败，当前状态未确认':
+            query.isPending?'正在加载记录':query.isFetching?'正在更新记录 · 共 '+total+' 条':'共 '+total+' 条记录 · 第 '+page+' 页'}
         </Typography>
         {!config.scoped&&<Typography component="div" sx={{fontSize:11,color:'text.secondary',mt:.4}}>全平台数据</Typography>}
       </Box>
@@ -255,16 +269,18 @@ function ResourceWorkspaceView({resource}:{resource:ResourceName}){
           sx={{whiteSpace:'nowrap',alignSelf:{xs:'flex-start',lg:'center'}}}>{config.action.label}</Button>}
       </Stack>
     </Stack>
-    {!idle&&query.isError?<Alert severity="error" sx={{mb:2}}>
-      记录读取失败。请检查管理员身份、网络及权限后重新尝试。
-      <Button onClick={()=>void query.refetch()}>重试</Button>
+    {failedRead?<Alert severity="error" role="alert" sx={{mb:2}}>
+      {readFailureMessage(readError)}
+      {[401,403].includes((readError as {status?:number}|null)?.status??0)?
+        <Button component={RouterLink} to="/login">重新验证</Button>:
+        <Button onClick={()=>void query.refetch()}>重试读取</Button>}
     </Alert>:null}
     {pageOutOfRange?<Alert severity="info" sx={{mb:2}}>当前页已超出结果范围。
       <Button onClick={()=>setPage(1)}>返回第一页</Button>
     </Alert>:null}
-    {!query.isError&&(idle||(!query.isPending&&rows.length===0))?
+    {!failedRead&&(idle||(!query.isPending&&rows.length===0))?
       <EmptyScene title={config.title} scoped={scoped} idle={idle}/>:
-      !query.isError&&<Card sx={{overflow:'hidden'}}>
+      !failedRead&&<Card sx={{overflow:'hidden'}}>
         {desktop&&<TableContainer sx={{maxWidth:'100%',overflowX:'auto'}}>
           <Table sx={{minWidth:700}}><TableHead><TableRow>
             {config.fields.map(f=>{

@@ -85,7 +85,11 @@ finally{
   if(win){for(const child of [chrome,site])if(child?.pid)spawnSync('taskkill',['/PID',String(child.pid),'/T','/F'],{encoding:'utf8',timeout:9000});}
   else{chrome?.kill();site?.kill();}
   await sleep(1200);
-  try{rmSync(profile,{force:true,recursive:true,maxRetries:30,retryDelay:250})}catch{console.error('LOGIN_PROFILE_CLEANUP FAILED');done=false}
+  for(let attempt=0;attempt<18&&existsSync(profile);attempt++){
+    try{rmSync(profile,{force:true,recursive:true,maxRetries:5,retryDelay:180})}
+    catch{await sleep(500)}
+  }
+  if(existsSync(profile)){console.error('LOGIN_PROFILE_CLEANUP FAILED');done=false}
   const medians=Object.fromEntries(['baseline','cpu4x_only','network_only_150ms_1_6Mbps'].map(label=>{
     const v=results.filter(x=>x.condition===label).map(x=>x.lcp).sort((a,b)=>a-b);
     return [label,v.length===5?v[2]:null];

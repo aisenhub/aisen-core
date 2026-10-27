@@ -87,10 +87,10 @@ async function listRecords(resource: string, opts: {
     else query = query.eq(key === 'id' ? s.id : key, value as string);
   }
   const offset = ((opts.pagination?.page ?? 1) - 1) * (opts.pagination?.perPage ?? 25);
-  const { data, error, count } = await query.order(field, {
+  const { data, error, count, status } = await query.order(field, {
     ascending: (opts.sort?.order ?? 'ASC') === 'ASC',
   }).range(offset, offset + (opts.pagination?.perPage ?? 25) - 1);
-  if (error) throw asError(error);
+  if (error) throw asError({ message:error.message, code:error.code, status });
   return { data: (data as unknown as Record<string, unknown>[] ?? []).map(item => recordOf(resource, item)), total: count ?? 0 };
 }
 
@@ -104,9 +104,9 @@ export const dataProvider = {
       return { data: result.items[0] ?? { id: params.id, email: null } };
     }
     const s = spec(resource);
-    const { data, error } = await supabase.from(s.table).select(s.fields)
+    const { data, error, status } = await supabase.from(s.table).select(s.fields)
       .eq(s.id, String(params.id)).single();
-    if (error) throw asError(error);
+    if (error) throw asError({ message:error.message, code:error.code, status });
     return { data: recordOf(resource, data as unknown as Record<string, unknown>) };
   },
   getMany: async (resource, params) => {
@@ -128,9 +128,9 @@ export const dataProvider = {
       return { data: results };
     }
     const s = spec(resource);
-    const { data, error } = await supabase.from(s.table).select(s.fields)
+    const { data, error, status } = await supabase.from(s.table).select(s.fields)
       .in(s.id, params.ids.map(String));
-    if (error) throw asError(error);
+    if (error) throw asError({ message:error.message, code:error.code, status });
     return { data: (data as unknown as Record<string, unknown>[] ?? []).map(item => recordOf(resource, item)) };
   },
   getManyReference: (resource, params) => listRecords(resource, {

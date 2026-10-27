@@ -193,6 +193,9 @@ function GroupLabel({children}:{children:string}) {
     {children}
   </Typography>;
 }
+// Display environment from the build, never infer deployment health from the label.
+const environmentLabel = import.meta.env.DEV ? '本地开发环境' :
+  import.meta.env.MODE === 'staging' ? '预发环境' : '生产环境';
 function AdminMenu() {
   const {pathname}=useLocation();
   // A business domain remains selected on its list, detail, or protected action route.
@@ -235,8 +238,8 @@ function AdminMenu() {
       leftIcon={<ShieldOutlinedIcon fontSize="small"/>}/>
     <Box sx={{mx:2,mt:'auto',borderTop:'1px solid',borderColor:'divider',pt:1.7,pb:.8,px:.5}}>
       <Stack direction="row" spacing={1} sx={{alignItems:'center'}}>
-        <Box aria-hidden sx={{width:7,height:7,borderRadius:'50%',bgcolor:'success.main'}}/>
-        <Typography sx={{fontSize:12,color:'text.secondary',fontWeight:580}}>本地开发环境</Typography>
+        <Box aria-hidden sx={{width:7,height:7,borderRadius:'50%',bgcolor:'text.disabled'}}/>
+        <Typography sx={{fontSize:12,color:'text.secondary',fontWeight:580}}>{environmentLabel}</Typography>
       </Stack>
     </Box>
   </Menu>;

@@ -6,12 +6,12 @@ import { Box, Button, Card, Chip, Divider, Pagination, Stack, Typography } from 
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined';
+import { formatAdminCalendarDate, formatAdminInstant } from '../dateDisplay';
 
-const time=(v:unknown)=>v?new Date(String(v)).toLocaleString('zh-CN',{year:'numeric',month:'short',day:'numeric'}):'—';
-const memberState:Record<string,{title:string,bg:string,fg:string}>={
-  active:{title:'正常',bg:'#e6f5ec',fg:'#1c7651'},
-  left:{title:'已退出',bg:'#f1f3f7',fg:'#53627a'},
-  suspended:{title:'已暂停',bg:'#fff0e9',fg:'#934b25'},
+const memberState:Record<string,{title:string;color:'success'|'warning'|'default'}>={
+  active:{title:'正常',color:'success'},
+  left:{title:'已退出',color:'default'},
+  suspended:{title:'已暂停',color:'warning'},
 };
 function Section({icon,title,children}:{
   icon:React.ReactNode;title:string;children:React.ReactNode;
@@ -19,7 +19,7 @@ function Section({icon,title,children}:{
   return <Card sx={{p:{xs:2.3,md:3}}}>
     <Stack direction="row" spacing={1.5} sx={{alignItems:'center',mb:2.5}}>
       <Box sx={{width:38,height:38,borderRadius:2.4,display:'grid',placeItems:'center',
-        bgcolor:'#f0eeff',color:'primary.main'}}>{icon}</Box>
+        bgcolor:'action.hover',color:'primary.main'}}>{icon}</Box>
       <Box>
         <Typography variant="h6">{title}</Typography>
       </Box>
@@ -52,6 +52,7 @@ function UserOverview() {
   const products=useGetMany('products',{ids:productIds},{enabled:productIds.length>0});
   if(!record)return <Box sx={{p:4}}>正在读取用户信息…</Box>;
   const blocked=(restrictions.data??[]).some(x=>x.kind==='blocked');
+  const accountState=restrictions.isPending?'pending':restrictions.isError?'unknown':blocked?'blocked':'normal';
   const productLabel=(productId:unknown)=>String(
     (products.data??[]).find(item=>String(item.id)===String(productId))?.name
     ?? String(productId).slice(0,8)+'…');
@@ -63,8 +64,9 @@ function UserOverview() {
       <Button component={RouterLink} to="/users" startIcon={<ArrowBackRoundedIcon/>} variant="text">
         返回用户 · 查找账号
       </Button>
-      <Chip label={restrictions.isPending?'账号状态核查中':restrictions.isError?'账号状态不可用':blocked?'平台账号已封禁':'平台账号正常'}
-        sx={{bgcolor:blocked?'#fff0e9':'#e6f5ec',color:blocked?'#934b25':'#1c7651'}}/>
+      <Chip role="status" variant="outlined"
+        label={accountState==='pending'?'账号状态核查中':accountState==='unknown'?'账号状态不可用':accountState==='blocked'?'平台账号已封禁':'平台账号正常'}
+        color={accountState==='pending'?'default':accountState==='unknown'?'warning':accountState==='blocked'?'error':'success'}/>
     </Stack>
     <Stack direction={{xs:'column',sm:'row'}} spacing={1.5}
       sx={{alignItems:{sm:'center'},justifyContent:'space-between',mb:2}}>
@@ -78,7 +80,7 @@ function UserOverview() {
         </Typography>
       </Box>
       <Typography variant="caption" color="text.secondary" sx={{flexShrink:0}}>
-        注册于 {time(record.created_at)}
+        注册于 {formatAdminCalendarDate(record.created_at)}
       </Typography>
     </Stack>
     <Box sx={{mb:2,display:'flex',flexWrap:'wrap',gap:1}}>
@@ -86,6 +88,8 @@ function UserOverview() {
         to={'/account-actions?user_id='+encodeURIComponent(uid)}>平台账号与管理员权限操作</Button>
       <Button size="small" variant="text" component={RouterLink}
         to={'/memberships?user_id='+encodeURIComponent(uid)}>查看成员记录列表</Button>
+      <Button size="small" variant="text" component={RouterLink}
+        to={'/grants?user_id='+encodeURIComponent(uid)}>查看完整授权历史</Button>
     </Box>
     <Box sx={{display:'grid',gridTemplateColumns:{xs:'1fr',lg:'repeat(2,minmax(0,1fr))'},gap:2.5}}>
       <Section icon={<GroupsOutlinedIcon/>} title="产品成员关系">
@@ -94,14 +98,14 @@ function UserOverview() {
           (members.data??[]).length===0?<Typography color="text.secondary">该账号尚无产品成员关系</Typography>:
           <Stack divider={<Divider/>}>
             {(members.data??[]).map(item=>{
-              const state=memberState[String(item.status)]??{title:'未知状态',bg:'#fff0e9',fg:'#934b25'};
+              const state=memberState[String(item.status)]??{title:'未知状态',color:'warning' as const};
               return <Stack key={item.id} direction="row" sx={{py:1.4,alignItems:'center',justifyContent:'space-between',gap:2}}>
                 <Box sx={{minWidth:0}}>
                   <Typography sx={{fontSize:13,fontWeight:680}}>{productLabel(item.product_id)}</Typography>
-                  <Typography variant="caption" color="text.secondary">加入于 {time(item.joined_at)}</Typography>
+                  <Typography variant="caption" color="text.secondary">加入于 {formatAdminCalendarDate(item.joined_at)}</Typography>
                 </Box>
                 <Stack direction="row" spacing={1} sx={{alignItems:'center'}}>
-                  <Chip label={state.title} sx={{bgcolor:state.bg,color:state.fg}}/>
+                  <Chip label={state.title} color={state.color} variant="outlined"/>
                   <Button component={RouterLink} to={'/memberships/'+item.id+'/show'} size="small">详情</Button>
                 </Stack>
               </Stack>;
@@ -133,11 +137,11 @@ function UserOverview() {
                     {productLabel(g.product_id)} · {g.ends_at?'期限授权':'永久授权'}
                   </Typography>
                   <Typography variant="caption" color="text.secondary">
-                    {time(g.starts_at)} — {g.ends_at?time(g.ends_at):'永久'}
+                    {formatAdminInstant(g.starts_at)} — {g.ends_at?formatAdminInstant(g.ends_at):'永久'}
                   </Typography>
                 </Box>
                 <Chip label={valid?'生效中':g.revoked_at?'已撤销':new Date(String(g.starts_at)).getTime()>now?'待生效':'已过期'}
-                  sx={{bgcolor:valid?'#e6f5ec':'#f1f3f7',color:valid?'#1c7651':'#53627a'}}/>
+                  color={valid?'success':'default'} variant="outlined"/>
               </Stack>;
             })}
           </Stack>}
