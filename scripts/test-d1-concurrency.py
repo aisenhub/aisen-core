@@ -343,6 +343,47 @@ def scenario_07():
     print("LCK-07 PASS: no deadlocks, L3 share waits for status update and rechecks")
 
 
+def scenario_08():
+    # R-16: real independent transactions race an Admin lifetime grant
+    # against one redemption under the same L1/L7 locks. Either order
+    # is legal, but the counter and Grant must match the winning order.
+    code = issue("lck08-race", 1)[0]
+    code_id = root(f"""SELECT id FROM public.redemption_codes
+      WHERE code_hash=encode(extensions.digest({quote(code)},'sha256'),'hex')""")
+    lock = f"SELECT pg_catalog.pg_advisory_xact_lock(1001,pg_catalog.hashtext({quote(MIX_USER)}))"
+    grant = (f"public.admin_grant_entitlement({quote(MIX_USER)},{quote(PRODUCT_A)},"
+             "'pro','explicit_window',NULL,transaction_timestamp()-interval '1 second',"
+             "NULL,true,'lck08 lifetime','lck08-grant')")
+    expr = f"public.redeem_code('{PRODUCT_KEY_A}',{quote(code)})"
+    outcomes = guarded(lock, [
+        (ADMIN_A, grant, "aal2", "lck08_grant"),
+        (MIX_USER, expr, "aal1", "lck08_redeem"),
+    ])
+    assert outcomes[0].status == 0, outcomes
+    redeemed = outcomes[1].json()
+    assert redeemed.get("ok") is True or redeemed.get("code") == "REDEEM_LIFETIME_ACTIVE", redeemed
+    expected = 1 if redeemed.get("ok") is True else 0
+    assert root(f"SELECT redeemed_count FROM public.redemption_codes WHERE id={quote(code_id)}") == str(expected)
+    assert root(f"SELECT count(*) FROM public.redemptions WHERE code_id={quote(code_id)}") == str(expected)
+    assert root(f"""SELECT count(*) FROM public.entitlement_grants
+      WHERE user_id={quote(MIX_USER)} AND product_id={quote(PRODUCT_A)}
+        AND grant_mode='explicit_window' AND ends_at IS NULL
+        AND revoked_at IS NULL""") == "1"
+
+    # After the lifetime Grant commits, two genuinely concurrent different
+    # code requests must both be rejected without changing either counter.
+    more = issue("lck08-blocked", 2)
+    blocked = guarded(lock, [
+        (MIX_USER, f"public.redeem_code('{PRODUCT_KEY_A}',{quote(c)})",
+         "aal1", f"lck08_blocked_{i}") for i, c in enumerate(more)
+    ])
+    assert all(x.json().get("code") == "REDEEM_LIFETIME_ACTIVE" for x in blocked), blocked
+    for c in more:
+        assert root(f"""SELECT redeemed_count FROM public.redemption_codes
+          WHERE code_hash=encode(extensions.digest({quote(c)},'sha256'),'hex')""") == "0"
+    print("LCK-08 PASS: permanent Grant race serializes, concurrent later codes not consumed")
+
+
 def main() -> int:
     baseline_check()
     # Tests can be rerun after a previously interrupted run with just the
@@ -351,9 +392,9 @@ def main() -> int:
     try:
         seed()
         for fn in (scenario_01, scenario_02, scenario_03,
-                   scenario_04, scenario_05, scenario_06, scenario_07):
+                   scenario_04, scenario_05, scenario_06, scenario_07, scenario_08):
             fn()
-        print("D1-M4 concurrency PASS: LCK-01..07; PostgreSQL lock waits observed")
+        print("D1-M4 concurrency PASS: LCK-01..08; PostgreSQL lock waits observed")
         return 0
     finally:
         cleanup()

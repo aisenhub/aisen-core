@@ -102,26 +102,34 @@ SDK 默认全局登出和 access JWT 残余有效期见 [Supabase signOut](https
 - **范围**：首个可验收切片是零图真实提交；1/2 图按 Core 已有能力接入并单独验收。本人 RPC 可用于提交丢响应恢复，**不新增独立反馈历史、进度或回复页面**。Core Admin 的四队列不是向 Lens 公开内部标记/备注的许可。
 - **验证**：已确认邮箱 Free/none/left/suspended 提交通过且成员/Grant 不变；匿名、未确认、blocked 拒绝；0/1/2 图、正文超限、分类非法、失败保留输入、同号异参 409。限制/字节数以 Core 实际合同为准，不以测试 UI 定参。
 
-#### F05｜P1，LENS-05：反馈上游故障被误报为权限/邮箱拒绝（已确认分支）
+#### F05｜P1，LENS-05：反馈上游故障与身份/权限拒绝的准确分类（部分编码/测试）
 
-- **证据**：[`feedback-submit/index.ts`](../../../supabase/functions/feedback-submit/index.ts) `15–16` 把 `identity.error` 与邮箱未确认合并为 403；`37` 把任意 `my_feedback` 错误映射 403。[`feedback-image-access/index.ts`](../../../supabase/functions/feedback-image-access/index.ts) `13` 同样把任意 RPC 错误变成 `IMAGE_FORBIDDEN/403`。
-- **触发/影响**：Auth Admin 或 PostgREST 返回 5xx/连接故障时，客户端会误报未验证/无权，无法按服务异常恢复；零图也走这些检查，因此“先零图”不能跳过故障分类。提交后段已有 PT403/PT409/PT429 区分，不能据此宣称全链路错误语义已正确。
+- **原始缺陷与本轮变更**：原 [`feedback-submit`](../../../supabase/functions/feedback-submit/index.ts) 把 Auth 查询出错当成邮箱未确认、把 `my_feedback` 任意错误当 403；原 [`feedback-image-access`](../../../supabase/functions/feedback-image-access/index.ts) 把任意 RPC 错误当 `IMAGE_FORBIDDEN`。2026-10-27 已通过 [`_shared/feedback.ts`](../../../supabase/functions/_shared/feedback.ts) 中两个小函数修复三个入口：Auth 查询错误 503、身份不存在 401、确实邮箱未确认 403；只对明确 `PT401/PT403` 返回鉴权拒绝，其余读 RPC 错误 503。成功但图片缺少预期对象键也报 503，不假冒越权。
+- **故障风险与剩余范围**：原 Auth Admin/PostgREST 5xx 或断连会误报无权，零图也会触发。本轮只修已确定的三处错误分类；提交写入/存储 UNKNOWN、Edge 正式入口网络故障、客户端错误显示与恢复、Admin ZIP 其他错误分支仍须单独核对，不能由 helper 测试推断通过。
 - **最小建议**：在上述边界保留已确定的 401/403/409/422/429 业务分类；服务调用失败返回 503/不可核验，无法确定写入结果才 UNKNOWN。只修这些实际分支，不建通用错误框架，不因故障放开权限，也不为减少调用擅自删除真实必要身份检查。
-- **应先变红的测试**：Auth 查询 5xx、本人读取 RPC 5xx、图片鉴权 RPC 5xx 应为服务故障；真实未确认/无权仍为 403；UI 保留表单与原请求号，不退出账号或改判 Free。**本次只静态确认分支，尚未注入故障运行。**
+- **先红后绿与证据**：新增 `feedback-upload.test.ts` 两组逻辑单测，修复前因 helper 导出不存在而失败；修复后 `deno test --cached-only --allow-env --allow-net=127.0.0.1 --allow-sys=osRelease` 执行上传/ZIP/S3 三套 **11/11 PASS**（本地 Deno 2.9.6，缓存 `E:\AppData\Deno`）。验证错误码/JSON 响应；仍需用正式 Edge handler 注入真实 Auth 5xx、本人读 5xx、图片鉴权 5xx 及用户端保留 request_id，故 **F05 PARTIAL**。
 
-#### F06｜P1，LENS-02/05：本人反馈查询的产品范围、可见性与恢复语义有缺口
+#### F06｜P1，LENS-02/05：本人反馈查询的产品范围、可见性与恢复语义（SQL 修正已编码/局部验证）
+
+- **2026-10-27 实施/验证**：新增 [`20261027151000_feedback_scoped_recovery.sql`](../../../supabase/migrations/20261027151000_feedback_scoped_recovery.sql)，移除旧单参入口；`my_feedback(p_product_key,p_request_id?)` 根据可信本人/产品查询，普通列表产品内最多100条并排除回收站；精确原号查询可识别软删但仅返回本人最小存在证明。`feedback-submit` 和现有 SQL/HTTP 测试调用者已改新签名。新增 `013_feedback_scoped_recovery.test.sql`，先在旧 DB 失败，随后迁移与 013/009/010 均在回滚事务中 **116/116 pgTAP PASS**；原 DB 未持久迁移，真实 JWT/Edge HTTP/并发未运行，**F06 PARTIAL**。
+
 
 - **证据**：最终覆盖实现是 `20261026013346_feedback_v2_screening_rpcs.sql:227–253`，不是最早的反馈迁移：没有产品参数，先跨本人全部产品取最近 100 条；即使指定 `p_request_id` 也排除 `queue_state='trashed'`。其 status 是 inbox→received、archived→recorded、其余沿用历史 `f.status`；V3 管理操作主要更新 queue，**该字段不是完整处理进度**。
 - **具体后果**：① 先取 100 再在 Lens 过滤产品，其他产品足够多时本产品记录会被挤出；② 提交成功但首响丢失、Admin 随后放回收站时，按原号查询得到空数组，不能据此判“未提交”再换号；③ 工作台 V3 状态不能凭旧五态拼出“处理中/已解决”。这些不是跨用户泄漏的已证实漏洞，但会造成错误结果与恢复判断。
 - **最小建议**：首轮 Lens 不建历史列表，UNKNOWN 保持原身份/产品/号及原参数重放，空数组不等于失败，不新建替代单。若后续确实使用产品内列表/确定性恢复查询，Core 先提供受保护的产品范围过滤和恰当的提交存在性结果，再一次更新 Edge 调用、SQL/客户端测试及 API 文档；不保留旧签名别名。不向客户端暴露回收站内部理由或管理字段。
 - **验证**：同用户两产品、目标记录被跨产品 100 条挤出、相同 request_id 的产品范围、首响丢失后软删除/恢复；恢复最终仍只有一条反馈。本人附件读取与列表隐藏是不同权限，已知 attachment_id 在回收站时是否仍可读须以 Core 明确合同测试，不能声称当前已撤销所有旧 URL。
 
-#### F07｜P1，LENS-05：图片魔数通过不等于完整图片有效；本地存储替身尚未接到正式入口
+#### F07｜P1，LENS-05：有界图片解码及本地隔离存储入口（已编码/局部验证）
 
-- **证据**：[`_shared/feedback.ts`](../../../supabase/functions/_shared/feedback.ts) `21–30` 只查 PNG/JPEG/WebP 头；`feedback-upload.test.ts` 使用 9 字节 PNG/5 字节 JPEG 作为魔数正例。实际 Edge 同样只据此准入。这些测试证明类型识别，**不能证明非法/截断图片被拒**。`r2()` 只从秘密拼真实 Cloudflare endpoint；S3Client 注入仅在 putObject/readObject 等底层测试中使用，正式 putFile/signedGet/readFile 不接该测试客户端。
+- **2026-10-27 新实施证据**：新增 [`_shared/feedback-image.ts`](../../../supabase/functions/_shared/feedback-image.ts)（固定 `jsr:@matmen/imagescript@3.3.0`，对 PNG/JPEG/WebP 完整解码，限制 12,000,000 像素及 6000 单边，拒绝截断 PNG/JPEG 尾标识、WebP RIFF 伪长、畸形容器）并从 [`feedback-submit`](../../../supabase/functions/feedback-submit/index.ts) 写对象前调用。更新 `_shared/feedback.ts`：唯有 `R2_FEEDBACK_STORAGE_MODE=local-test` 且 `R2_FEEDBACK_TEST_ENDPOINT` 为本机/容器主机的受限 HTTP 地址才使用本地 S3；其余仍为真实 Cloudflare R2，不信任客户端上传目的地。五套 Deno 上传/ZIP/本地 S3/反馈提交 handler/孤儿只读审计测试 **15/15 PASS**（含真实 3500×3500、高压缩率、超 1200 万像素 PNG），`feedback-submit`/`feedback-image-access`/`feedback-export` 三入口 `deno check --cached-only` **PASS**；测试模式使用独立 `R2_FEEDBACK_TEST_ACCESS_KEY_ID`/`R2_FEEDBACK_TEST_SECRET_ACCESS_KEY`，严禁传真实 R2 秘钥，已验证包装层真实执行 PUT、流读、60 秒签名 GET、DELETE 及远程地址拒绝；根目录 Deno 自动生成临时锁文件已清理。此为源码/隔离 SDK 协议证明，**新增正式提交/图片签发处理函数经本机 HTTP 驱动的隔离端到端业务测试**：`feedback-submit/service.ts`、`feedback-image-access/service.ts` 均由原有 `withSupabase({auth:'user'})` 入口实际复用，不复制业务逻辑；用模拟 Auth/RPC 返回及独立本机 S3 真 PUT/签名 GET 观察 0/1/2 图、截断/MIME 错、并发同号、409、二图故障、DB 写入成功丢首响、DB 失败保留对象和 401/403/503/裸读/撤权。不提供真实 JWT/DB 证据。**没有**真实 GoTrue→Edge middleware→PostgREST→对象存储整链验证、没有持久迁移或云连接、没有引用安全回收执行器，**F07 PARTIAL**。
+
+
+- **修复前证据**：[`_shared/feedback.ts`](../../../supabase/functions/_shared/feedback.ts) `21–30` 只查 PNG/JPEG/WebP 头；`feedback-upload.test.ts` 使用 9 字节 PNG/5 字节 JPEG 作为魔数正例。实际 Edge 同样只据此准入。这些测试证明类型识别，**不能证明非法/截断图片被拒**。`r2()` 只从秘密拼真实 Cloudflare endpoint；S3Client 注入仅在 putObject/readObject 等底层测试中使用，正式 putFile/signedGet/readFile 不接该测试客户端。
 - **最小建议**：若合同要求“有效图片”，用成熟能力做有界完整性/尺寸校验并覆盖截断、畸形和超大像素样例，不手写图片解码器，也不顺势建设图片处理平台。隔离本地联调仅增加足够的服务端本地 endpoint/测试依赖接线，统一写/签名读/ZIP/删除使用同一隔离对象库；不能把一次 S3 协议单测 PASS 当正式 Edge 已接通，更不能为本地测试填真实 R2 密钥。
+- **F07 只读孤儿候选审计（本轮新实现）**：[`_shared/feedback-orphan-audit.ts`](../../../supabase/functions/_shared/feedback-orphan-audit.ts) 仅包含 `ListObjectsV2`，按 `feedback/` 前缀逐页最多100条；提供 `readFeedbackReferencedKeys` 适配当前只授予 `service_role` 的 `feedback_referenced_keys(p_keys)` RPC；缺失或畸形的DB引用/键名/对象时间拒绝删除判定，保护期小于7天的输入直接拒绝。唯一的未引用且过保护期结果是 `manual_review`，不是物理删除许可；不创建 Edge 公开入口、定时任务、删除 RPC、自动清理和真实 R2 凭据。`feedback-orphan-audit.test.ts` 以本机签名 S3 GET、模拟 RPC 跑通分页/异常/引用保护、确认零次 DELETE；**真实 service_role→DB、S3 实例与引用二次确认、并发 TOCTOU、运营留存规则和执行清理仍 NOT RUN**。此前 Docker Linux 引擎曾不可连接；2026-10-27 本轮用户确认已恢复后复查原容器健康。已在 Git 忽略目录内准备单独 `aisencore_f07_isolated` 配置（56321/56322）和 29 份迁移；Supabase CLI 2.122.0 需下载更新镜像，新建临时 DB 的早期 `auth.users` 仅包含 `confirmed_at` 而尚缺 GoTrue 升级后的 `email_confirmed_at`，单独提前调用 migration up 在第 5 个迁移失败。完整 GoTrue/REST/Edge 服务未启动就绪，已按明确测试 project-id 清理临时容器及数据卷；**未对原有 55322 数据库执行迁移或重置**。新增 [`scripts/test-f07-local-sql-rollback.py`](../../../scripts/test-f07-local-sql-rollback.py) 再次按独立 R-16/F06 事务/fixture 全回滚方式复测 **209/209 pgTAP PASS**，并验证主库签名未变；这不是 JWT HTTP/跨服务验收。
+
 - **已有能力与缺口分开**：条件写、确定性 hash key 和 `feedback_referenced_keys` 引用查询**已有**；定期安全回收执行者与完整故障对账**未实现**。优先复用引用查询，按保护期与当前引用做有界对账；不得在上传失败时立刻删同号对象，不引入独立队列/通用存储平台。
-- **验证**：第二图写失败、R2 成功/DB 失败、DB 成功/首响丢失、并发同号、已有引用绝不误删、孤儿保护期、签名 URL 过期与 ZIP 缺图失败。完整图片验证与 Edge 级隔离存储测试本次 **NOT RUN**。
+- **验证**：第二图写失败、R2 成功/DB 失败、DB 成功/首响丢失、并发同号、已有引用绝不误删、孤儿保护期、签名 URL 过期与 ZIP 缺图失败。纯解码与隔离存储包装层测试已执行，正式 Edge handler 级图片链路、引用对账及真正 R2 **NOT RUN**。
 
 #### F08｜P0（开始备份前），LENS-02/06：先确定操作权限和最小元数据，不把所有操作都绑 Pro
 
@@ -140,7 +148,7 @@ SDK 默认全局登出和 access JWT 残余有效期见 [Supabase signOut](https
 | `check_access(p_product_key)` | HTTP 200 可包含 `allowed:false`；只返回产品级准入与 Free/Pro，不接受 Lens `capability` |
 | `leave_product(p_product_key)` / `rejoin_product(p_product_key)` | 本人明确退出/重入，不等于登录/登出或自动恢复 Pro |
 | `redeem_code(p_product_key,p_code)` | **两参**；HTTP 200 可包含 `ok:false,code`；不是 HTTP 失败 |
-| `my_feedback(p_request_id?)` / `my_feedback_events(p_feedback_id)` | 本人有限 DTO/公开历史，不暴露 R2 key 或内部管理备注；当前无产品过滤，列表最多 100 条且隐藏回收站，不能当完整进度或确定性未提交证明 |
+| `my_feedback(p_product_key,p_request_id?)` / `my_feedback_events(p_feedback_id)` | F06 新迁移已编码：按产品本人列表 100 条，原号精确查找不截断；回收站只返最小存在性，非完整进度或写入成功证明；真实服务尚未持久升级 |
 | 本人 Grant 历史（Data API） | 已有本人 RLS 和列级 SELECT；显式安全字段、按产品、有界读取；不替代 `check_access` |
 | `feedback-submit` Edge | JWT、邮箱已确认、`product_key`、UUID `request_id`、`content`、`category`、最多两图 |
 | `feedback-image-access` Edge | 有权限的本人/管理员临时图片读取 |

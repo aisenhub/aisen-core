@@ -37,7 +37,7 @@ SELECT throws_ok($$UPDATE public.user_feedback
 SELECT set_config('request.jwt.claim.sub','19000000-0000-4000-8000-000000000001',true);
 SELECT set_config('request.jwt.claims','{"aal":"aal2"}',true);
 SET LOCAL ROLE authenticated;
-SELECT is(public.my_feedback()->0->>'status','received',
+SELECT is(public.my_feedback('fbv2_test')->0->>'status','received',
  'owner sees received without internal screening details');
 SELECT throws_ok($$SELECT public.admin_screen_feedback(
  '39000000-0000-4000-8000-000000000001',1,'triage','high')$$,'PT403');
@@ -124,7 +124,7 @@ SELECT is(jsonb_array_length(public.my_feedback_events(
 RESET ROLE;
 SELECT set_config('request.jwt.claim.sub','19000000-0000-4000-8000-000000000002',true);
 SET LOCAL ROLE authenticated;
-SELECT is(jsonb_array_length(public.my_feedback()),0,
+SELECT is(jsonb_array_length(public.my_feedback('fbv2_test')),0,
  'unrelated user cannot see original or processed feedback');
 RESET ROLE;
 SELECT * FROM finish();

@@ -72,6 +72,6 @@
 
 仅 WebApp 的 Auth、成员、资格显示/安全历史、兑换、反馈和完整分析模板云备份进入本次后续实现范围。昵称复用 Auth 用户可编辑资料，仅作显示；普通登出显式 local，不 leave 产品。切号最小接线只负责凭据锁定/会话 Key 释放、在途任务收尾或明确取消、旧响应失效，不改 AI/Provider/项目逻辑。注销渠道上线前确定，未确定不提供成功提交按钮。
 
-反馈仅已登录/邮箱确认/非 blocked 本人提交，不要求 Pro 或 active 成员，不自动 ensure；最多两图，无自由联系邮箱及客户端历史/进度/回复页面。本人 RPC 仅为必要恢复/权限测试；创建 201、重放 200，原号同参，空数组不证明未提交。当前上游故障误报 403、跨产品列表及回收站查询语义缺口仍待修复，见[反馈领域](../domains/user-feedback.md)。
+反馈仅已登录/邮箱确认/非 blocked 本人提交，不要求 Pro 或 active 成员，不自动 ensure；最多两图，无自由联系邮箱及客户端历史/进度/回复页面。本人 RPC 仅为必要恢复/权限测试；创建 201、重放 200，原号同参，空数组不证明未提交。F05 上游故障误判修复与 F06 产品范围/回收站最小恢复 RPC 已编码并通过局部回归；本地 SQL 迁移尚未持久应用，正式 Edge/JWT、故障注入与双端验收仍待完成，详见[反馈领域](../domains/user-feedback.md)。
 
-模板备份的 create/list/download/delete 权限和 20 份/待测 5 MiB/到期取回政策见[文件架构](../database/product-data-and-files.md)。兑换保持两参、同码恢复；新增的有效永久 Pro 拒兑保护见[计费规则](../domains/billing-and-entitlements.md)，当前 SQL 尚未落实。本文更新不表示代码已改或真实联调已通过。
+模板备份的 create/list/download/delete 权限和 20 份/待测 5 MiB/到期取回政策见[文件架构](../database/product-data-and-files.md)。兑换保持两参、同码恢复；新增的有效永久 Pro 拒兑保护见[计费规则](../domains/billing-and-entitlements.md)，对应 SQL 迁移已编码并在本地回滚事务通过 pgTAP；尚未持久应用迁移，真实 JWT/HTTP、并发和双端联调仍未验收。

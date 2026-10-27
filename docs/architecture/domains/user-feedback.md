@@ -1,6 +1,6 @@
 # AisenCore 跨 SaaS 用户反馈系统架构
 
-> **状态：2026-10-27 / 当前 Admin FB-V3 四队列轻量工作流已本地编码，数据库 462/462 pgTAP 与专项真实 AAL2 Chrome 曾 PASS；人工 WCAG/视觉/性能、AisenLens 客户端联调、真实私有 R2 含图及线上部署仍 OPEN。** 旧 V2 处理状态保留历史读取，不作为新可编辑合同。
+> **状态：2026-10-27 / 当前 Admin FB-V3 四队列轻量工作流已本地编码，数据库 462/462 pgTAP 与专项真实 AAL2 Chrome 曾 PASS；人工 WCAG/视觉/性能、真实私有 Cloudflare R2 含图、对象安全对账及线上部署仍 OPEN；Lens Chrome 双图→Edge→Postgres→隔离本机 S3 和 Core 私图/AAL2 ZIP 已 PASS（[本地证据](../../Plans/aisenlens-aisencore-local-integration/2026-10-27-f07-private-s3-e2e-evidence.md)）。** 旧 V2 处理状态保留历史读取，不作为新可编辑合同。
 > **单一领域权威**：反馈语义、状态和权限以本文为准；存储归属参见[产品数据与文件](../database/product-data-and-files.md)，客户端/API 调用参见[公共 API](../backend/public-api-and-saas-integration.md)，UI 接入参见[Admin](../applications/admin-console.md)，阶段顺序参见[三阶段总则](../../Plans/aisencore-mvp/three-stage-delivery-gates.md)。
 
 ## 1. 产品范围与原则
@@ -99,7 +99,7 @@
 - 当前不开放用户追加说明/回复能力；源码仍有旧 `reply_to_feedback` 等写入口，后续按现行单向合同清点并移除不再使用的写路径、调用者和测试，不保留兼容层。已有历史事件只作事实读取；本次仅改文档，未撤销或删除任何真实函数。
 - **`feedback-image-access`** Edge 每次验证当前访问者为反馈本人或有权 Admin，再签发短期 GET；R2 Bucket 禁止公网裸读，URL 有效期内无法保证瞬时撤权，前端不持久化/记录 URL。
 
-**当前实现缺口（未修复/未验收）**：提交与图片签发部分 Auth/数据库故障被合并为 403；`my_feedback` 无产品过滤、跨本人产品取最近 100 条并隐藏回收站，空数组不能证明未提交。按本人/产品/原号同参恢复，不换号造第二单；旧五态投影不能作为 V3 处理进度。魔数识别不证明完整图片有效，正式 Edge 的隔离对象链路及引用安全回收仍需补测。AisenLens 测试表单的自由联系邮箱须移除，不上报或塞入正文；实际身份仅取可信 JWT。
+**当前状态（部分修复/待端到端验收）**：F05 反馈提交的 Auth 用户查询、本人恢复读 RPC 以及图片签发鉴权 RPC 已编码区分显式 401/403 与未知服务故障 503；共享 Deno 测试（上传、ZIP、隔离 S3 三套）11/11 PASS，但尚未在正式 Edge handler 进行真实上游 5xx/断连注入，不能将 F05 认定全部通过。`my_feedback(p_product_key,p_request_id?)` 已在 F06 后继 SQL 迁移编码：普通本人列表按产品过滤再限制 100 条并隐藏回收站，按产品和原号的精确恢复无列表截断；已软删的原号只返回本人最小存在证明，不暴露内部队列/正文/附件。新迁移及受影响 009/010/013 pgTAP 在单独回滚事务中 **116/116 PASS**；迁移尚未持久部署，真实 HTTP/Edge/Lens 未验证，空数组仍不可断言写入绝对失败。按本人/产品/原号同参恢复，不换号造第二单；旧五态投影不能作为 V3 处理进度。F07 已将正式 `feedback-submit` 的图片检查接入固定版本 `jsr:@matmen/imagescript@3.3.0` 的真解码（PNG/JPEG/WebP、最大 12,000,000 像素、最大单边 6000、本地候选界限，PNG/JPEG 尾标识及 WebP RIFF 长度严格验证）。`R2_FEEDBACK_STORAGE_MODE=local-test` 配合受限本机 `R2_FEEDBACK_TEST_ENDPOINT` 才允许隔离 S3 代替真实 R2，普通默认仍使用 Cloudflare R2；共享测试中已证明 putFile/readFile/signedGet/deleteFile 使用同一隔离实例，签名 60 秒且拒绝任意远程主机。Deno 上传/ZIP/S3/正式业务处理函数隔离 HTTP/孤儿只读审计测试 **15/15 PASS**（含 0/1/2 图、并发同号、部分 S3 失败、DB 未知及私图签发/撤权/故障；Auth/DB 响应为隔离模拟而非真实 JWT/数据库）；F07 新增 S3 只读审计（每页 100、最少7天观察窗口、模拟 service_role RPC、零次 DELETE），不等于可执行物理回收。正式 Edge handler 的真实 JWT + 含图 0/1/2 请求、真实 DB 引用/TOCTOU 及安全物理清理仍 NOT RUN，不能将 F07 记为已验收。AisenLens 测试表单的自由联系邮箱须移除，不上报或塞入正文；实际身份仅取可信 JWT。
 
 错误最低覆盖 401 会话、403 权限、413 文件体积、422 格式/字段、409 版本/幂等冲突、429 限流、503 存储/服务故障、网络 UNKNOWN。Edge 只做需要可信密钥/内容验证的步骤；业务与审计状态仍由单个受保护数据库事务决定。不新建 Node API、Cloudflare Worker 或通用上传代理。
 

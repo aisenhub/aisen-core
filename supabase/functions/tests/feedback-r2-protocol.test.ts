@@ -1,5 +1,5 @@
 import {S3Client} from 'npm:@aws-sdk/client-s3@3.1156.0';
-import {putObject,readObject,feedbackObjectKey} from '../_shared/feedback.ts';
+import {putObject,readObject,feedbackObjectKey,putFile,readFile,signedGet,deleteFile} from '../_shared/feedback.ts';
 import {unzipSync} from 'npm:fflate@0.8.2';
 import {buildFeedbackZip,type ExportFeedback} from '../_shared/feedback-export.ts';
 function check(value:unknown,message:string):asserts value{
@@ -24,6 +24,11 @@ Deno.test('isolated S3 protocol fixture: 1/2 images, conditional replay and erro
         headers:{'content-type':key.endsWith('.png')?'image/png':'image/jpeg'}}):
         new Response('<Error><Code>NoSuchKey</Code></Error>',{status:404,
           headers:{'content-type':'application/xml'}});
+    }
+    if(request.method==='DELETE'){
+      check(!!request.headers.get('authorization'),'DELETE must be S3 signed');
+      objects.delete(key);
+      return new Response(null,{status:204});
     }
     if(request.method!=='PUT')return new Response('Only Get/Put',{status:405});
     puts++;
@@ -83,6 +88,51 @@ Deno.test('isolated S3 protocol fixture: 1/2 images, conditional replay and erro
       'private screenshot 1 must appear in unpacked ZIP');
     check(archive['feedback/FB-50/screenshot-2.jpg']?.length===two.length,
       'private screenshot 2 must appear in unpacked ZIP');
+    // F07 production storage wrappers must all target the same isolated
+    // object service: PUT, signed GET, stream GET and DELETE.
+    const vars=['R2_FEEDBACK_STORAGE_MODE','R2_FEEDBACK_TEST_ENDPOINT',
+      'R2_FEEDBACK_TEST_ACCESS_KEY_ID','R2_FEEDBACK_TEST_SECRET_ACCESS_KEY',
+      'R2_FEEDBACK_BUCKET'] as const;
+    const saved=vars.map(name=>[name,Deno.env.get(name)] as const);
+    try{
+      Deno.env.set('R2_FEEDBACK_STORAGE_MODE','local-test');
+      Deno.env.set('R2_FEEDBACK_TEST_ENDPOINT','http://127.0.0.1:'+fixture.addr.port);
+      Deno.env.set('R2_FEEDBACK_TEST_ACCESS_KEY_ID','fixture-access');
+      Deno.env.set('R2_FEEDBACK_TEST_SECRET_ACCESS_KEY','fixture-secret');
+      Deno.env.set('R2_FEEDBACK_BUCKET','private-qa');
+      const fixtureKey=await feedbackObjectKey(...prefix,1,
+        new Uint8Array([...one,9]),'png');
+      check(await putFile(fixtureKey,new Uint8Array([...one,9]),'image/png'),
+        'Edge PUT wrapper must use the configured isolated endpoint');
+      const signed=await signedGet(fixtureKey);
+      const url=new URL(signed);
+      check(url.host==='127.0.0.1:'+fixture.addr.port,
+        'private GET signed against wrong store');
+      check(url.searchParams.get('X-Amz-Expires')==='60'&&
+        !!url.searchParams.get('X-Amz-Signature'),
+        'private GET must use expiring signed R2 query');
+      const signedRead=await fetch(signed);
+      check(signedRead.status===200,'signed GET must reach isolated object');
+      const readBack=await readFile(fixtureKey);
+      check(readBack.length===one.length+1,'ZIP read wrapper wrong object');
+      await deleteFile(fixtureKey);
+      check(!objects.has('/private-qa/'+fixtureKey),
+        'isolated DELETE wrapper must act on the same private object');
+      Deno.env.set('R2_FEEDBACK_TEST_ENDPOINT','https://outside.example:8000');
+      let blocked=false;
+      try{await putFile(fixtureKey,one,'image/png')}
+      catch(e){blocked=(e as Error).message==='INVALID_FEEDBACK_STORAGE_MODE'}
+      check(blocked,'test override may not connect to arbitrary remote host');
+      Deno.env.delete('R2_FEEDBACK_STORAGE_MODE');
+      let denied=false;
+      try{await putFile(fixtureKey,one,'image/png')}
+      catch(e){denied=(e as Error).message==='INVALID_FEEDBACK_STORAGE_MODE'}
+      check(denied,'endpoint override without local-test mode must fail closed');
+    }finally{
+      for(const [name,value] of saved){
+        if(value===undefined)Deno.env.delete(name);else Deno.env.set(name,value);
+      }
+    }
     let bounded=false;
     try{await readObject(client,'private-qa','oversized-stream',8)}
     catch(e){bounded=e instanceof Error&&e.message==='OBJECT_TOO_LARGE'}

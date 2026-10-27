@@ -1,6 +1,8 @@
 # 第二阶段C详细计划｜单向文字与最多两图反馈
 
-> **状态：DRAFT / NOT RUN。** 对应TODO LENS-05、FB-01跨端部分，审查F04～F07。入口为[第一阶段独立修验](./01-stage1-core-readiness.md)及[第二阶段A](./02-stage2-auth-and-membership.md)通过；**不依赖Pro/兑换或active成员**。业务以[反馈领域](../../architecture/domains/user-feedback.md)为准。
+> **状态：联合开发 IN PROGRESS / PARTIAL；Core 与 Lens 浏览器的真实 JWT→Edge→数据库零图反馈均 PASS；Lens 两图失败保护、原号重试、真实 Chrome 两图→Edge→隔离本机 S3 的正向链均 PASS；真实 Cloudflare R2 和完整故障对账仍 NOT RUN。** 对应TODO LENS-05、FB-01跨端部分，审查F04～F07。入口为[第一阶段独立修验](./01-stage1-core-readiness.md)及[第二阶段A](./02-stage2-auth-and-membership.md)通过；**不依赖Pro/兑换或active成员**。业务以[反馈领域](../../architecture/domains/user-feedback.md)为准。
+
+**2026-10-27 新增实测证据**：[F07 Chrome/真实 JWT/本地私有 S3 / Admin AAL2 ZIP](./2026-10-27-f07-private-s3-e2e-evidence.md)。在 Core 运行 `node scripts/test-f07-edge-images-local-s3.mjs`：Lens Chrome 两图→Edge→Postgres+独立 S3 正向 PASS，Core 1/2 图、同号重试、本人60秒私图签名 GET、他人403、临时 Admin AAL1 拒绝/AAL2 ZIP 图片字节一致及 QA 清理 PASS。真实 Cloudflare R2 和 Admin UI 人工验收仍 OPEN。
 
 ## 1. 用户结果与边界
 
@@ -12,12 +14,12 @@ Lens设置/帮助内，已登录、邮箱已确认、非blocked本人可提交�
 
 | 层 | 现有位置/能力 | 本包处理 |
 | --- | --- | --- |
-| Lens | `features/feedback/FeedbackForm.tsx`、设置弹窗及其内存draft | message映射content，接本人会话/product_key/UUID request_id/category与可选images；去掉联系邮箱测试输入 |
+| Lens | `features/feedback/FeedbackForm.tsx`、设置弹窗及其内存draft | Lens `FeedbackForm` 已移除自由联系邮箱/账号邮箱模拟输入、调用者与浏览器断言；已用官方会话将 message→content、当前产品 `aisenlens`、稳定 request_id、category=other 提交至正式 Edge，设置弹窗仅真实已确认登录会话启用；未知响应保留同 request_id/正文，不把失败当成功，切号清草稿。已实现最多2张 PNG/JPEG/WebP 选择、逐张移除/3MiB 客户端限制、0图兼容，UNKNOWN 时冻结文字与附件且保留原 request_id；真实 Chrome 使用有效两图触达 Core Edge 并因未配置本地私有存储正确收到503，重复提交仍使用同 UUID，数据未持久新增；第三张拒绝、用户显式清空与 QA 清理通过。同浏览器另验真实零图首次 Core 已提交 `201`、前端模拟网络丢失只看到 `503` 后以**完全相同 request_id**重试，Core 回 `200 replay` 且 PostgreSQL 仅一条记录，PASS。暂不自动压缩原图或上传敏感附件；真实隔离本地 S3 正向已由 Chrome 两图与 Core 1/2 图验证 PASS；真实云 R2 未授权/未验。 |
 | Edge提交 | `supabase/functions/feedback-submit/index.ts` | 本人JWT/确认邮箱/blocked/真实产品/限流、大小/类型/完整性验证、条件写及可信RPC |
 | 查询/签发 | `my_feedback`、`my_feedback_events`、`feedback-image-access` | 用户/产品/原号恢复作用域；安全附件ID签发，不暴露key/内部字段 |
 | DB | 最新反馈SQL、RLS、可信提交/事件及`feedback_referenced_keys` | 幂等/归属/计数与引用安全；旧写路径按单向合同清理，不保留兼容写入口 |
 | Admin | 现有四队列、图片/受控ZIP | AAL2当前管理员复核、version/筛选范围、敏感默认关闭，收件/处理与字节一致 |
-| 本地对象 | 第一阶段已验证的隔离S3/对象入口 | 写、签名读、ZIP、删除同一隔离库，真R2留第三阶段 |
+| 本地对象 | 第一阶段 F07 已验证受限 `local-test` S3、真实业务处理函数本机 HTTP/故障注入（模拟 Auth/DB），但非真实 JWT+Edge middleware+数据库全链 | Edge 当前运行容器未设置任何 R2_FEEDBACK_*，真实浏览器两图得到503且服务端未落库（拒绝而非成功）；Core Deno 单独 S3 协议/ZIP 替身测试已覆盖正向 1/2 图。本轮已用自动生成的临时 supabase/functions/.env 和专用本机 S3 fixture，完成真实 Lens Chrome→Core Edge→DB 2 图、真实 Core 1/2 图、本人/他人鉴权、60秒短签名以及 Admin AAL2 ZIP 字节比对；测试结束清理所有合成对象和身份。fixture 只检查签名结构，不能替代真实 R2 加密签名验证；故障对账、真实 R2 和 Admin UI 仍 OPEN |
 
 正文5000字符、单图3MiB、请求7MiB、当前5条/用户/小时、图片URL60秒先沿现有实现做隔离测试，正式运营参数按实测冻结，不自动扩为生产承诺。
 
@@ -38,7 +40,7 @@ Lens设置/帮助内，已登录、邮箱已确认、非blocked本人可提交�
 ## 4. 幂等、事务与恢复规则
 
 - 同一当前提交保留一个UUID，身份/产品固定；相同内容/分类/图片顺序和字节恢复。修改内容前与旧UNKNOWN明确区分，不能偷偷换号重发；异参409保留原输入。
-- `my_feedback`当前安全列表隐藏回收站且有跨产品/100条边界，不作为确定性存在性接口；Core在既有原号查询/可信提交链路解决作用域，必要时原号同参重放，无需新增Lens历史浏览接口。
+- Core F06 已编码 `my_feedback(p_product_key,p_request_id?)`：普通列表按产品仅返回可见的最近100条，精确原号查询不受列表截断，回收站仅返回本人最小存在证明，不显示管理员队列、正文或附件。迁移未持久部署；Lens 仍须以原号同参重放处理 UNKNOWN，单纯查询空数组不能证明提交失败，不新增历史浏览接口。
 - 当前设置窗口内draft/文件/原号用于失败恢复，不新增持久截图/反馈隐私存储。关闭窗口/刷新后的恢复能力按实际保留信息如实记录，不能用新号自动补提交。
 - key由可信产品UUID/本人/原号/slot/hash生成、条件写不可覆盖；客户端不能伪user_id或任意key。提交RPC及必要限流/事件同事务，写对象不代表已收件。
 - 对象成功但DB结果不明，先核查原请求/当前引用再对账；保护期内和已有引用对象不删。软删可恢复不等于物理删除，业务留存/永久清理政策公开前确定。

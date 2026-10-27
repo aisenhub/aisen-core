@@ -1,6 +1,10 @@
 # 第二阶段A详细计划｜环境、身份、成员、昵称与生命周期
 
-> **状态：DRAFT / NOT RUN。** 对应TODO LENS-01～03，审查F01/F03及决定7/8/9。必须先取得[第一阶段准出](./01-stage1-core-readiness.md)，本包通过后进入[资格与兑换](./03-stage2-entitlements-and-redemption.md)。总范围见[总计划](./00-integration-master-plan.md)。
+> **状态：联合开发 IN PROGRESS / PARTIAL。** 对应TODO LENS-01～03，审查F01/F03及决定7/8/9。必须先取得[第一阶段准出](./01-stage1-core-readiness.md)，本包通过后进入[资格与兑换](./03-stage2-entitlements-and-redemption.md)。总范围见[总计划](./00-integration-master-plan.md)。
+
+**2026-10-27 可复测切片**：Lens `features/auth/coreAuth.ts` 新建唯一 `@supabase/supabase-js@2.76.1` 共享浏览器 client（仅配置公开 `VITE_AISENCORE_URL`/`VITE_AISENCORE_PUBLISHABLE_KEY` 时启用、自动刷新、session 独立 storageKey）；真实 `AuthPage`/设置 AuthForm 接上登录/注册/邮件/恢复操作，配置缺失时 Free 及本机项目仍可用。设置展示真实会话邮箱/昵称，local 登出先锁 `aiCredentialVault` 内存密钥，再调用 `signOut({scope:'local'})`，不删除已加密仓库或项目。Core `supabase/config.toml` 新增仅 localhost/127.0.0.1:8443 的 confirm/reset 白名单，**配置尚未重启验证实际应用**。Lens 浏览器 QA `tests/features/workflow/core-account-feedback.browser.test.js` 使用真实临时确认账号、正常 `/login`→GoTrue→设置→Edge 零图→PostgreSQL 和 local logout，含用户名/产品归属、反馈不产生 membership、临时身份/反馈清理断言 **1/1 PASS**；WebApp TypeScript PASS。邮件确认/密码重置真实邮件链接、跨标签、多用户切换旧任务与 MFA 等仍 NOT RUN；不把当前切片记完整 A 包验收。
+
+**2026-10-27 本轮邮件复验补充**：直接运行 Core `node scripts/test-d2-auth-api-mfa.mjs`，真实 GoTrue+Mailpit 注册/确认、签名 JWT、密码重置链接/恢复密码及 HTTP/MFA 全部 PASS，合成测试账号清理。**环境差异仍 BLOCKED**：读取运行中 `supabase_auth_Aisencore` 非秘密配置发现 `GOTRUE_URI_ALLOW_LIST` **尚未包含 Lens `localhost/127.0.0.1:8443`**，虽然源文件 `supabase/config.toml` 已添加；尚未为载入配置停止/重建现有 DB/Auth，故不能将此标作 Lens 8443 邮件页面 E2E PASS。需要安全地重新加载 Auth 配置并复测 Lens 确认/找回页面、跨浏览器回调及无旧会话边界。
 
 ## 1. 输入与完成结果
 
