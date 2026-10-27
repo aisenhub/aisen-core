@@ -110,7 +110,7 @@
 - 成员按当前关系查询/合法操作幂等恢复，登录不 ensure，自动恢复不能 rejoin；兑换按同用户/产品/码恢复，不把任何 ok:false 直接当无权益，也不拿现有 Pro 单独证明本次兑换成功。
 - 本人 Grant 历史复用已有 RLS 和显式授权安全列，按产品有界读取；摘要仍只信 check_access。有限 explicit_window 的 days=null 不等于永久，历史读取失败不显示为空。
 - 反馈仅提交与必要原号恢复，不要求成员/Pro；201 首次、200 重放。原号空数组（含回收站隐藏）不能证明未提交，完整字段/故障语义与当前未修缺口见[反馈领域](../domains/user-feedback.md)。不新增客户端回复/历史/进度页面。
-- 分析模板备份 create/最终提交需当前 Pro；list/download/delete 不因自然到期被拒，但仍查身份/属主及产品成员准入。参数/完整恢复/跨对象一致性以[文件架构](../database/product-data-and-files.md)为准，专用接口尚未编码。
+- 分析模板备份新建/将 pending 提交为 ready 需当前 Pro；list/download/delete 及已成功原号结果查询不因自然到期被拒，但仍查身份/属主及产品成员准入。failed/过期/deleted 原号不复活，UNKNOWN 不换号；终态记录保留及清理与 finalize 互斥以[文件架构](../database/product-data-and-files.md)的恢复矩阵为唯一合同。专用接口尚未编码，具体 DTO/错误码须施工前固定。
 - 15 分钟本地快照为已采纳待实测值；新 AI/云操作在线核验，实际 AI/去水印/第二项目限制不在本轮实施范围。昵称仅 Auth 显示资料；注销渠道上线前确定。
 
 ## 6. MVP 验收用例（实施前标准，不代表已经运行）

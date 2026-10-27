@@ -29,6 +29,7 @@ MVP 尽量用 Supabase 官方 Auth SDK 的登录、令牌刷新、登出与密�
 - Supabase Auth 项目配置 **Confirm Email=on** 作为“确认邮箱后才可登录正式受保护业务”的唯一执行机制；应用负责提示和正确回调，不另造应用层 `email_verified` 访问判断。注册时不自动创建产品成员。
 - 使用 Supabase Auth 的确认邮件和密码重置流程；重置时要求使用可信、单次/时效适当的链接与允许的回调地址。**最小 HTTPS 静态落地页**（候选路由 `/auth/confirm`、`/auth/reset-password`）应在任意浏览器完成必要的官方 SDK 确认/密码更新，并提示返回 Aisenlens 桌面端登录；不要把桌面 deep link 当成唯一成功路径。提示语避免向未授权人员泄露邮箱是否已注册。
 - 生产环境邮件发送能力要验证到达率、退信与限额；默认邮件服务限制可能不满足实际用户规模，发信供应商和域名以后选择。
+- 确认/密码恢复的异浏览器可用性须在第二阶段本地用 Mailpit 与两个独立浏览器配置验证，不依赖发起端已有会话或本地状态；记录落地端是否建立会话、原端重新登录/继续流程的实际行为，不复制令牌实现跨浏览器登录。第三阶段复验真实 HTTPS、投递与设备差异；本轮不实现桌面壳或 deep link。
 - 用户可用的恢复过程应清晰区分：密码找回、会话重新登录、产品成员 `left` 的明确重新加入、管理员解除 `suspended`、全局账号恢复。前两项不改变成员封禁。
 - 内部管理员**必须**启用并完成 Supabase Auth 的 **TOTP MFA**：`aal1` 只能进入官方 TOTP enroll/challenge/verify，取得新的可信 `aal2` JWT 后才能查询 `admin_check_access` 及任何管理数据；管理 RLS 与 RPC 还要读取当前管理员名册和 blocked。只读 Auth Admin Edge **先验 JWT/`aal2`、用该原 JWT 复核当前资格，之后才执行服务端 Auth Admin 查询**，最小权限及在途撤权窗口见[可信事务长期合同](../database/rpc-security-and-locking-contract.md)；按[管理员专项](../domains/platform-admin-and-account-lifecycle.md)执行，不自建 2FA。
 - **Admin TOTP MFA 为 MVP 已确认必做**：一次可信 challenge/verify 建立 `aal2` 会话后，**普通列表读/管理 RPC 用现有 JWT 在同一业务请求/事务内检查 MFA 等级和实时管理资格，不额外串行调用 MFA/Auth API、也不每操作弹验证码**；刷新后真实 `aal` 若降级或会话失效，须重新完成必要挑战。UI `checkAuth/canAccess` 可短期缓存导航资格，但不得让后端信任缓存。因素丢失恢复属 MVP 验收，真实备用账号身份尚待确定。

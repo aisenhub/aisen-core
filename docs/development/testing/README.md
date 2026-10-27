@@ -49,6 +49,10 @@ node scripts/test-d2-auth-api-mfa.mjs
 
 测试行为与编号以 [API 契约的 I-01～I-28、R-01～R-15 及补充用例](../../architecture/backend/api-contract-and-mvp-acceptance.md)、[事务锁序](../../architecture/database/rpc-security-and-locking-contract.md)、[Admin 应用合同](../../architecture/applications/admin-console.md)为权威；本文件不维护第二套逐案例期望。
 
+## 性能判定与基线
+
+受影响工作包开工前先固定代表场景、构建/硬件/浏览器/网络、数据量、冷热状态、样本次数和统计口径，再测接入前基线。正式实现前依据基线和既有预算记录目标值及允许退化范围；新能力没有旧基线时采用代表载荷的绝对预算。原始样本、请求量、耗时与内存证据保留在既有性能记录中，不在各计划重复维护阈值。候选复测沿用相同条件；不得测完候选后放宽预算解释为 PASS。未冻结判据只能记录测量，不能签收性能；构建字节预算不替代运行性能。
+
 ## 额外安全底线
 
 只对实际存在的业务能力测试。不为假设的通用积分余额、`consume_user_quota`、AI 网关或公共业务配额新建数据库表/RPC。若 SaaS 将来引入消费计量，应由可信主体确认资源属主与成本，并在事务里检查正数、上限、并发、请求幂等和必要审计；不得信任客户端传来的负成本，也不得把陈旧 JWT 自定义权限作为当前 Pro/Admin/blocked 的权威。
