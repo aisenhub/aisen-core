@@ -48,7 +48,7 @@
 
 反馈是独立于成员加入与 Pro 检查的受限本人提交入口。已登录、邮箱确认且未 blocked 的用户使用本人 JWT、`product_key`、`request_id`、正文和最多 2 张图片请求 `feedback-submit` Edge；可信 `feedback_submit_from_edge` RPC 将本人/产品/图片元数据与反馈状态在 PostgreSQL 单事务内保存，图片经受控私有 R2 路径存储。新反馈先进入 `inbox`；读取本人 DTO 不返回 R2 key、内部审计或他人反馈，重放/异常按相同 request ID 核查，不能把 R2/DB 当成原子事务。
 
-**当前 Admin V3**：`inbox` 可预设优先级、星标、标签、私有备注后经 `admin_feedback_v3` 受保护事务进入 `workbench`；归档来自工作台、回收站软删可恢复 `deleted_from` 原阶段。旧 V2 的五态/负责人/对用户公开回复字段与历史事件保留只读数据兼容，不再成为新 Admin 可编辑流程；旧 RPC 不能绕过 V3 队列保护。Admin 列表采用 RLS/PostgREST，写入复核当前 AAL2、管理员资格、账号状态、`expected_version`、锁序与最小审计，切换产品时不复用过时操作范围。
+**当前 Admin V3**：`inbox` 可预设优先级、星标、标签、私有备注后经 `admin_feedback_v3` 受保护事务进入 `workbench`；归档来自工作台、回收站软删可恢复 `deleted_from` 原阶段。旧 V2 的五态/负责人/对用户公开回复字段与历史事件仅作既有事实读取，不再成为新 Admin 可编辑流程；旧 RPC 不能绕过 V3 队列保护。Admin 列表采用 RLS/PostgREST，写入复核当前 AAL2、管理员资格、账号状态、`expected_version`、锁序与最小审计，切换产品时不复用过时操作范围。
 
 `feedback-export` Edge 对所选/筛选范围重新鉴权后输出必要正文/原图和按开关选择的受限历史，内部评论和直接身份默认关闭；敏感选择重新确认且范围变化必须失效。私图读取使用 `feedback-image-access` Edge 再鉴权；上传、ZIP 和失败对账区分隔离 S3 替身与真实 R2。历史真实零图 JWT HTTP、Admin AAL2 Chrome、V3 462/462 pgTAP 有部分 PASS 记录，**但完整一两张图真实 R2、AisenLens 客户端提交/回看、人工 WCAG/视觉与生产验收仍开放**。具体状态、安全与测试以[反馈领域唯一合同](../domains/user-feedback.md)和[V3 当前专项](../../Plans/aisencore-mvp/feedback-v3-lightweight-implementation.md)为准。
 
@@ -58,7 +58,7 @@
 - 单次 SaaS 可信请求可以复用新鲜的公共授权判断；不可跨多个关键请求长期以客户端展示缓存或嵌入 JWT 的“Pro/成员”声明为权威。SaaS 在数据库写入或资源访问前自行核验其资源所有权与实际用量。
 - 已提交的退出、封禁和产品暂停在**下一次可信检查**时被反映；已执行中的长任务按产品确定检查点，先前签发的 R2 预签名 URL 可持续至到期。无法取得可信公共授权时，不为新的云端受保护操作放行，也不将网络故障表述为“被封禁”。
 - 结果不明时先读取当前可信记录再安全重试；兑换码、发码批次和管理授权的幂等规则见[API 契约](./api-contract-and-mvp-acceptance.md)，不能因为客户端超时就假定失败。
-- **MVP 调用量优化**：Aisenlens 客户端的本地 Free 不发公共 Auth/权益请求；Pro 只在进入/启动及关键操作前按需复核，同一用户产品并发查询去重，**不启动全局固定 15 分钟轮询**。15 分钟仅候选客户端快照新鲜度，并不改变 `check_access` 已确定的 200/401/503 语义、不授权任何需要服务器实时检验的 R2 操作；不另建逐功能查询 RPC 或通用能力快照；客户端仅按真实 Pro 资格执行对应 SaaS 业务判断。长期会话与本地 Pro 边界参见[多 SaaS 会话](../applications/auth-and-multi-saas-sessions.md)和[本地优先](../applications/local-first.md)，性能测量方案仍保留于阶段 Plan。
+- **MVP 调用量优化**：匿名本地 Free 零非必要 Auth/RPC；Pro 启动/关键操作按需复核、同环境/用户/产品并发去重，不固定轮询。短时断网新纯本地 Pro 可复用有效快照、暂按最多 15 分钟测试；不超过自然到期或绕过已知撤权，新 AI/云操作必须在线核验。规则已确认，参数与撤权时效仍待实测；本轮不启用 AI/去水印/第二项目门槛，时序及实施边界见[本地优先架构](../applications/local-first.md)。
 
 ## 5. 跨产品隔离与延后事项
 
@@ -67,3 +67,11 @@
 - 本文同时描述已编码的 AisenCore 公共服务与待第二阶段实现的真实 AisenLens 双端连接；已有本地分层 PASS 不等于完整验收、R2 实际部署或生产许可。
 
 相关：[API 契约](./api-contract-and-mvp-acceptance.md) · [数据库事务与权限](../database/database-access-and-transactions.md) · [管理员控制台](../applications/admin-console.md) · [统一会话](../applications/auth-and-multi-saas-sessions.md)。
+
+## 当前 AisenLens 接入约束
+
+仅 WebApp 的 Auth、成员、资格显示/安全历史、兑换、反馈和完整分析模板云备份进入本次后续实现范围。昵称复用 Auth 用户可编辑资料，仅作显示；普通登出显式 local，不 leave 产品。切号最小接线只负责凭据锁定/会话 Key 释放、在途任务收尾或明确取消、旧响应失效，不改 AI/Provider/项目逻辑。注销渠道上线前确定，未确定不提供成功提交按钮。
+
+反馈仅已登录/邮箱确认/非 blocked 本人提交，不要求 Pro 或 active 成员，不自动 ensure；最多两图，无自由联系邮箱及客户端历史/进度/回复页面。本人 RPC 仅为必要恢复/权限测试；创建 201、重放 200，原号同参，空数组不证明未提交。当前上游故障误报 403、跨产品列表及回收站查询语义缺口仍待修复，见[反馈领域](../domains/user-feedback.md)。
+
+模板备份的 create/list/download/delete 权限和 20 份/待测 5 MiB/到期取回政策见[文件架构](../database/product-data-and-files.md)。兑换保持两参、同码恢复；新增的有效永久 Pro 拒兑保护见[计费规则](../domains/billing-and-entitlements.md)，当前 SQL 尚未落实。本文更新不表示代码已改或真实联调已通过。

@@ -4,9 +4,9 @@
 
 ## 当前阅读与执行顺序
 
-**当前施工主控**：[阶段过渡优化执行计划（B0～B4）](./aisencore-mvp/phase-transition-optimization-plan-2026-10-27.md)；[Core → AisenLens 静态接口/缺口清单](./aisencore-mvp/phase2-core-integration-contract-inventory-2026-10-27.md)仅为阶段二接口准备核对，不是额外需求真源。
+**本次双仓对接施工主控**：[详细总执行计划](./aisenlens-aisencore-local-integration/00-integration-master-plan.md)及其第一/二/三阶段文件；[阶段过渡计划B0～B4](./aisencore-mvp/phase-transition-optimization-plan-2026-10-27.md)保留前期事实/证据与原任务映射，不另行排一套对接步骤。
 
-**新增双仓审查**：[AisenLens × AisenCore 本地对接资料](./aisenlens-aisencore-local-integration/README.md)（[2026-10-27 双仓综合审查/实施方案](./aisenlens-aisencore-local-integration/2026-10-27-cross-repository-audit-and-integration-plan.md)）：Lens 后端相关页面/代码现为简单测试，以 Core 现行有效后端合同为准；此处只是只读审查快照，真实双端业务联调仍 NOT RUN。
+**规划与审查分开**：[对接目录索引](./aisenlens-aisencore-local-integration/README.md)列出1份总计划、7份详细计划和[源码审查/已确认决定](./aisenlens-aisencore-local-integration/2026-10-27-cross-repository-audit-and-integration-plan.md)；当前只编写文档，实施与真实双端仍NOT RUN。
 
 1. **[唯一未完成任务清单](./TODO.md)** — 所有剩余事项、阶段、优先级和关闭条件，已完成施工流水不再夹杂。
 2. **[第二阶段 AisenLens 本地端联调方案](./aisencore-mvp/phase2-aisenlens-local-integration-plan.md)** — 实际 AisenLens 操作数据、两端接口/身份/Pro/兑换/反馈/备份的对齐与验收。
@@ -22,6 +22,8 @@
 - [FB-V2 历史安全/ZIP 记录](./aisencore-mvp/fb-v2-inbox-workbench.md)用于旧 RPC、ZIP 与实际安全证据溯源；**当前反馈可编辑合同已经是 V3**，不要恢复 V2 五态、负责人或管理员公开回复。
 - [前端性能审查原始测量](./aisencore-mvp/admin-frontend-performance-review-2026-10-26.md)保留基线，不把早期 NOT RUN 当做当前项目未实现。
 - [阶段文档治理审计记录](../development/testing/document-governance-audit-2026-10-27.md)解释已移除过程文件的提炼、删除及验证；历史 Git 版本可回溯。
+
+**当前对接决定**：Core主导、Lens仅WebApp后端相关接线；完整模板20份、待测5MiB、到期取回、确认邮箱单向反馈和有效永久Pro拒兑已确认。AI/去水印/第二项目门槛及支付不在本轮范围，注销渠道上线前确定；细节统一到[需求](../spec/requirements.md)和[双仓审查](./aisenlens-aisencore-local-integration/2026-10-27-cross-repository-audit-and-integration-plan.md)。当前仅文档同步，不表示阶段签收。
 
 ## 文档生命周期与权限
 

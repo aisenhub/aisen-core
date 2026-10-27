@@ -1,34 +1,24 @@
-# AisenCore × AisenLens｜第二阶段本地联调准备与验收方案
+# 第二阶段本地联调｜MVP工作流入口
 
-> 2026-10-27；阶段状态：**准备中 / 双端联调 NOT RUN**。项目所有者已宣布第一阶段基本结束，仍需在实际联调前解决或明确接受 [遗留准入项](../TODO.md)。本文件为本地对接工作方案，不授权连接生产服务、部署、远程数据库迁移或变更 AisenLens 未审查代码。
+> 2026-10-27：业务与范围已确认，源码/入口已静态核对；第一阶段正式签收未完成，真实双端NOT RUN。本轮仅编写计划，不改代码、数据库或云环境。
 
-**Core 侧实现核对输入**：[public RPC/Edge 静态接口与缺口清单](./phase2-core-integration-contract-inventory-2026-10-27.md)；真实调用与 Lens 端实现须在取得本地代码和隔离环境后验证，该静态清单不是联调 PASS。
+## 唯一详细执行入口
 
-## 目标与边界
+本次双仓调度统一到[本地对接总执行计划](../aisenlens-aisencore-local-integration/00-integration-master-plan.md)，其隶属[MVP总计划](./00-mvp-master-plan.md)，不替代[三阶段门禁](./three-stage-delivery-gates.md)或[TODO LENS-01～07](../TODO.md)。
 
-以 AisenLens 本地客户端 **实际操作形成的真实本地业务数据** 检查 AisenCore 公共身份、产品成员、Pro 资格、兑换码、反馈及有限配置备份的全链路。AisenCore 不承载拉片视频、AI 输入/输出、私有项目资源和功能额度规则。各 SaaS 的资源权限由产品端决定；Core 只提供身份/成员/产品权益事实。
+| 工作包 | 详细施工与准出 |
+| --- | --- |
+| 第一阶段前置 | [Core/Admin独立修验/签收](../aisenlens-aisencore-local-integration/01-stage1-core-readiness.md) |
+| LENS-01～03 | [环境/Auth/成员/昵称/生命周期](../aisenlens-aisencore-local-integration/02-stage2-auth-and-membership.md) |
+| LENS-04 | [资格/历史/兑换及R-16](../aisenlens-aisencore-local-integration/03-stage2-entitlements-and-redemption.md) |
+| LENS-05 | [单向文字/最多两图反馈](../aisenlens-aisencore-local-integration/04-stage2-feedback.md) |
+| LENS-06/S1 | [完整模板私有备份](../aisenlens-aisencore-local-integration/05-stage2-template-backup.md) |
+| LENS-07 | [组合回归/本地签收](../aisenlens-aisencore-local-integration/06-stage2-integration-acceptance.md) |
 
-## 执行顺序（有界分批）
+原准备方案中的执行细则已并入以上文件，不再在本入口维护重复步骤或第二份状态账本。两仓当前签名/缺口仍见[实际清单](./phase2-core-integration-contract-inventory-2026-10-27.md)，问题证据见[双仓审查](../aisenlens-aisencore-local-integration/2026-10-27-cross-repository-audit-and-integration-plan.md)。
 
-| 顺序 | 检查单元 | 必备输入/证据 | 失败条件 |
-| --- | --- | --- | --- |
-| 0. 基线 | 两仓当前分支/提交、AisenLens 本地运行结构、Supabase 隔离服务与配置 | 双端服务端口、非生产密钥检查、可恢复测试数据和当前代码快照 | 未确认具体 AisenLens 工程不得假设接口已存在 |
-| 1. 合同对齐 | 受保护 RPC、Auth JWT、产品 key、用户会话、Error/HTTP/UNKNOWN | 最小接口矩阵（请求/响应、授权、幂等、故障）及双端 owner | 权限只在 UI 检查、擅自扩大 RLS、旧接口双轨 |
-| 2. 基本身份 | 注册、邮件/登录、登录状态、成员加入/退出、blocked、多产品 | 客户端真实操作 + Core DB/Auth 日志，匿名/AAL1/旧会话负例 | 用合成管理员或 seed 代替真实端调用 |
-| 3. 会员兑换 | Pro 实时资格、到期/撤回、在线复核、离线 Free、兑换成功/重复/超限 | 真实 AisenLens UI 行为与受保护 RPC/Grant/审计对应 | 模拟 Pro 但服务端不授权、错误时假成功 |
-| 4. 反馈 | AisenLens 文字及 0/1/2 图、本人的受限状态读取（当前 V3 不新增用户/管理员交互式回复）、Admin V3 四队列和 ZIP | 私有读写、403/409/429/503、重试、跨产品隔离、删除/恢复与记录归属 | 图片替身通过却宣称真实 R2 成功 |
-| 5. 小 JSON 备份 | 配额预留、Edge 校验、唯一对象条件写、pending/ready 对账、版本恢复 | 非敏感字段白名单、U09/U10/U11 决策与双端版本冲突测试 | 视频/AI 数据上传 Core、长期 R2 凭据下发客户端 |
-| 6. 退出回归 | I/R/REV 编号矩阵、回归证据、异常恢复、QA 数据清理、P0/P1 清零 | 测试记录、最终缺陷单、所有者第二阶段签收 | 单端通过冒称双端，或部分测试冒称全量 |
+## 准入与范围
 
-## 首次连接前需要获取的事实（当前未核验）
+先完成可独立Core/Admin遗留及所有者第一阶段签收，期间仅静态合同/隔离环境准备；之后使用Lens实际操作数据开展联调，不用demo seed冒充。Core主导，Lens只改后端相关部分及允许的最小凭据/在途任务接线；不实施AI Pro、去水印、第二项目门槛、支付或桌面/移动/SSO。注销渠道留待上线前。
 
-- AisenLens 本地代码仓库位置、工作分支、具体前端技术栈及启动方式；本次 mycodex **只接入 AisenCore**。
-- AisenLens 现有登录/Pro/兑换/反馈/备份客户端代码与网络层；端点、模型、版本及实际错误处理。
-- AisenLens 是否已有隔离本地配置、测试身份和允许对接 AisenCore 的联调开关。
-- 备份字段白名单/限额/保留数与离线 Pro 规则，参照 [S1 安全计划](./s1-aisenlens-r2-backup.md)，未经批准不得替产品决定。
-
-## 原则
-
-严禁使用演示数据取代 AisenLens 操作路径；严禁生产凭据、真实用户数据、远端部署和未经批准的外部服务。DB 预留与 R2 最终写不是 ACID 事务，需明确失败对账。用户提交反馈与备份不同，必须使用各自隔离可信入口及鉴权规则。
-
-每个验收用例分别记录：两端版本、环境、业务步骤、原始请求/安全摘要、服务端结果、失败注入、清理情况、PASS/FAIL/NOT RUN；实时更新 [唯一未完成任务清单](../TODO.md)。
+第二阶段通过不授予云端/推送/部署权限；第三阶段详细路径见[云端与发布计划](../aisenlens-aisencore-local-integration/07-stage3-cloud-and-release.md)。任何数据删除/reset仍按明确授权执行。

@@ -60,7 +60,7 @@ export function OperationModalProvider({children}:{children:ReactNode}){
   return <OperationContext.Provider value={open}>
     {children}
     <Dialog open={!!opened} onClose={attemptClose} fullWidth
-      maxWidth={opened?.kind==='issue'?'md':'sm'} fullScreen={compact}
+      maxWidth="sm" fullScreen={compact}
       aria-labelledby="aisencore-operation-title" scroll="paper"
       slotProps={{paper:{sx:{borderRadius:{xs:0,sm:3.5},
         maxHeight:{xs:'100dvh',sm:'min(90dvh,900px)'},border:'1px solid #E1E7EE',
@@ -93,22 +93,27 @@ export function OperationModalProvider({children}:{children:ReactNode}){
             <CircularProgress size={22}/><Typography>正在加载操作…</Typography></Box>}>
             {opened.kind==='grant'&&<Grant embedded defaultUserId={opened.userId}
               onSafetyChange={setSafety} onCompleted={forceClose}/>}
-            {opened.kind==='issue'&&<IssueCodesSlot onSafetyChange={setSafety} onCompleted={forceClose}/>}
+            {opened.kind==='issue'&&<IssueCodesSlot onSafetyChange={setSafety} onCompleted={forceClose}
+              onRequestClose={attemptClose}/>}
             {opened.kind==='account'&&<Account embedded defaultUserId={opened.userId}
               onSafetyChange={setSafety} onCompleted={forceClose}/>}
             {opened.kind==='product'&&<Product embedded onSafetyChange={setSafety}
               onCompleted={forceClose}/>}
           </Suspense>
         </DialogContent>
-        <DialogActions sx={{px:{xs:2,sm:3},py:1.8,justifyContent:'flex-start'}}>
+        {(opened.kind!=='issue'||safety==='plaintext')&&<DialogActions
+          sx={{px:{xs:2,sm:3},py:1.8,justifyContent:'flex-start'}}>
           <Button size="small" color="inherit" onClick={attemptClose} disabled={safety==='busy'}>
             {safety==='pending'?'稍后处理':'关闭'}
           </Button>
-        </DialogActions>
+        </DialogActions>}
       </>}
     </Dialog>
   </OperationContext.Provider>;
 }
-function IssueCodesSlot({onSafetyChange,onCompleted}:{onSafetyChange:(v:OperationSafety)=>void;onCompleted:()=>void}){
-  return <Issue embedded onSafetyChange={onSafetyChange} onCompleted={onCompleted}/>;
+function IssueCodesSlot({onSafetyChange,onCompleted,onRequestClose}:{
+  onSafetyChange:(v:OperationSafety)=>void;onCompleted:()=>void;onRequestClose:()=>void;
+}){
+  return <Issue embedded onSafetyChange={onSafetyChange} onCompleted={onCompleted}
+    onRequestClose={onRequestClose}/>;
 }
