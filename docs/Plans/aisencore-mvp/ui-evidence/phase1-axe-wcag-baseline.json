@@ -4,7 +4,7 @@
     {
       "page": "dashboard",
       "violations": [],
-      "passes": 26,
+      "passes": 25,
       "incomplete": 1
     },
     {
@@ -28,7 +28,7 @@
     {
       "page": "products-desktop",
       "violations": [],
-      "passes": 29,
+      "passes": 31,
       "incomplete": 2
     },
     {
@@ -70,13 +70,13 @@
     {
       "page": "code-batches",
       "violations": [],
-      "passes": 34,
+      "passes": 33,
       "incomplete": 1
     },
     {
       "page": "codes",
       "violations": [],
-      "passes": 33,
+      "passes": 34,
       "incomplete": 1
     },
     {
@@ -88,19 +88,19 @@
     {
       "page": "membership-events",
       "violations": [],
-      "passes": 33,
+      "passes": 34,
       "incomplete": 1
     },
     {
       "page": "admins",
       "violations": [],
-      "passes": 33,
+      "passes": 34,
       "incomplete": 1
     },
     {
       "page": "restrictions",
       "violations": [],
-      "passes": 33,
+      "passes": 34,
       "incomplete": 1
     },
     {
@@ -118,55 +118,55 @@
     {
       "page": "feedback",
       "violations": [],
-      "passes": 25,
+      "passes": 32,
       "incomplete": 1
     },
     {
       "page": "products-detail",
       "violations": [],
-      "passes": 26,
+      "passes": 25,
       "incomplete": 1
     },
     {
       "page": "memberships-detail",
       "violations": [],
-      "passes": 26,
+      "passes": 25,
       "incomplete": 1
     },
     {
       "page": "grants-detail",
       "violations": [],
-      "passes": 26,
+      "passes": 25,
       "incomplete": 1
     },
     {
       "page": "code-batches-detail",
       "violations": [],
-      "passes": 26,
+      "passes": 25,
       "incomplete": 1
     },
     {
       "page": "codes-detail",
       "violations": [],
-      "passes": 26,
+      "passes": 25,
       "incomplete": 1
     },
     {
       "page": "admins-detail",
       "violations": [],
-      "passes": 26,
+      "passes": 25,
       "incomplete": 1
     },
     {
       "page": "restrictions-detail",
       "violations": [],
-      "passes": 26,
+      "passes": 25,
       "incomplete": 1
     },
     {
       "page": "audit-logs-detail",
       "violations": [],
-      "passes": 26,
+      "passes": 25,
       "incomplete": 1
     },
     {

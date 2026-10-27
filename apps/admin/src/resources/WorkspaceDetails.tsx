@@ -12,6 +12,7 @@ import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettin
 import GppBadOutlinedIcon from '@mui/icons-material/GppBadOutlined';
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
 import { ProtectedAction } from './lists';
+import { formatAdminInstant } from '../dateDisplay';
 
 type Name='products'|'memberships'|'grants'|'code-batches'|'codes'|'admins'|'restrictions'|'audit-logs';
 type Property={key:string;label:string;type?:'time'|'state'|'user'|'product'|'json'|'code'};
@@ -65,10 +66,7 @@ const resources:Record<Name,{
 };
 function display(value:unknown,type?:Property['type']){
   if(value===null||value===undefined||value==='')return '—';
-  if(type==='time'){
-    const date=new Date(String(value));
-    return isNaN(date.getTime())?'—':date.toLocaleString('zh-CN',{hour12:false});
-  }
+  if(type==='time')return formatAdminInstant(value);
   if(type==='state'){
     const code=typeof value==='boolean'?(value?'active':'inactive'):String(value);
     const labels:Record<string,string>={active:'有效 / 正常',inactive:'无效',draft:'草稿',

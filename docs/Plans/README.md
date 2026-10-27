@@ -7,6 +7,9 @@
 - [MVP 总计划（主控/阶段关系/待决事项）](./aisencore-mvp/00-mvp-master-plan.md)
 - **[三阶段交付和验收准则（必须遵守）](./aisencore-mvp/three-stage-delivery-gates.md)** — 第一阶段 Admin 本地独立完整交付并完成性能、视觉/无障碍签收；第二阶段停用合成 fixture 作为联调依据，与 AisenLens 真实本地业务数据双端开发；第三阶段全部线上配置、部署与端到端测试。每阶段需要独立准出和所有者确认。
 - **[第一阶段全站交付整改总计划与专项施工单](./aisencore-mvp/phase1-delivery-remediation-plan.md)** — 对审查出的功能/业务操作/表格/性能/代码拆分/WCAG/响应式/八维视觉缺口逐包施工及记录，按 W0～W7 关口复测；目前仅部分基础工程已实施，仍需完整质量验收。
+- **[AisenCore Admin 前端 UI 生产级审查与整改计划（2026-10-27）](./aisencore-mvp/admin-frontend-ui-production-readiness-audit-and-remediation-plan-2026-10-27.md)** — 独立前端 UI 审查与验收矩阵：UI-01～14 问题/风险分级、各模块任务、UI-G0～G7 整改工作包、八维视觉/WCAG/异常/响应式和发布门禁；仅建立审查基线，整体 UI 尚未签收。
+- **[Admin 前端性能与感知体验专项优化计划（2026-10-26）](./aisencore-mvp/admin-frontend-performance-optimization-plan-2026-10-26.md)** — 按 [全面性能审查](./aisencore-mvp/admin-frontend-performance-review-2026-10-26.md) PERF-01～09 分 O0～O3 实施；O0 基础工程和 O1 感知加载已实施；正式生产预览临时AAL2的29项列表加载场景 PASS，权限 RPC in-flight 去重和标签去重已局部实施；CPU/网络拆分基线已留证。跨产品负例、完整视觉/无障碍、真实负载与 O3 阶段签收尚未完成。
+- **[Admin 第二阶段：真实加载与交互性能施工计划](./aisencore-mvp/admin-performance-phase2-real-load-and-interaction-plan-2026-10-26.md)** — 聚焦登录公共 JS 关键路径、标签短时缓存与权限隔离、SPA 非空数据连续交互、查询/精确计数、取消与无障碍完整验收；S2 代码先行，其它阶段仍开放。
 - [D1：数据库、Pro、兑换码与可信 RPC](./aisencore-mvp/d1-database-and-trusted-rpc.md) — **D1 本地准出**：四份迁移从零重建成功，001～005 共 **239/239 pgTAP PASS**，双连接 LCK-01～07 全部通过；真实 JWT/HTTP/MFA 由 D2 验收。
 - [D2：真实 Auth、公共 API 与 TOTP MFA](./aisencore-mvp/d2-auth-public-api-and-mfa.md) — **旧技术工作流，第一阶段需要收口独立可完成内容**：DEC-06 SQL 查询、[006](../../supabase/tests/database/006_admin_user_lookup.test.sql) 47 项 pgTAP，GoTrue/PostgREST/Mailpit 实际 HTTP、签名 ES256 JWT 与 TOTP `aal2` 测试已 PASS；真实 Mailpit 密码找回、签名恢复 JWT、旧密码失效和新密码登录也已 PASS；D2 完整退出门禁（浏览器回调、失设备恢复、全量错误分支、性能）仍未通过。
 - [D3：React-admin（第一阶段交付重点）](./aisencore-mvp/d3-admin-console.md) — 正式 `apps/admin/` Vite/React-admin/TypeScript 已有全资源和主要真实 MFA 浏览器写入回归，仍需**全业务/表格流程、真实前端性能/代码拆分、WCAG 2.2 AA、高品质八维视觉和所有者签收**；不允许把这些任务移交至 AisenLens 本地联调阶段。

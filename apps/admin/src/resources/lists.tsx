@@ -9,6 +9,7 @@ import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import { callRpc } from '../data/dataProvider';
 import { DomainNavigation } from './DomainNavigation';
 import { OperationLink } from './OperationDialogs';
+import { PendingDatagrid } from './PendingDatagrid';
 
 type ActionProps = { title: string; rpc: string; keyName: string; targetId?: string;
   payload?: Record<string, unknown>; danger?: boolean };
@@ -142,6 +143,9 @@ export function ProductsList() {
         <Typography color="text.secondary" sx={{mt:1}}>{statusFilter||productKey?'请调整状态或产品键筛选。':'先创建产品，建立你的管理空间。'}</Typography>
         {!(statusFilter||productKey)&&<Button component={RouterLink} to="/products/create" sx={{mt:2}} variant="contained">新建产品</Button>}
       </Card>}>
+      <PendingDatagrid minWidth={680} columns={[
+        {label:'产品'}, {label:'运行状态'}, {label:'简介'}, {label:'建立日期'},
+      ]}>
       <Datagrid rowClick="show" bulkActionButtons={false} sx={{
         maxWidth:'100%',overflowX:'auto',
         '& .MuiTable-root':{minWidth:680,tableLayout:'fixed'},
@@ -157,6 +161,7 @@ export function ProductsList() {
         <TextField source="description" label="简介" emptyText="—"/>
         <DateField source="created_at" label="建立日期" />
       </Datagrid>
+      </PendingDatagrid>
     </List>
   </Box>;
 }

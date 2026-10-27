@@ -4,6 +4,7 @@ import { useGetList, useStore } from 'react-admin';
 import { Box, Button, Card, Divider, Skeleton, Stack, Typography } from '@mui/material';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
 import { auditActionLabel, auditTargetLabel } from './adminCopy';
+import { formatAdminInstant } from './dateDisplay';
 import LayersOutlinedIcon from '@mui/icons-material/LayersOutlined';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import WorkspacePremiumOutlinedIcon from '@mui/icons-material/WorkspacePremiumOutlined';
@@ -108,8 +109,8 @@ export function Dashboard() {
                  <Typography sx={{fontWeight:670,fontSize:13.5}} noWrap>{auditActionLabel(item.action)}</Typography>
                  <Typography sx={{fontSize:12,color:'text.secondary'}} noWrap>{auditTargetLabel(item.target_type)}</Typography>
                </Box>
-               <Typography sx={{fontSize:12,color:'text.secondary',whiteSpace:'nowrap'}}>
-                 {new Date(String(item.created_at)).toLocaleDateString('zh-CN',{month:'2-digit',day:'2-digit'})}
+               <Typography sx={{fontSize:12,color:'text.secondary',maxWidth:158,textAlign:'right'}}>
+                 {formatAdminInstant(item.created_at)}
                </Typography>
              </Stack>)}
            </Stack>}

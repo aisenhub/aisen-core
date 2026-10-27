@@ -184,6 +184,37 @@ try{
     'desktop priority/star/tags/ZIP controls must share a single toolbar row');
   await capture('feedback-v3-inbox-desktop');
   console.log('FB_V3_BROWSER four queue tabs PASS');
+  // UI-08: opening/reopening a ZIP export must never persist sensitive flags.
+  const openZip=await evaluate("(()=>{const b=[...document.querySelectorAll('button')].find(x=>x.textContent?.includes('导出筛选结果 ZIP'));if(b&&!b.disabled){b.click();return true}return false})()");
+  assert.equal(openZip,true,'local QA feedback with two rows supports filtered export review');
+  await visible('导出反馈压缩包');
+  const sensitiveUnchecked=await evaluate("(()=>{const x=[...document.querySelectorAll('[role=dialog] label')].filter(e=>e.textContent?.includes('内部评论')||e.textContent?.includes('包含反馈人身份'));return x.length===2&&x.every(e=>!e.querySelector('input')?.checked)})()");
+  assert.equal(sensitiveUnchecked,true,'both sensitive options must be unchecked by default');
+  const chooseNotes=await evaluate("(()=>{const e=[...document.querySelectorAll('[role=dialog] label')].find(e=>e.textContent?.includes('内部评论'));e?.querySelector('input')?.click();return !!e})()");
+  assert.equal(chooseNotes,true,'sensitive notes option selectable');
+  assert.equal(await evaluate("(()=>{const b=[...document.querySelectorAll('[role=dialog] button')].find(x=>x.textContent?.trim()==='生成 ZIP');b?.click();return !!b})()"),true,
+    'first sensitive submit opens confirmation instead of exporting');
+  await visible('请再次确认本次敏感导出');
+  assert.equal(await evaluate("(()=>{const x=[...document.querySelectorAll('[role=dialog] button')].find(e=>e.textContent?.includes('返回修改'));x?.click();return !!x})()"),true);
+  assert.equal(await evaluate("(()=>{const x=[...document.querySelectorAll('[role=dialog] button')].find(e=>e.textContent?.trim()==='取消');x?.click();return !!x})()"),true);
+  await sleep(250);
+  assert.equal(await evaluate("(()=>{const x=[...document.querySelectorAll('button')].find(e=>e.textContent?.includes('导出筛选结果 ZIP'));x?.click();return !!x})()"),true);
+  await visible('导出反馈压缩包');
+  assert.equal(await evaluate("(()=>{const x=[...document.querySelectorAll('[role=dialog] label')].filter(e=>e.textContent?.includes('内部评论')||e.textContent?.includes('包含反馈人身份'));return x.length===2&&x.every(e=>!e.querySelector('input')?.checked)})()"),true,
+    'reopened ZIP export must clear previous sensitive approval');
+  // Simulate the header selector changing during a modal review (ordinary
+  // pointer clicks are blocked by the modal backdrop). The approval must not
+  // silently transfer to another product even when both scopes have 2 rows.
+  const selector=await evaluate("(()=>{const x=[...document.querySelectorAll('[role=combobox]')].find(e=>e.getAttribute('aria-label')?.startsWith('切换管理产品范围'));x?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,button:0}));return !!x})()");
+  assert.equal(selector,true,'header product selector exists under the export modal');
+  await sleep(160);
+  const picked=await evaluate("(()=>{const x=[...document.querySelectorAll('[role=option]')].find(e=>e.textContent?.includes('FB browser QA'));x?.click();return !!x})()");
+  assert.equal(picked,true,'isolated QA product available as changed export scope');
+  await visible('页面范围已变化');
+  const disabledSubmit=await evaluate("(()=>{const d=[...document.querySelectorAll('[role=dialog]')].find(x=>x.textContent?.includes('导出反馈压缩包'));const b=[...(d?.querySelectorAll('button')??[])].find(x=>x.textContent?.includes('生成 ZIP'));return !!b&&b.disabled})()");
+  assert.equal(disabledSubmit,true,'changed product scope must invalidate previous export review');
+  await evaluate("(()=>[...document.querySelectorAll('[role=dialog] button')].find(e=>e.textContent?.trim()==='取消')?.click())()");
+  console.log('UI08_EXPORT_REVIEW PASS default flags, two-step confirmation, reset and scope-drift guard');
   await send('Page.navigate',{url:base+'/#/feedback/'+feedbackId+'/show'});
   await visible('加入处理工作台');
   assert.ok(!(await evaluate('document.body.innerText')).includes('更新负责人'));
@@ -306,8 +337,14 @@ try{
       if(!r.ok)errors.push('GoTrue cleanup HTTP '+r.status);
     }catch(e){errors.push('GoTrue cleanup '+e.message)}
   }
-  try{rmSync(profile,{recursive:true,force:true,maxRetries:15,retryDelay:150})}
-  catch{console.warn('Chrome QA profile locked by OS; browser temp directory may need later cleanup')}
+  // The temporary profile may still contain browser session material after
+  // GoTrue fixture deletion. Treat lingering files as a real QA cleanup
+  // failure, not an ignorable warning, and retry only this exact profile.
+  for(let attempt=0;attempt<18&&existsSync(profile);attempt++){
+    try{rmSync(profile,{recursive:true,force:true,maxRetries:5,retryDelay:180})}
+    catch{await sleep(500)}
+  }
+  if(existsSync(profile))errors.push('isolated Chrome QA profile cleanup failed');
   if(errors.length)throw Error('FB_BROWSER clean-up: '+errors.join('; '));
   console.log('FB_BROWSER_CLEANUP VERIFIED temporary account/product/feedback removed');
 }

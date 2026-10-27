@@ -1,0 +1,942 @@
+{
+  "context": "Local loopback production preview, anonymous headless Chrome cold HTTP cache, independent CPU-only and network-only emulation; n=5 each",
+  "pass": true,
+  "medians": {
+    "baseline": 588,
+    "cpu4x_only": 700,
+    "network_only_150ms_1_6Mbps": 2948
+  },
+  "results": [
+    {
+      "condition": "baseline",
+      "index": 1,
+      "fcp": 80,
+      "lcp": 804,
+      "cls": 0.005555555555555556,
+      "longTasks": 1,
+      "ttfb": 4,
+      "jsRequests": 8,
+      "jsBytes": 394267,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-DqCX4u7l.js",
+          "start": 392,
+          "end": 399,
+          "transfer": 2296,
+          "duration": 7
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 267,
+          "end": 293,
+          "transfer": 55123,
+          "duration": 27
+        },
+        {
+          "asset": "App-DPaxl2ud.js",
+          "start": 266,
+          "end": 292,
+          "transfer": 34352,
+          "duration": 27
+        },
+        {
+          "asset": "Title-ACieoNWY.js",
+          "start": 266,
+          "end": 288,
+          "transfer": 2615,
+          "duration": 22
+        },
+        {
+          "asset": "mui-vendor-BH0a6Ps5.js",
+          "start": 20,
+          "end": 95,
+          "transfer": 127691,
+          "duration": 74
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 20,
+          "end": 90,
+          "transfer": 102212,
+          "duration": 69
+        },
+        {
+          "asset": "index-jetB9qqf.js",
+          "start": 20,
+          "end": 83,
+          "transfer": 68767,
+          "duration": 63
+        }
+      ]
+    },
+    {
+      "condition": "baseline",
+      "index": 2,
+      "fcp": 52,
+      "lcp": 588,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 3,
+      "jsRequests": 8,
+      "jsBytes": 394267,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-DqCX4u7l.js",
+          "start": 227,
+          "end": 242,
+          "transfer": 2296,
+          "duration": 15
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 136,
+          "end": 198,
+          "transfer": 55123,
+          "duration": 62
+        },
+        {
+          "asset": "Title-ACieoNWY.js",
+          "start": 136,
+          "end": 188,
+          "transfer": 2615,
+          "duration": 52
+        },
+        {
+          "asset": "App-DPaxl2ud.js",
+          "start": 136,
+          "end": 173,
+          "transfer": 34352,
+          "duration": 38
+        },
+        {
+          "asset": "mui-vendor-BH0a6Ps5.js",
+          "start": 24,
+          "end": 91,
+          "transfer": 127691,
+          "duration": 67
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 23,
+          "end": 87,
+          "transfer": 102212,
+          "duration": 64
+        },
+        {
+          "asset": "index-jetB9qqf.js",
+          "start": 23,
+          "end": 76,
+          "transfer": 68767,
+          "duration": 53
+        }
+      ]
+    },
+    {
+      "condition": "baseline",
+      "index": 3,
+      "fcp": 60,
+      "lcp": 576,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 2,
+      "jsRequests": 8,
+      "jsBytes": 394267,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-DqCX4u7l.js",
+          "start": 242,
+          "end": 250,
+          "transfer": 2296,
+          "duration": 8
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 177,
+          "end": 215,
+          "transfer": 55123,
+          "duration": 38
+        },
+        {
+          "asset": "App-DPaxl2ud.js",
+          "start": 177,
+          "end": 207,
+          "transfer": 34352,
+          "duration": 30
+        },
+        {
+          "asset": "Title-ACieoNWY.js",
+          "start": 177,
+          "end": 199,
+          "transfer": 2615,
+          "duration": 22
+        },
+        {
+          "asset": "mui-vendor-BH0a6Ps5.js",
+          "start": 19,
+          "end": 118,
+          "transfer": 127691,
+          "duration": 99
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 19,
+          "end": 104,
+          "transfer": 102212,
+          "duration": 85
+        },
+        {
+          "asset": "index-jetB9qqf.js",
+          "start": 18,
+          "end": 103,
+          "transfer": 68767,
+          "duration": 85
+        }
+      ]
+    },
+    {
+      "condition": "baseline",
+      "index": 4,
+      "fcp": 60,
+      "lcp": 564,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 2,
+      "jsRequests": 8,
+      "jsBytes": 394267,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-DqCX4u7l.js",
+          "start": 219,
+          "end": 226,
+          "transfer": 2296,
+          "duration": 7
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 155,
+          "end": 194,
+          "transfer": 55123,
+          "duration": 39
+        },
+        {
+          "asset": "App-DPaxl2ud.js",
+          "start": 154,
+          "end": 184,
+          "transfer": 34352,
+          "duration": 29
+        },
+        {
+          "asset": "Title-ACieoNWY.js",
+          "start": 155,
+          "end": 176,
+          "transfer": 2615,
+          "duration": 21
+        },
+        {
+          "asset": "mui-vendor-BH0a6Ps5.js",
+          "start": 16,
+          "end": 114,
+          "transfer": 127691,
+          "duration": 98
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 16,
+          "end": 111,
+          "transfer": 102212,
+          "duration": 96
+        },
+        {
+          "asset": "index-jetB9qqf.js",
+          "start": 15,
+          "end": 83,
+          "transfer": 68767,
+          "duration": 68
+        }
+      ]
+    },
+    {
+      "condition": "baseline",
+      "index": 5,
+      "fcp": 124,
+      "lcp": 1548,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 3,
+      "jsRequests": 8,
+      "jsBytes": 394267,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-DqCX4u7l.js",
+          "start": 1191,
+          "end": 1203,
+          "transfer": 2296,
+          "duration": 12
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 238,
+          "end": 1167,
+          "transfer": 55123,
+          "duration": 929
+        },
+        {
+          "asset": "App-DPaxl2ud.js",
+          "start": 237,
+          "end": 1132,
+          "transfer": 34352,
+          "duration": 895
+        },
+        {
+          "asset": "Title-ACieoNWY.js",
+          "start": 238,
+          "end": 1131,
+          "transfer": 2615,
+          "duration": 893
+        },
+        {
+          "asset": "mui-vendor-BH0a6Ps5.js",
+          "start": 48,
+          "end": 176,
+          "transfer": 127691,
+          "duration": 128
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 48,
+          "end": 167,
+          "transfer": 102212,
+          "duration": 119
+        },
+        {
+          "asset": "index-jetB9qqf.js",
+          "start": 47,
+          "end": 131,
+          "transfer": 68767,
+          "duration": 84
+        }
+      ]
+    },
+    {
+      "condition": "cpu4x_only",
+      "index": 1,
+      "fcp": 76,
+      "lcp": 644,
+      "cls": 0.005555555555555556,
+      "longTasks": 1,
+      "ttfb": 2,
+      "jsRequests": 8,
+      "jsBytes": 394267,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-DqCX4u7l.js",
+          "start": 285,
+          "end": 318,
+          "transfer": 2296,
+          "duration": 33
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 213,
+          "end": 242,
+          "transfer": 55123,
+          "duration": 30
+        },
+        {
+          "asset": "App-DPaxl2ud.js",
+          "start": 211,
+          "end": 236,
+          "transfer": 34352,
+          "duration": 25
+        },
+        {
+          "asset": "Title-ACieoNWY.js",
+          "start": 212,
+          "end": 233,
+          "transfer": 2615,
+          "duration": 21
+        },
+        {
+          "asset": "mui-vendor-BH0a6Ps5.js",
+          "start": 30,
+          "end": 116,
+          "transfer": 127691,
+          "duration": 86
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 30,
+          "end": 105,
+          "transfer": 102212,
+          "duration": 75
+        },
+        {
+          "asset": "index-jetB9qqf.js",
+          "start": 29,
+          "end": 78,
+          "transfer": 68767,
+          "duration": 49
+        }
+      ]
+    },
+    {
+      "condition": "cpu4x_only",
+      "index": 2,
+      "fcp": 188,
+      "lcp": 700,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 5,
+      "jsRequests": 8,
+      "jsBytes": 394267,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-DqCX4u7l.js",
+          "start": 337,
+          "end": 346,
+          "transfer": 2296,
+          "duration": 9
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 226,
+          "end": 302,
+          "transfer": 55123,
+          "duration": 76
+        },
+        {
+          "asset": "App-DPaxl2ud.js",
+          "start": 225,
+          "end": 301,
+          "transfer": 34352,
+          "duration": 76
+        },
+        {
+          "asset": "Title-ACieoNWY.js",
+          "start": 226,
+          "end": 289,
+          "transfer": 2615,
+          "duration": 63
+        },
+        {
+          "asset": "mui-vendor-BH0a6Ps5.js",
+          "start": 28,
+          "end": 103,
+          "transfer": 127691,
+          "duration": 75
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 28,
+          "end": 86,
+          "transfer": 102212,
+          "duration": 58
+        },
+        {
+          "asset": "index-jetB9qqf.js",
+          "start": 28,
+          "end": 83,
+          "transfer": 68767,
+          "duration": 56
+        }
+      ]
+    },
+    {
+      "condition": "cpu4x_only",
+      "index": 3,
+      "fcp": 92,
+      "lcp": 796,
+      "cls": 0.005555555555555556,
+      "longTasks": 2,
+      "ttfb": 3,
+      "jsRequests": 8,
+      "jsBytes": 394267,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-DqCX4u7l.js",
+          "start": 424,
+          "end": 429,
+          "transfer": 2296,
+          "duration": 5
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 281,
+          "end": 322,
+          "transfer": 55123,
+          "duration": 41
+        },
+        {
+          "asset": "Title-ACieoNWY.js",
+          "start": 280,
+          "end": 306,
+          "transfer": 2615,
+          "duration": 26
+        },
+        {
+          "asset": "App-DPaxl2ud.js",
+          "start": 279,
+          "end": 299,
+          "transfer": 34352,
+          "duration": 21
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 46,
+          "end": 133,
+          "transfer": 102212,
+          "duration": 86
+        },
+        {
+          "asset": "mui-vendor-BH0a6Ps5.js",
+          "start": 47,
+          "end": 132,
+          "transfer": 127691,
+          "duration": 85
+        },
+        {
+          "asset": "index-jetB9qqf.js",
+          "start": 45,
+          "end": 122,
+          "transfer": 68767,
+          "duration": 77
+        }
+      ]
+    },
+    {
+      "condition": "cpu4x_only",
+      "index": 4,
+      "fcp": 88,
+      "lcp": 704,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 3,
+      "jsRequests": 8,
+      "jsBytes": 394267,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-DqCX4u7l.js",
+          "start": 351,
+          "end": 413,
+          "transfer": 2296,
+          "duration": 62
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 221,
+          "end": 323,
+          "transfer": 55123,
+          "duration": 102
+        },
+        {
+          "asset": "Title-ACieoNWY.js",
+          "start": 221,
+          "end": 305,
+          "transfer": 2615,
+          "duration": 84
+        },
+        {
+          "asset": "App-DPaxl2ud.js",
+          "start": 221,
+          "end": 294,
+          "transfer": 34352,
+          "duration": 73
+        },
+        {
+          "asset": "mui-vendor-BH0a6Ps5.js",
+          "start": 26,
+          "end": 162,
+          "transfer": 127691,
+          "duration": 136
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 25,
+          "end": 160,
+          "transfer": 102212,
+          "duration": 135
+        },
+        {
+          "asset": "index-jetB9qqf.js",
+          "start": 25,
+          "end": 124,
+          "transfer": 68767,
+          "duration": 100
+        }
+      ]
+    },
+    {
+      "condition": "cpu4x_only",
+      "index": 5,
+      "fcp": 108,
+      "lcp": 676,
+      "cls": 0.005555555555555556,
+      "longTasks": 1,
+      "ttfb": 3,
+      "jsRequests": 8,
+      "jsBytes": 394267,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-DqCX4u7l.js",
+          "start": 310,
+          "end": 423,
+          "transfer": 2296,
+          "duration": 113
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 215,
+          "end": 281,
+          "transfer": 55123,
+          "duration": 66
+        },
+        {
+          "asset": "Title-ACieoNWY.js",
+          "start": 214,
+          "end": 268,
+          "transfer": 2615,
+          "duration": 55
+        },
+        {
+          "asset": "App-DPaxl2ud.js",
+          "start": 212,
+          "end": 263,
+          "transfer": 34352,
+          "duration": 52
+        },
+        {
+          "asset": "mui-vendor-BH0a6Ps5.js",
+          "start": 21,
+          "end": 84,
+          "transfer": 127691,
+          "duration": 64
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 21,
+          "end": 78,
+          "transfer": 102212,
+          "duration": 58
+        },
+        {
+          "asset": "index-jetB9qqf.js",
+          "start": 20,
+          "end": 68,
+          "transfer": 68767,
+          "duration": 48
+        }
+      ]
+    },
+    {
+      "condition": "network_only_150ms_1_6Mbps",
+      "index": 1,
+      "fcp": 244,
+      "lcp": 2976,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 3,
+      "jsRequests": 8,
+      "jsBytes": 394267,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-DqCX4u7l.js",
+          "start": 2633,
+          "end": 2819,
+          "transfer": 2296,
+          "duration": 186
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 1968,
+          "end": 2614,
+          "transfer": 55123,
+          "duration": 646
+        },
+        {
+          "asset": "App-DPaxl2ud.js",
+          "start": 1968,
+          "end": 2505,
+          "transfer": 34352,
+          "duration": 537
+        },
+        {
+          "asset": "Title-ACieoNWY.js",
+          "start": 1968,
+          "end": 2177,
+          "transfer": 2615,
+          "duration": 209
+        },
+        {
+          "asset": "mui-vendor-BH0a6Ps5.js",
+          "start": 198,
+          "end": 1940,
+          "transfer": 127691,
+          "duration": 1742
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 198,
+          "end": 1814,
+          "transfer": 102212,
+          "duration": 1616
+        },
+        {
+          "asset": "index-jetB9qqf.js",
+          "start": 197,
+          "end": 1439,
+          "transfer": 68767,
+          "duration": 1242
+        }
+      ]
+    },
+    {
+      "condition": "network_only_150ms_1_6Mbps",
+      "index": 2,
+      "fcp": 232,
+      "lcp": 2932,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 7,
+      "jsRequests": 8,
+      "jsBytes": 394267,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-DqCX4u7l.js",
+          "start": 2598,
+          "end": 2778,
+          "transfer": 2296,
+          "duration": 179
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 1905,
+          "end": 2577,
+          "transfer": 55123,
+          "duration": 672
+        },
+        {
+          "asset": "App-DPaxl2ud.js",
+          "start": 1905,
+          "end": 2457,
+          "transfer": 34352,
+          "duration": 552
+        },
+        {
+          "asset": "Title-ACieoNWY.js",
+          "start": 1905,
+          "end": 2113,
+          "transfer": 2615,
+          "duration": 208
+        },
+        {
+          "asset": "mui-vendor-BH0a6Ps5.js",
+          "start": 190,
+          "end": 1880,
+          "transfer": 127691,
+          "duration": 1690
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 190,
+          "end": 1754,
+          "transfer": 102212,
+          "duration": 1564
+        },
+        {
+          "asset": "index-jetB9qqf.js",
+          "start": 189,
+          "end": 1400,
+          "transfer": 68767,
+          "duration": 1211
+        }
+      ]
+    },
+    {
+      "condition": "network_only_150ms_1_6Mbps",
+      "index": 3,
+      "fcp": 224,
+      "lcp": 3012,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 2,
+      "jsRequests": 8,
+      "jsBytes": 394267,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-DqCX4u7l.js",
+          "start": 2667,
+          "end": 2848,
+          "transfer": 2296,
+          "duration": 181
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 1950,
+          "end": 2646,
+          "transfer": 55123,
+          "duration": 696
+        },
+        {
+          "asset": "App-DPaxl2ud.js",
+          "start": 1949,
+          "end": 2506,
+          "transfer": 34352,
+          "duration": 557
+        },
+        {
+          "asset": "Title-ACieoNWY.js",
+          "start": 1950,
+          "end": 2176,
+          "transfer": 2615,
+          "duration": 226
+        },
+        {
+          "asset": "mui-vendor-BH0a6Ps5.js",
+          "start": 182,
+          "end": 1908,
+          "transfer": 127691,
+          "duration": 1725
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 182,
+          "end": 1767,
+          "transfer": 102212,
+          "duration": 1585
+        },
+        {
+          "asset": "index-jetB9qqf.js",
+          "start": 182,
+          "end": 1376,
+          "transfer": 68767,
+          "duration": 1195
+        }
+      ]
+    },
+    {
+      "condition": "network_only_150ms_1_6Mbps",
+      "index": 4,
+      "fcp": 224,
+      "lcp": 2948,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 2,
+      "jsRequests": 8,
+      "jsBytes": 394267,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-DqCX4u7l.js",
+          "start": 2596,
+          "end": 2792,
+          "transfer": 2296,
+          "duration": 196
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 1919,
+          "end": 2572,
+          "transfer": 55123,
+          "duration": 654
+        },
+        {
+          "asset": "App-DPaxl2ud.js",
+          "start": 1918,
+          "end": 2450,
+          "transfer": 34352,
+          "duration": 531
+        },
+        {
+          "asset": "Title-ACieoNWY.js",
+          "start": 1919,
+          "end": 2115,
+          "transfer": 2615,
+          "duration": 197
+        },
+        {
+          "asset": "mui-vendor-BH0a6Ps5.js",
+          "start": 186,
+          "end": 1891,
+          "transfer": 127691,
+          "duration": 1705
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 186,
+          "end": 1750,
+          "transfer": 102212,
+          "duration": 1563
+        },
+        {
+          "asset": "index-jetB9qqf.js",
+          "start": 186,
+          "end": 1388,
+          "transfer": 68767,
+          "duration": 1203
+        }
+      ]
+    },
+    {
+      "condition": "network_only_150ms_1_6Mbps",
+      "index": 5,
+      "fcp": 208,
+      "lcp": 2948,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 2,
+      "jsRequests": 8,
+      "jsBytes": 394267,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-DqCX4u7l.js",
+          "start": 2620,
+          "end": 2804,
+          "transfer": 2296,
+          "duration": 184
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 1953,
+          "end": 2600,
+          "transfer": 55123,
+          "duration": 647
+        },
+        {
+          "asset": "App-DPaxl2ud.js",
+          "start": 1952,
+          "end": 2488,
+          "transfer": 34352,
+          "duration": 536
+        },
+        {
+          "asset": "Title-ACieoNWY.js",
+          "start": 1952,
+          "end": 2162,
+          "transfer": 2615,
+          "duration": 209
+        },
+        {
+          "asset": "mui-vendor-BH0a6Ps5.js",
+          "start": 179,
+          "end": 1924,
+          "transfer": 127691,
+          "duration": 1746
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 178,
+          "end": 1738,
+          "transfer": 102212,
+          "duration": 1560
+        },
+        {
+          "asset": "index-jetB9qqf.js",
+          "start": 178,
+          "end": 1376,
+          "transfer": 68767,
+          "duration": 1198
+        }
+      ]
+    }
+  ],
+  "caveat": "Not real-user P75/P95; CDP throttling uncalibrated; desktop hardware and background load may differ; comparison with prior audit different run, not an A/B outcome."
+}

@@ -6,6 +6,10 @@ import { supabase } from '../supabaseClient';
 
 type OptionKey='user_comments'|'public_replies'|'internal_notes'|'history'|'tags'|'status'|'identity';
 type Options=Record<OptionKey,boolean>;
+type ExportSnapshot={
+  scopeKey:string;count:number;ids:string[];
+  filters:Record<string,string|boolean|string[]>;
+};
 const defaults:Options={user_comments:true,public_replies:true,internal_notes:false,
   history:true,tags:true,status:true,identity:false};
 const optionLabels:Record<OptionKey,string>={
@@ -25,33 +29,44 @@ export function FeedbackExport({queue,mode,selectedTags=[],priorityFilter='',sta
   const [open,setOpen]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
   const [options,setOptions]=useState<Options>(defaults);
   const [sensitiveReview,setSensitiveReview]=useState(false);
+  const [snapshot,setSnapshot]=useState<ExportSnapshot|null>(null);
   const notify=useNotify();
   const count=mode==='selected'?selectedIds.length:total??0;
   const sensitive=options.internal_notes||options.identity;
+  const filters:Record<string,string|boolean|string[]>={};
+  if(product)filters.product_id=product;
+  for(const key of ['priority','is_starred'] as const){
+    const value=filterValues[key];
+    if(typeof value==='string'||typeof value==='boolean')filters[key]=value;
+  }
+  if(priorityFilter)filters.priority=priorityFilter;
+  if(starFilter)filters.is_starred=starFilter;
+  if(selectedTags.length)filters.tags=[...selectedTags];
+  const ids=selectedIds.map(String);
+  const scopeKey=JSON.stringify({queue,mode,product,ids,count,filters});
+  const scopeChanged=!!snapshot&&snapshot.scopeKey!==scopeKey;
   // A previous export must never silently enable sensitive data in a new ZIP.
   const openDialog=()=>{
+    setSnapshot({scopeKey,count,ids:[...ids],filters:{...filters}});
     setOptions({...defaults});setSensitiveReview(false);setError('');setOpen(true);
   };
   const closeDialog=()=>{
     if(busy)return;
-    setOpen(false);setSensitiveReview(false);setOptions({...defaults});setError('');
+    setOpen(false);setSnapshot(null);setSensitiveReview(false);setOptions({...defaults});setError('');
   };
   const go=async()=>{
+    // Second confirmation is valid only for the exact scope it reviewed.
+    if(!snapshot||scopeChanged||snapshot.count<1||snapshot.count>20){
+      setSensitiveReview(false);
+      setError('导出范围或条数已变化。请关闭窗口，重新选择范围并核对。');
+      return;
+    }
     if(sensitive&&!sensitiveReview){setSensitiveReview(true);return}
     setBusy(true);setError('');
     try{
-      const filters:Record<string,string|boolean|string[]>={};
-      if(product)filters.product_id=product;
-      for(const key of ['priority','is_starred'] as const){
-        const value=filterValues[key];
-        if(typeof value==='string'||typeof value==='boolean')filters[key]=value;
-      }
-      if(priorityFilter)filters.priority=priorityFilter;
-      if(starFilter)filters.is_starred=starFilter;
-      if(selectedTags.length)filters.tags=selectedTags;
       const payload=mode==='selected'?{
-        scope:'selected',queue_state:queue,ids:selectedIds.map(String),options,
-      }:{scope:'filtered',queue_state:queue,filters,options};
+        scope:'selected',queue_state:queue,ids:snapshot.ids,options,
+      }:{scope:'filtered',queue_state:queue,filters:snapshot.filters,options};
       const result=await supabase.functions.invoke<Blob>('feedback-export',{body:payload});
       if(result.error||!(result.data instanceof Blob))
         throw new Error(result.error?.message??'导出文件无效');
@@ -65,7 +80,7 @@ export function FeedbackExport({queue,mode,selectedTags=[],priorityFilter='',sta
       // only after the click task completes. Keep a short bounded lifetime.
       window.setTimeout(()=>URL.revokeObjectURL(url),60_000);
       notify('反馈压缩包已生成',{type:'success'});
-      setOpen(false);setSensitiveReview(false);setOptions({...defaults});
+      setOpen(false);setSnapshot(null);setSensitiveReview(false);setOptions({...defaults});
     }catch(e){
       setError((e instanceof Error?e.message:'导出失败')+
         '。如范围超过 20 条，请收窄筛选条件后重试。');
@@ -82,7 +97,7 @@ export function FeedbackExport({queue,mode,selectedTags=[],priorityFilter='',sta
       <DialogContent>
         <Stack spacing={1} sx={{pt:1}}>
           <Typography color="text.secondary" variant="body2">
-            {mode==='selected'?('已选 '+count+' 条'):('当前匹配 '+count+' 条')}。
+            {mode==='selected'?('已选 '+(snapshot?.count??count)+' 条'):('当前匹配 '+(snapshot?.count??count)+' 条')}。
             一次最多 20 条，包含原始反馈及全部截图。
           </Typography>
           {optionKeys.map(key=><FormControlLabel key={key}
@@ -102,8 +117,11 @@ export function FeedbackExport({queue,mode,selectedTags=[],priorityFilter='',sta
             请再次确认本次敏感导出：仅向获授权人员交付压缩包，不要向未获批准的外部 AI 或第三方服务上传。
             如需修改范围，请选择「返回修改」。
           </Alert>:null}
-          {count>20?<Alert severity="info">
-            当前范围有 {count} 条，单次最多导出 20 条。请缩小筛选条件或改为勾选指定反馈。
+          {(snapshot?.count??count)>20?<Alert severity="info">
+            当前范围有 {snapshot?.count??count} 条，单次最多导出 20 条。请缩小筛选条件或改为勾选指定反馈。
+          </Alert>:null}
+          {scopeChanged?<Alert severity="error" role="alert">
+            页面范围已变化，本次敏感确认失效。请关闭窗口后重新打开核对，避免导出其他产品或队列。
           </Alert>:null}
           {error?<Alert severity="error">{error}</Alert>:null}
         </Stack>
@@ -112,7 +130,8 @@ export function FeedbackExport({queue,mode,selectedTags=[],priorityFilter='',sta
         <Button disabled={busy} onClick={sensitiveReview?()=>setSensitiveReview(false):closeDialog}>
           {sensitiveReview?'返回修改':'取消'}
         </Button>
-        <Button disabled={busy||count<1||count>20} variant="contained" onClick={()=>void go()}>
+        <Button disabled={busy||scopeChanged||!snapshot||snapshot.count<1||snapshot.count>20}
+          variant="contained" onClick={()=>void go()}>
           {busy?'正在生成…':sensitiveReview?'确认并生成 ZIP':'生成 ZIP'}
         </Button>
       </DialogActions>

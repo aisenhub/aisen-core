@@ -1,0 +1,636 @@
+{
+  "context": "temporary local AAL2 admin; production preview; read-only business queries artificially paused by CDP; no credentials/data retained",
+  "createdAt": "2026-10-26",
+  "results": [
+    {
+      "name": "products",
+      "route": "products",
+      "width": 1440,
+      "blockedTable": "products",
+      "heldRequestCountAtFirstPaint": 6,
+      "awaitingTimeMs": 1062,
+      "fixedHeaderPresent": true,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": true,
+      "loadedVisibleRows": 8,
+      "cls": 0.002478836052118601,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 0,
+        "products": 11,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "memberships",
+      "route": "memberships",
+      "width": 1440,
+      "blockedTable": "product_memberships",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 943,
+      "fixedHeaderPresent": true,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": true,
+      "loadedVisibleRows": 20,
+      "cls": 0.004543803016312712,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 0,
+        "products": 3,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "feedback-inbox",
+      "route": "feedback",
+      "width": 1440,
+      "blockedTable": "admin_feedback_summaries",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 1161,
+      "fixedHeaderPresent": true,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": false,
+      "loadedVisibleRows": 0,
+      "cls": 0.0023550056427618757,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 2,
+        "tags": 2,
+        "products": 2,
+        "feedback": 2
+      }
+    },
+    {
+      "name": "feedback-workbench",
+      "route": "feedback/workbench",
+      "width": 1440,
+      "blockedTable": "admin_feedback_summaries",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 887,
+      "fixedHeaderPresent": true,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": true,
+      "loadedVisibleRows": 1,
+      "cls": 0.0023550056427618757,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 1,
+        "products": 3,
+        "feedback": 2
+      }
+    },
+    {
+      "name": "feedback-archived",
+      "route": "feedback/archived",
+      "width": 1440,
+      "blockedTable": "admin_feedback_summaries",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 839,
+      "fixedHeaderPresent": true,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": false,
+      "loadedVisibleRows": 0,
+      "cls": 0.0023550056427618757,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 1,
+        "products": 1,
+        "feedback": 2
+      }
+    },
+    {
+      "name": "feedback-trash",
+      "route": "feedback/trash",
+      "width": 1440,
+      "blockedTable": "admin_feedback_summaries",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 980,
+      "fixedHeaderPresent": true,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": false,
+      "loadedVisibleRows": 0,
+      "cls": 0.007910561198317432,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 2,
+        "tags": 2,
+        "products": 2,
+        "feedback": 2
+      }
+    },
+    {
+      "name": "grants",
+      "route": "grants",
+      "width": 1440,
+      "blockedTable": "entitlement_grants",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 945,
+      "fixedHeaderPresent": true,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": true,
+      "loadedVisibleRows": 20,
+      "cls": 0.004246116753872986,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 0,
+        "products": 3,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "batches",
+      "route": "code-batches",
+      "width": 1440,
+      "blockedTable": "redemption_code_batches",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 1248,
+      "fixedHeaderPresent": true,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": true,
+      "loadedVisibleRows": 3,
+      "cls": 0.0039915506309633735,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 2,
+        "tags": 0,
+        "products": 3,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "codes",
+      "route": "codes",
+      "width": 1440,
+      "blockedTable": "admin_redemption_code_summaries",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 934,
+      "fixedHeaderPresent": true,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": true,
+      "loadedVisibleRows": 18,
+      "cls": 0.004366311685646865,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 0,
+        "products": 3,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "redemptions",
+      "route": "redemptions",
+      "width": 1440,
+      "blockedTable": "redemptions",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 923,
+      "fixedHeaderPresent": true,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": true,
+      "loadedVisibleRows": 6,
+      "cls": 0.009930519749666565,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 2,
+        "tags": 0,
+        "products": 3,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "events",
+      "route": "membership-events",
+      "width": 1440,
+      "blockedTable": "membership_events",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 1788,
+      "fixedHeaderPresent": true,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": true,
+      "loadedVisibleRows": 20,
+      "cls": 0.005016271673335385,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 0,
+        "products": 1,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "admins",
+      "route": "admins",
+      "width": 1440,
+      "blockedTable": "platform_admins",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 2128,
+      "fixedHeaderPresent": true,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": true,
+      "loadedVisibleRows": 3,
+      "cls": 0.004641004616805171,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 2,
+        "tags": 0,
+        "products": 2,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "restrictions",
+      "route": "restrictions",
+      "width": 1440,
+      "blockedTable": "platform_account_restrictions",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 1087,
+      "fixedHeaderPresent": true,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": true,
+      "loadedVisibleRows": 2,
+      "cls": 0.010796301631271162,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 0,
+        "products": 1,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "audit",
+      "route": "audit-logs",
+      "width": 1440,
+      "blockedTable": "admin_audit_log",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 825,
+      "fixedHeaderPresent": true,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": true,
+      "loadedVisibleRows": 16,
+      "cls": 0.010084219554734791,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 0,
+        "products": 1,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "products-mobile",
+      "route": "products",
+      "width": 390,
+      "blockedTable": "products",
+      "heldRequestCountAtFirstPaint": 6,
+      "awaitingTimeMs": 797,
+      "fixedHeaderPresent": false,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": true,
+      "loadedVisibleRows": 8,
+      "cls": 0.0003472380453275003,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 2,
+        "tags": 0,
+        "products": 12,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "memberships-mobile",
+      "route": "memberships",
+      "width": 390,
+      "blockedTable": "product_memberships",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 680,
+      "fixedHeaderPresent": false,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": false,
+      "loadedVisibleRows": 0,
+      "cls": 0,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 0,
+        "products": 3,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "feedback-mobile",
+      "route": "feedback",
+      "width": 390,
+      "blockedTable": "admin_feedback_summaries",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 873,
+      "fixedHeaderPresent": false,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": false,
+      "loadedVisibleRows": 0,
+      "cls": 0,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 2,
+        "products": 1,
+        "feedback": 2
+      }
+    },
+    {
+      "name": "feedback-archived-mobile",
+      "route": "feedback/archived",
+      "width": 390,
+      "blockedTable": "admin_feedback_summaries",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 789,
+      "fixedHeaderPresent": false,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": false,
+      "loadedVisibleRows": 0,
+      "cls": 0,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 2,
+        "tags": 1,
+        "products": 2,
+        "feedback": 2
+      }
+    },
+    {
+      "name": "feedback-trash-mobile",
+      "route": "feedback/trash",
+      "width": 390,
+      "blockedTable": "admin_feedback_summaries",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 984,
+      "fixedHeaderPresent": false,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": false,
+      "loadedVisibleRows": 0,
+      "cls": 0,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 1,
+        "products": 1,
+        "feedback": 2
+      }
+    },
+    {
+      "name": "grants-mobile",
+      "route": "grants",
+      "width": 390,
+      "blockedTable": "entitlement_grants",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 755,
+      "fixedHeaderPresent": false,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": false,
+      "loadedVisibleRows": 0,
+      "cls": 0,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 0,
+        "products": 3,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "batches-mobile",
+      "route": "code-batches",
+      "width": 390,
+      "blockedTable": "redemption_code_batches",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 865,
+      "fixedHeaderPresent": false,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": false,
+      "loadedVisibleRows": 0,
+      "cls": 0,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 2,
+        "tags": 0,
+        "products": 3,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "codes-mobile",
+      "route": "codes",
+      "width": 390,
+      "blockedTable": "admin_redemption_code_summaries",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 767,
+      "fixedHeaderPresent": false,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": false,
+      "loadedVisibleRows": 0,
+      "cls": 0,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 0,
+        "products": 2,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "redemptions-mobile",
+      "route": "redemptions",
+      "width": 390,
+      "blockedTable": "redemptions",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 877,
+      "fixedHeaderPresent": false,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": false,
+      "loadedVisibleRows": 0,
+      "cls": 0,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 0,
+        "products": 3,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "events-mobile",
+      "route": "membership-events",
+      "width": 390,
+      "blockedTable": "membership_events",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 1228,
+      "fixedHeaderPresent": false,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": false,
+      "loadedVisibleRows": 0,
+      "cls": 0,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 2,
+        "tags": 0,
+        "products": 2,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "admins-mobile",
+      "route": "admins",
+      "width": 390,
+      "blockedTable": "platform_admins",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 857,
+      "fixedHeaderPresent": false,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": false,
+      "loadedVisibleRows": 0,
+      "cls": 0,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 0,
+        "products": 1,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "restrictions-mobile",
+      "route": "restrictions",
+      "width": 390,
+      "blockedTable": "platform_account_restrictions",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 1009,
+      "fixedHeaderPresent": false,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": false,
+      "loadedVisibleRows": 0,
+      "cls": 0,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 0,
+        "products": 1,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "audit-mobile",
+      "route": "audit-logs",
+      "width": 390,
+      "blockedTable": "admin_audit_log",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 678,
+      "fixedHeaderPresent": false,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": false,
+      "loadedVisibleRows": 0,
+      "cls": 0,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 2,
+        "tags": 0,
+        "products": 2,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "memberships-phone-small",
+      "route": "memberships",
+      "width": 320,
+      "blockedTable": "product_memberships",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 1026,
+      "fixedHeaderPresent": false,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": false,
+      "loadedVisibleRows": 0,
+      "cls": 0,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 0,
+        "products": 3,
+        "feedback": 0
+      }
+    },
+    {
+      "name": "memberships-tablet",
+      "route": "memberships",
+      "width": 768,
+      "blockedTable": "product_memberships",
+      "heldRequestCountAtFirstPaint": 1,
+      "awaitingTimeMs": 924,
+      "fixedHeaderPresent": false,
+      "pendingTextVisible": true,
+      "appBarDuringPending": true,
+      "loadedHeaderPresent": false,
+      "loadedVisibleRows": 0,
+      "cls": 0.008757703752889676,
+      "docOverflowPx": 0,
+      "requests": {
+        "access": 1,
+        "tags": 0,
+        "products": 2,
+        "feedback": 0
+      }
+    }
+  ],
+  "lazyRoute": {
+    "chunk": "AccountActions",
+    "suspended": true,
+    "hasBar": true,
+    "hasSidebar": true,
+    "routeLoading": false,
+    "restoredBar": true
+  },
+  "revocation": {
+    "serverAllowed": false,
+    "loginVisible": true,
+    "protectedRows": false
+  },
+  "a11y": [],
+  "pass": true,
+  "limitations": [
+    "Synthetic local fixture; no real-user p75/p95",
+    "Only GET paused; not application request latency",
+    "No data-volume stress test",
+    "No manual screen-reader or owner signoff"
+  ]
+}

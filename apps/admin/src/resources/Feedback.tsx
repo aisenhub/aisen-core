@@ -20,6 +20,7 @@ import {
 import { categoryLabels, priorityLabels, statusLabels } from './feedbackLabels';
 import { FeedbackV3Editor } from './FeedbackV3Editor';
 import {useFeedbackTags} from './useFeedbackTags';
+import { formatAdminInstant } from '../dateDisplay';
 
 type FeedbackRecord={
   id:string;feedback_no:number;product_id:string;user_id:string;
@@ -102,7 +103,7 @@ function FeedbackEventsTimeline(){
           event.event_type==='star_changed'?'星标变更':
           event.event_type==='tags_changed'?'标签变更':'反馈提交'}</Typography>
         <Typography variant="caption" color="text.secondary">
-          {new Date(event.created_at).toLocaleString('zh-CN')}
+          {formatAdminInstant(event.created_at)}
         </Typography>
       </Stack>
       {event.message?<Typography sx={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',mt:.75}}>
@@ -192,7 +193,7 @@ function FeedbackBody(){
           </Typography>
         </Tooltip>
         <Typography variant="body2" color="text.secondary">
-          创建于 {new Date(record.created_at).toLocaleString('zh-CN')}
+          创建于 {formatAdminInstant(record.created_at)}
         </Typography>
         <Typography variant="body2" color="text.secondary">
           最近处理人 {record.last_handled_by?
@@ -215,7 +216,9 @@ function FeedbackBody(){
             <Skeleton variant="rounded" width={165} height={165}/>
             {(record.attachment_count??0)>1&&<Skeleton variant="rounded" width={165} height={165}/>}
           </Stack>:attachments.isError?
-            <Alert severity="error">图片信息读取失败，请重试。</Alert>:
+            <Alert severity="error" role="alert">图片信息读取失败，未能确认附件是否完整。
+              <Button size="small" onClick={()=>void attachments.refetch()}>重试读取图片</Button>
+            </Alert>:
             <Stack direction="row" sx={{flexWrap:'wrap',gap:2}}>
               {attachments.data?.map(item=><FeedbackPicture key={item.id} record={item}/>)}
             </Stack>}

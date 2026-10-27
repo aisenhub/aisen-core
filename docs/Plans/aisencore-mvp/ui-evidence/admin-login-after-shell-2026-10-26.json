@@ -1,0 +1,177 @@
+{
+  "context": "Local loopback production preview, anonymous headless Chrome cold HTTP cache, independent CPU-only and network-only emulation; n=5 each",
+  "pass": true,
+  "medians": {
+    "baseline": 548,
+    "cpu4x_only": 676,
+    "network_only_150ms_1_6Mbps": 2932
+  },
+  "results": [
+    {
+      "condition": "baseline",
+      "index": 1,
+      "fcp": 80,
+      "lcp": 868,
+      "cls": 0.005555555555555556,
+      "longTasks": 1,
+      "ttfb": 4,
+      "jsRequests": 8,
+      "jsBytes": 394231
+    },
+    {
+      "condition": "baseline",
+      "index": 2,
+      "fcp": 64,
+      "lcp": 576,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 6,
+      "jsRequests": 8,
+      "jsBytes": 394231
+    },
+    {
+      "condition": "baseline",
+      "index": 3,
+      "fcp": 56,
+      "lcp": 548,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 2,
+      "jsRequests": 8,
+      "jsBytes": 394231
+    },
+    {
+      "condition": "baseline",
+      "index": 4,
+      "fcp": 48,
+      "lcp": 516,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 4,
+      "jsRequests": 8,
+      "jsBytes": 394231
+    },
+    {
+      "condition": "baseline",
+      "index": 5,
+      "fcp": 52,
+      "lcp": 532,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 5,
+      "jsRequests": 8,
+      "jsBytes": 394231
+    },
+    {
+      "condition": "cpu4x_only",
+      "index": 1,
+      "fcp": 68,
+      "lcp": 712,
+      "cls": 0.005555555555555556,
+      "longTasks": 1,
+      "ttfb": 2,
+      "jsRequests": 8,
+      "jsBytes": 394231
+    },
+    {
+      "condition": "cpu4x_only",
+      "index": 2,
+      "fcp": 56,
+      "lcp": 896,
+      "cls": 0.005555555555555556,
+      "longTasks": 2,
+      "ttfb": 2,
+      "jsRequests": 8,
+      "jsBytes": 394231
+    },
+    {
+      "condition": "cpu4x_only",
+      "index": 3,
+      "fcp": 100,
+      "lcp": 616,
+      "cls": 0.005555555555555556,
+      "longTasks": 1,
+      "ttfb": 2,
+      "jsRequests": 8,
+      "jsBytes": 394231
+    },
+    {
+      "condition": "cpu4x_only",
+      "index": 4,
+      "fcp": 56,
+      "lcp": 652,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 3,
+      "jsRequests": 8,
+      "jsBytes": 394231
+    },
+    {
+      "condition": "cpu4x_only",
+      "index": 5,
+      "fcp": 56,
+      "lcp": 676,
+      "cls": 0.005555555555555556,
+      "longTasks": 2,
+      "ttfb": 3,
+      "jsRequests": 8,
+      "jsBytes": 394231
+    },
+    {
+      "condition": "network_only_150ms_1_6Mbps",
+      "index": 1,
+      "fcp": 216,
+      "lcp": 2916,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 2,
+      "jsRequests": 8,
+      "jsBytes": 394231
+    },
+    {
+      "condition": "network_only_150ms_1_6Mbps",
+      "index": 2,
+      "fcp": 224,
+      "lcp": 2932,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 3,
+      "jsRequests": 8,
+      "jsBytes": 394231
+    },
+    {
+      "condition": "network_only_150ms_1_6Mbps",
+      "index": 3,
+      "fcp": 224,
+      "lcp": 2916,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 3,
+      "jsRequests": 8,
+      "jsBytes": 394231
+    },
+    {
+      "condition": "network_only_150ms_1_6Mbps",
+      "index": 4,
+      "fcp": 232,
+      "lcp": 2940,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 3,
+      "jsRequests": 8,
+      "jsBytes": 394231
+    },
+    {
+      "condition": "network_only_150ms_1_6Mbps",
+      "index": 5,
+      "fcp": 236,
+      "lcp": 2972,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 2,
+      "jsRequests": 8,
+      "jsBytes": 394231
+    }
+  ],
+  "caveat": "Not real-user P75/P95; CDP throttling uncalibrated; desktop hardware and background load may differ; comparison with prior audit different run, not an A/B outcome."
+}
