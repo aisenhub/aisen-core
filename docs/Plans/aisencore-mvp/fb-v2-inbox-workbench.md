@@ -1,6 +1,6 @@
-# FB-V2 专项执行计划｜收件箱、处理工作台与 AI ZIP 导出
+# 历史 FB-V2 实施与受控 ZIP 验证记录（非现行工作流）
 
-> 2026-10-26；**执行中 / 第一阶段本地开发，不代表已上线或签收**。最新业务边界以 [反馈领域架构](../../architecture/domains/user-feedback.md) 为准。继承 [原 FB 施工与证据](./fb-user-feedback-implementation.md)、[三阶段门槛](./three-stage-delivery-gates.md)及 [TODO](../TODO.md)。仅本地隔离环境、合成数据；**不重置现有数据库、不提交 Git、不调用生产 Supabase/R2、不发布**。
+> 2026-10-26 历史施工记录；**自 2026-10-27 文档治理起仅供 V2 历史数据、安全 RPC/ZIP 证据溯源；不再授权按 V2 五态/负责人/管理员公开回复开发新 UI**。最新业务边界以 [反馈领域架构](../../architecture/domains/user-feedback.md) 为准。最新执行要求参照 [V3 当前工作流与剩余验收](./feedback-v3-lightweight-implementation.md)、[三阶段门槛](./three-stage-delivery-gates.md)及 [TODO](../TODO.md)。仅本地隔离环境、合成数据；**不重置现有数据库、不提交 Git、不调用生产 Supabase/R2、不发布**。
 
 ## 1. 新产品合同和非目标
 
