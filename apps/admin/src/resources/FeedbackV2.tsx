@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Datagrid, DateField, FunctionField, List, ReferenceField, TextField as RaTextField, useNotify, useRefresh, useStore, useUnselectAll, useListContext, Confirm } from 'react-admin';
 import { Alert, Autocomplete, Box, Button, Card, Chip, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Stack, Tab, Tabs, TextField, Typography } from '@mui/material';
 import AttachFileRoundedIcon from '@mui/icons-material/AttachFileRounded';
@@ -12,6 +12,7 @@ import { callRpc } from '../data/dataProvider';
 import { FeedbackExport } from './FeedbackExport';
 import { categoryLabels, priorityLabels, statusLabels } from './feedbackLabels';
 import {useFeedbackTags} from './useFeedbackTags';
+import { PendingDatagrid } from './PendingDatagrid';
 
 export type FeedbackV2Record={
   id:string;feedback_no:number;product_id:string;user_id:string;content:string;
@@ -91,10 +92,13 @@ function Queue({queue}:{queue:FeedbackQueue}){
   const active=queue==='workbench';
   const viewQueue=queue;
   const unselectAll=useUnselectAll('feedback');
-  const [labels,setLabels]=useState<string[]>([]);
+  const [tagSelection,setTagSelection]=useState<{scope:string;value:string[]}>({scope:product,value:[]});
+  const labels=useMemo(()=>tagSelection.scope===product?tagSelection.value:[],[product,tagSelection]);
   const [priority,setPriority]=useState('');
   const [starFilter,setStarFilter]=useState('');
   const {tags:tagOptions,error:tagError}=useFeedbackTags(product);
+  // Scope-keyed selection is empty immediately when the product changes,
+  // with no extra render/effect or stale tag filter applied to the new scope.
   // React-admin keeps bulk selections per resource rather than per queue.
   // Never carry selections into a different product or workflow stage.
   useEffect(()=>{unselectAll()},[viewQueue,product,priority,starFilter,labels,unselectAll]);
@@ -131,11 +135,11 @@ function Queue({queue}:{queue:FeedbackQueue}){
           <MenuItem value="false">未星标</MenuItem>
         </TextField>
         <Autocomplete multiple size="small" options={tagOptions} value={labels}
-          onChange={(_,value)=>setLabels(value)}
+          onChange={(_,value)=>setTagSelection({scope:product,value})}
           renderInput={params=><TextField {...params} label="标签筛选" placeholder="选择已有标签"/>}
           sx={{width:{xs:'100%',sm:280},minWidth:{sm:220},
             flex:{sm:'1 1 280px'},maxWidth:{sm:480}}}/>
-        <Button size="small" onClick={()=>{setLabels([]);setPriority('');setStarFilter('')}}>
+        <Button size="small" onClick={()=>{setTagSelection({scope:product,value:[]});setPriority('');setStarFilter('')}}>
           重置
         </Button>
         <Box sx={{ml:{sm:'auto'}}}>
@@ -144,6 +148,10 @@ function Queue({queue}:{queue:FeedbackQueue}){
         </Box>
       </Stack>
       {tagError&&<Alert severity="warning" sx={{mb:1}}>标签选项未加载成功，其他筛选仍可使用。</Alert>}
+      <PendingDatagrid selection columns={[
+        {label:'反馈'}, {label:'优先级',hideBelow:'mobile'},
+        {label:'所属产品',hideBelow:'wide'}, {label:active?'最近更新':'收到时间',hideBelow:'mobile'},
+      ]}>
       <Datagrid rowClick="show" bulkActionButtons={<FeedbackExport queue={viewQueue} mode="selected" selectedTags={labels}/>}
         sx={{
           '& .MuiTableCell-root':{wordBreak:'normal',whiteSpace:'normal',verticalAlign:'middle'},
@@ -172,6 +180,7 @@ function Queue({queue}:{queue:FeedbackQueue}){
         </ReferenceField>
         <DateField source={active?'updated_at':'created_at'} label={active?'最近更新':'收到时间'} showTime/>
       </Datagrid>
+      </PendingDatagrid>
       <QueueEmpty queue={queue}/>
     </List>
   </Box>;

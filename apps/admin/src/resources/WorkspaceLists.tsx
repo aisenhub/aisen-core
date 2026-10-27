@@ -4,7 +4,7 @@ import { useGetList, useGetMany, useNotify, useStore } from 'react-admin';
 import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import {
   Alert, Box, Button, Card, Chip, CircularProgress, Divider, IconButton, MenuItem,
-  Pagination, Stack, Table, TableBody, TableCell, TableContainer, TableHead,
+  Pagination, Stack, Table, TableBody, TableCell, TableContainer, TableHead, useMediaQuery,
   TableRow, TableSortLabel, TextField, Tooltip, Typography,
 } from '@mui/material';
 import ArrowForwardRoundedIcon from '@mui/icons-material/ArrowForwardRounded';
@@ -162,6 +162,7 @@ export function ResourceWorkspace({resource}:{resource:ResourceName}){
 }
 function ResourceWorkspaceView({resource}:{resource:ResourceName}){
   const config=configs[resource];
+  const desktop=useMediaQuery('(min-width:900px)');
   const [scope]=useStore<string>('aisencore.current.product','');
   const [params]=useSearchParams();
   // A bounded UUID deep-link pre-fills a normal server-side list filter.
@@ -228,7 +229,7 @@ function ResourceWorkspaceView({resource}:{resource:ResourceName}){
     <Stack direction={{xs:'column',md:'row'}} spacing={2} sx={{alignItems:{md:'center'},justifyContent:'space-between',mb:1.5}}>
       <Box sx={{minWidth:0}}>
         <Typography component="div" sx={{fontSize:13,fontWeight:660,color:'text.secondary',whiteSpace:'nowrap'}} role="status" aria-live="polite">
-          {idle?'等待完整邮箱查询':query.isPending?'正在加载记录':'共 '+total+' 条记录 · 第 '+page+' 页'}
+          {idle?'等待完整邮箱查询':query.isPending?'正在加载记录':query.isFetching?'正在更新记录 · 共 '+total+' 条':'共 '+total+' 条记录 · 第 '+page+' 页'}
         </Typography>
         {!config.scoped&&<Typography component="div" sx={{fontSize:11,color:'text.secondary',mt:.4}}>全平台数据</Typography>}
       </Box>
@@ -261,14 +262,10 @@ function ResourceWorkspaceView({resource}:{resource:ResourceName}){
     {pageOutOfRange?<Alert severity="info" sx={{mb:2}}>当前页已超出结果范围。
       <Button onClick={()=>setPage(1)}>返回第一页</Button>
     </Alert>:null}
-    {query.isPending&&!idle?<Card sx={{height:250,display:'grid',placeItems:'center'}}>
-      <Stack spacing={2} sx={{alignItems:'center'}}><CircularProgress size={30} aria-label="正在读取业务数据"/>
-        <Typography color="text.secondary" variant="body2">正在同步业务数据…</Typography>
-      </Stack>
-    </Card>:!query.isError&&(idle||rows.length===0)?
+    {!query.isError&&(idle||(!query.isPending&&rows.length===0))?
       <EmptyScene title={config.title} scoped={scoped} idle={idle}/>:
       !query.isError&&<Card sx={{overflow:'hidden'}}>
-        <TableContainer sx={{display:{xs:'none',md:'block'},maxWidth:'100%',overflowX:'auto'}}>
+        {desktop&&<TableContainer sx={{maxWidth:'100%',overflowX:'auto'}}>
           <Table sx={{minWidth:700}}><TableHead><TableRow>
             {config.fields.map(f=>{
               const sortable=resource!=='users'&&!['grant-state','code-state'].includes(f.kind);
@@ -280,44 +277,58 @@ function ResourceWorkspaceView({resource}:{resource:ResourceName}){
             })}
             <TableCell align="right">查看</TableCell>
           </TableRow></TableHead>
-          <TableBody>{rows.map(item=><TableRow hover key={item.id}>
-            {config.fields.map(f=><TableCell key={f.key}>
-              <CellValue item={item} field={f} userMap={userMap} productMap={productMap}/>
-            </TableCell>)}
-            <TableCell align="right"><Stack direction="row" spacing={.2}
-              sx={{justifyContent:'flex-end',alignItems:'center'}}>
-              <Tooltip title="复制完整编号"><IconButton size="small" aria-label="复制完整编号"
-                onClick={()=>void copy(String(item.id))}><ContentCopyRoundedIcon sx={{fontSize:16}}/></IconButton></Tooltip>
-              <Action resource={resource} item={item}/>
-            </Stack></TableCell>
-          </TableRow>)}</TableBody></Table>
-        </TableContainer>
-        <Box sx={{display:{xs:'block',md:'none'}}}>
-          {rows.map((item,index)=><Box key={item.id} sx={{p:2.5,borderBottom:index+1===rows.length?'none':'1px solid #edf0f5'}}>
-            <Stack direction="row" sx={{justifyContent:'space-between',alignItems:'flex-start',mb:1.8}}>
-              <Box sx={{minWidth:0,flex:1}}>
-                <Typography variant="overline" color="primary.main">第 {index+1+(page-1)*20} 条</Typography>
-                <Box sx={{mt:.65}}><CellValue item={item} field={config.fields[0]} userMap={userMap} productMap={productMap}/></Box>
+          <TableBody>{query.isPending?
+            <TableRow><TableCell colSpan={config.fields.length+1} sx={{p:0,borderBottom:0}}>
+              <Box sx={{minHeight:194,display:'flex',alignItems:'center',justifyContent:'center',gap:1.5}}>
+                <CircularProgress size={22} aria-hidden/>
+                <Typography color="text.secondary" variant="body2">正在读取记录…</Typography>
               </Box>
-              <Action resource={resource} item={item}/>
-            </Stack>
-            <Box sx={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:2}}>
-              {config.fields.slice(1).map(f=><Box key={f.key} sx={{minWidth:0}}>
-                <Typography variant="caption" color="text.secondary" sx={{display:'block',mb:.45}}>{f.label}</Typography>
+            </TableCell></TableRow>:
+            rows.map(item=><TableRow hover key={item.id}>
+              {config.fields.map(f=><TableCell key={f.key}>
                 <CellValue item={item} field={f} userMap={userMap} productMap={productMap}/>
-              </Box>)}
-            </Box>
-          </Box>)}
-        </Box>
-        <Divider/>
-        <Stack direction={{xs:'column',sm:'row'}} spacing={1.2} sx={{p:2.5,alignItems:'center',justifyContent:'space-between'}}>
-          <Typography variant="caption" color="text.secondary">
-            第 {(page-1)*20+1}–{Math.min(page*20,total)} 条，共 {total} 条
-          </Typography>
-          <Pagination count={Math.max(1,Math.ceil(total/20))} page={page}
-            onChange={(_,next)=>setPage(next)} size="small" color="primary" siblingCount={0}
-            showFirstButton showLastButton/>
-        </Stack>
+              </TableCell>)}
+              <TableCell align="right"><Stack direction="row" spacing={.2}
+                sx={{justifyContent:'flex-end',alignItems:'center'}}>
+                <Tooltip title="复制完整编号"><IconButton size="small" aria-label="复制完整编号"
+                  onClick={()=>void copy(String(item.id))}><ContentCopyRoundedIcon sx={{fontSize:16}}/></IconButton></Tooltip>
+                <Action resource={resource} item={item}/>
+              </Stack></TableCell>
+            </TableRow>)}</TableBody></Table>
+        </TableContainer>}
+        {!desktop&&<Box>
+          {query.isPending?
+            <Box sx={{minHeight:194,display:'flex',alignItems:'center',justifyContent:'center',gap:1.5}}>
+              <CircularProgress size={22} aria-hidden/>
+              <Typography color="text.secondary" variant="body2">正在读取记录…</Typography>
+            </Box>:
+            rows.map((item,index)=><Box key={item.id} sx={{p:2.5,borderBottom:index+1===rows.length?'none':'1px solid #edf0f5'}}>
+              <Stack direction="row" sx={{justifyContent:'space-between',alignItems:'flex-start',mb:1.8}}>
+                <Box sx={{minWidth:0,flex:1}}>
+                  <Typography variant="overline" color="primary.main">第 {index+1+(page-1)*20} 条</Typography>
+                  <Box sx={{mt:.65}}><CellValue item={item} field={config.fields[0]} userMap={userMap} productMap={productMap}/></Box>
+                </Box>
+                <Action resource={resource} item={item}/>
+              </Stack>
+              <Box sx={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:2}}>
+                {config.fields.slice(1).map(f=><Box key={f.key} sx={{minWidth:0}}>
+                  <Typography variant="caption" color="text.secondary" sx={{display:'block',mb:.45}}>{f.label}</Typography>
+                  <CellValue item={item} field={f} userMap={userMap} productMap={productMap}/>
+                </Box>)}
+              </Box>
+            </Box>)}
+        </Box>}
+        {!query.isPending&&<>
+          <Divider/>
+          <Stack direction={{xs:'column',sm:'row'}} spacing={1.2} sx={{p:2.5,alignItems:'center',justifyContent:'space-between'}}>
+            <Typography variant="caption" color="text.secondary">
+              第 {(page-1)*20+1}–{Math.min(page*20,total)} 条，共 {total} 条
+            </Typography>
+            <Pagination count={Math.max(1,Math.ceil(total/20))} page={page}
+              onChange={(_,next)=>setPage(next)} size="small" color="primary" siblingCount={0}
+              showFirstButton showLastButton/>
+          </Stack>
+        </>}
       </Card>}
   </Box>;
 }
