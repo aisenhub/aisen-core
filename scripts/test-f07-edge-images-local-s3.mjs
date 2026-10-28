@@ -394,6 +394,80 @@ try{
     'image retries should not put second copy');
   console.log('F07_REAL_EDGE_S3_REPLAY PASS no additional writes');
 
+  // Opposite of an interrupted S3 upload: the REAL Edge and DB commit two
+  // images successfully, but a one-use loopback proxy drops the downstream
+  // HTTP response *after* it receives upstream 201. The caller knows only
+  // "network failed", not whether SQL committed. Retry must converge on the
+  // existing feedback without re-uploading either private object.
+  const lossId=randomUUID(),lossText='F07 committed but response lost '+unique;
+  const lossBlobs=images.map(bytes=>new Blob([bytes],{type:'image/png'}));
+  const beforeLossObjects=objects.size;
+  let finishProxy;
+  const proxyUpstream=new Promise((resolve,reject)=>{finishProxy={resolve,reject}});
+  const responseLossProxy=httpServer(async(incoming,outgoing)=>{
+    try{
+      assert.equal(incoming.method,'POST');
+      assert.equal(incoming.url,'/drop-success');
+      const parts=[];
+      for await(const part of incoming)parts.push(part);
+      const upstream=await fetch(cfg.API_URL+'/functions/v1/feedback-submit',{
+        method:'POST',
+        headers:{
+          apikey:key,authorization:'Bearer '+owner.token,
+          'content-type':String(incoming.headers['content-type']??''),
+        },
+        body:Buffer.concat(parts),
+        signal:AbortSignal.timeout(30000),
+      });
+      const body=await upstream.json();
+      finishProxy.resolve({status:upstream.status,data:body});
+      // No HTTP status, body or success ACK reaches the client.
+      outgoing.destroy();
+    }catch(error){
+      finishProxy.reject(error);
+      outgoing.destroy();
+    }
+  });
+  try{
+    await new Promise((resolve,reject)=>{
+      responseLossProxy.once('error',reject);
+      responseLossProxy.listen(0,'127.0.0.1',resolve);
+    });
+    const proxyPort=responseLossProxy.address().port;
+    await assert.rejects(
+      fetch('http://127.0.0.1:'+proxyPort+'/drop-success',{
+        method:'POST',body:form(lossText,lossBlobs,lossId),
+        signal:AbortSignal.timeout(40000),
+      }),
+      error=>error instanceof TypeError,
+      'client must observe transport failure rather than an acknowledged commit');
+    const committed=await proxyUpstream;
+    assert.equal(committed.status,201,'upstream real Edge committed before ACK loss');
+    assert.match(committed.data.id,/^[a-f0-9-]{36}$/i);
+    assert.equal(sql('select count(*) from public.user_feedback where request_id='+
+      qq(lossId)),'1','one real SQL record despite lost client response');
+    assert.equal(sql('select count(*) from public.feedback_attachments where feedback_id='+
+      qq(committed.data.id)),'2','both images were committed before ACK loss');
+    assert.equal(objects.size,beforeLossObjects+2,'two S3 objects were stored once');
+    const putCount=s3Events.filter(x=>x.verb==='PUT').length;
+    const retried=await req('/functions/v1/feedback-submit','POST',
+      form(lossText,lossBlobs,lossId),owner.token);
+    assert.equal(retried.status,200,'unknown-result retry resolves as replay');
+    assert.equal(retried.data?.replayed,true,'replay explicitly confirmed');
+    assert.equal(retried.data?.id,committed.data.id,'same real SQL feedback ID');
+    assert.equal(objects.size,beforeLossObjects+2,'retry must not create objects');
+    assert.equal(s3Events.filter(x=>x.verb==='PUT').length,putCount,
+      'retry must not attempt any additional S3 writes');
+    const changed=await req('/functions/v1/feedback-submit','POST',
+      form(lossText+' modified',lossBlobs,lossId),owner.token);
+    assert.equal(changed.status,409,'same id changed content is still forbidden');
+    assert.equal(sql('select count(*) from public.user_feedback where request_id='+
+      qq(lossId)),'1','no duplicate SQL rows after unknown result and conflict');
+    console.log('F07_REAL_EDGE_COMMITTED_ACK_LOST PASS upstream201 discarded; retry200 existing two images; mismatch409');
+  }finally{
+    await new Promise(resolve=>responseLossProxy.close(resolve));
+  }
+
   // Real Edge + actual local S3 failure after the first of two uploads.
   // Never treat the partial upload as a committed ticket or delete an object
   // that a concurrent identical request might reference. Retrying the SAME

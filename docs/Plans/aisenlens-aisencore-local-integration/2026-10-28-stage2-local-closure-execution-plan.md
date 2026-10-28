@@ -24,7 +24,7 @@
 | CL-02 P0 | Auth/邮件/多会话 | 真实 Lens 注册确认和恢复链接的错误/失效/重放、普通登录不能 reset、refresh撤销、多标签旧响应、8443 env/allowlist | **邮件确认/恢复错误码、临时GoTrue真实2秒TTL两类过期拒绝、独立GoTrue双会话local/global登出与refresh隔离、双标签切号/迟到响应及内存Key清理、正式持续运行8443本地公开变量+真实Chrome登录 PASS**；跨设备离线恢复及所有组合 OPEN |
 | CL-03 P0 | 成员/身份隔离 | 登录/反馈/只读不 join；合法首次 active，left明确rejoin、suspended/blocked、跨产品、切号保险库Key/项目不损失 | **left→Lens显式rejoin→原membership UUID/Grant恢复、suspended无入口/直调409、Admin恢复，真实Chrome+SQL PASS**；跨产品/完整任务与存储保留人工矩阵 OPEN |
 | CL-04 P0 | 权益/兑换 | Admin AAL2 发码/直授→Lens check_access/历史/兑换、30天/未来/永久/撤销、R-16不耗码、跨产品、抢最后一次、429/UNKNOWN/恢复 | 真 Chrome 主路径/两产品码隔离及并发 LCK01～08 **PASS**；其他限时快照/HTTP故障 OPEN |
-| CL-05 P0 | 反馈 Edge 与 S3 | 真 Lens 0/1/2图→Edge/SQL/本机私有对象，第二图中断、DB写失败/UNKNOWN、409、短URL与撤权、引用安全/孤儿清理 | 主路径、**真实第二图PUT 503→同UUID补齐、原号异参409，以及前后正式引用RPC对账/普通用户403 PASS**；真DB提交未知及长期孤儿删除策略 OPEN |
+| CL-05 P0 | 反馈 Edge 与 S3 | 真 Lens 0/1/2图→Edge/SQL/本机私有对象，第二图中断、DB写失败/UNKNOWN、409、短URL与撤权、引用安全/孤儿清理 | 主路径、**真实第二图PUT 503→同UUID补齐、已提交双图却丢失客户端201回执→同号重试200不重复上传、异参409、正式引用RPC对账/普通用户403 PASS**；Edge→PostgREST提交成功但RPC响应丢失、长期孤儿删除策略 OPEN |
 | CL-06 P0 | Admin 反馈/ZIP | inbox/workbench/archive/trash、version409、敏感范围、AAL1拒绝与AAL2 ZIP字节一致、缺图/中断审计 | 四队列/409 Chrome与隔离 S3 AAL2 ZIP原字节、**真实缺图503无残缺ZIP，以及私图GET在途撤销临时Admin后拒绝ZIP/恢复后正常导出 PASS**；传输断连与完整敏感范围选项矩阵 OPEN |
 | CL-07 P0 | 三端统一 E2E | 同一合成用户注册→确认→兑换→Grant→反馈→Admin处理/ZIP→撤权/切号/断网，Chrome/HTTP/SQL/对象/审计/QA清理同环境证据 | **同一用户兑换→零图反馈→Admin AAL2修改审计→撤权/永久/封禁 Chrome 子链 PASS**；完整注册邮件+两图 ZIP+切号/失联组合仍 OPEN |
 | CL-08 P1 | 工程/UI/Free回归 | 两仓类型/lint/build、关键入口中英/键盘/320～1440px，Free项目/模板/密文不退化 | **两仓 typecheck/lint/build、主入口Chrome/局部窄屏及正式8443已加载编辑器断网/重联Free项目ID保持 PASS**；冷首次离线进入Vite懒加载失败、完整Free/UI/密文人工回归 OPEN |
@@ -73,10 +73,11 @@ Core 门禁：`python scripts/check-local-admin-qa-cleanliness.py`。Admin：环
 | 2026-10-28 Free热态离线保持 | Lens [PR #49](https://github.com/aisenhub/aisenlens/pull/49)：正式8443浏览器以QA用户创建本机Free项目并获得UUID，在线进入编辑器后通过Chrome CDP模拟断网，已加载的编辑器仍在、IndexedDB项目UUID保持；重联后重新导航项目库同一项目可见，无隐式会员。**1/1 PASS / exit 0**，真实Chrome隔离profile/QA清洁。第一次尝试断网后**才首次进入未加载的Vite编辑器**超时，不冒充冷启动离线成功，正式离线分包/缓存及密文持久人工矩阵继续OPEN | **CL-08 已加载本机Free项目的离线继续/恢复 PASS**；冷首次Vite动态模块、加密配置与新设备离线仍OPEN |
 | 2026-10-28 导出缺图安全负例 | Core正式 `feedback-export` Edge、真实AAL2管理员及DB两条已提交附件下，仅在隔离本机S3的Map中临时去掉第一图，真实Admin导出必须返回**503 / PRIVATE_ATTACHMENT_OR_ZIP_UNAVAILABLE**而不是部分ZIP，原DB两条附件保持；`finally` 恢复对象后同一请求AAL2 ZIP 200、两张原图字节完全一致。完整F07还跑通Lens双图/私图授权、第二图PUT503→同号恢复、引用RPC未提交→已提交/普通用户403、异参409和完全QA清理，**exit 0**。没有删除实际数据库记录/云对象 | **CL-06 真Edge缺图导出fail-closed PASS**；在途撤权/断连和敏感选项矩阵仍OPEN |
 | 2026-10-28 ZIP在途AAL2权限撤销 | 在同一真实 `feedback-export` Edge、已提交两图与隔离S3夹具中，暂停**第一张私图GET**，只将当轮创建的合成 `platform_admins.active` 改为false后放行GET；Core随后按最终快照及二次审计权限校验，**拒绝发送ZIP（HTTP 403/409安全拒绝）**。夹具 `finally` 恢复该临时Admin权限，随后的正向AAL2 ZIP仍200且两图字节一致；原管理员不被修改、DB前后QA清洁、私图对象清理成功；完整F07 **exit 0** | **CL-06 在途权限撤销PASS**；真正网络断开传输、敏感选项全矩阵与数据库结果未知仍OPEN |
+| 2026-10-28 已提交双图但客户端未知 | 正式 `feedback-submit` Edge→真实本地Postgres→隔离S3执行两图完整提交并给一次性127.0.0.1代理返回201，代理仅在收到上游201后**故意断开客户端连接、不转发成功回执**；客户端得到真实网络异常。SQL断言该UUID恰好一条feedback/两附件、S3仅两对象；同一请求ID、同一表单直接向真实Edge重试返回**200 replay且原记录UUID一致，零追加PUT**；同ID改内容**409**且SQL无重复。包括 Lens 真Chrome双图、AAL2 ZIP缺图/在途撤权、第二PUT 503恢复和引用RPC，完整F07 **exit 0**，前后 `LOCAL_ADMIN_QA_BASELINE_PASS` | **CL-05 客户端收不到成功201的未知结果恢复 PASS**；这不是Edge与DB之间RPC成功后丢失响应，后者仍OPEN |
 | 2026-10-28 | 其余三端完整组合与正式签收 | PARTIAL / OPEN，严禁合并各专项 PASS 冒充 CL-07 全项准出 |
 
 ## 6. 停止与交付标准
 
 发生 QA 数据/对象清理异常、Chrome外部强杀、并行写库冲突、身份/产品不符、未知提交时停止下一轮写入，先安全只读取证。每个条目记录「版本/环境→命令/退出码→浏览器/HTTP→SQL/对象/审计→清理→尚未覆盖」，不伪造通过，不以历史阶段记录代签。最终所有者确认前 CL-10 一直 OPEN。
 
-**尚未满足本轮完整准出的重点**：CL-02 跨设备离线refresh时效与其它环境的公开变量配置（本地正式8443、真TTL过期及双会话撤权均已PASS，不等于云部署）；CL-03 跨产品配置与切号在途AI/项目状态及加密存储完整人工回归；CL-04 15分钟快照（Pro能力本轮不启用）和更复杂的HTTP故障时效；CL-05/06 真Edge Auth/DB写入未知、长期孤儿引用二次确认与可控清理、Admin ZIP真正传输断连及敏感范围组合（缺图与在途撤权安全拒绝均PASS）；CL-07 同一QA用户从注册确认一直到两图ZIP及撤权/切号/离线恢复的全部综合矩阵；CL-08 冷首次离线动态模块、人工UX/WCAG/密文持久性及本轮回归边界；CL-10 正式所有者签收。外部个人模板云备份/真实R2/云部署仍是**延期而非当前失败**。全部剩余事项已入表，不授权生成假的全部PASS或上线承诺。
+**尚未满足本轮完整准出的重点**：CL-02 跨设备离线refresh时效与其它环境的公开变量配置（本地正式8443、真TTL过期及双会话撤权均已PASS，不等于云部署）；CL-03 跨产品配置与切号在途AI/项目状态及加密存储完整人工回归；CL-04 15分钟快照（Pro能力本轮不启用）和更复杂的HTTP故障时效；CL-05/06 Edge→PostgREST数据库RPC成功但应答未知（客户端提交成功回执丢失的两图恢复已PASS）、长期孤儿引用二次确认与可控清理、Admin ZIP真正传输断连及敏感范围组合（缺图与在途撤权安全拒绝均PASS）；CL-07 同一QA用户从注册确认一直到两图ZIP及撤权/切号/离线恢复的全部综合矩阵；CL-08 冷首次离线动态模块、人工UX/WCAG/密文持久性及本轮回归边界；CL-10 正式所有者签收。外部个人模板云备份/真实R2/云部署仍是**延期而非当前失败**。全部剩余事项已入表，不授权生成假的全部PASS或上线承诺。
