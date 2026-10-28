@@ -29,6 +29,7 @@ assert.ok(key&&adminKey);
 const created=[],objects=new Map(),s3Events=[];
 let secondImageReportId=null;
 let secondPutFault=null;
+let heldExportGet=null;
 const unique=randomUUID().replaceAll('-','').slice(0,13);
 const password='F07fixture!'+randomBytes(14).toString('hex');
 let fixture=null,edgeWorker=null,gate=null,ownedEnvFile=null;
@@ -169,6 +170,13 @@ function s3Server(){
     }
     if(request.method==='GET'){
       s3Events.push({verb:'GET',path,signed:!!url.searchParams.get('X-Amz-Signature')});
+      // Only the isolated local fixture may pause an in-flight export.
+      // This allows a real Admin revocation while the production Edge is
+      // fetching a committed image, before ZIP audit/final authorization.
+      if(heldExportGet?.path===path){
+        heldExportGet.entered();
+        await heldExportGet.resume;
+      }
       if(!objects.has(path)){response.writeHead(404,{'content-type':'application/xml'});
         response.end('<Error><Code>NoSuchKey</Code></Error>');return}
       const bytes=objects.get(path);
@@ -336,6 +344,41 @@ try{
       qq(secondImageReportId)),'2','failed export must not mutate source attachments');
   }finally{objects.set(missingObjectPath,originalImage)}
   console.log('F07_REAL_EDGE_ZIP_MISSING_IMAGE PASS 503 fail-closed; source SQL and S3 restored');
+  // The initial AAL2 check is not enough: revoke this synthetic Admin while
+  // a real private S3 GET is blocked, then ensure the subsequent source/audit
+  // recheck prevents shipping any ZIP. The sole original Admin is untouched.
+  let enteredGet,releaseGet;
+  const awaitingGet=new Promise(resolve=>{enteredGet=resolve});
+  const resumingGet=new Promise(resolve=>{releaseGet=resolve});
+  heldExportGet={path:missingObjectPath,entered:enteredGet,resume:resumingGet};
+  let pendingRevokedExport;
+  try{
+    pendingRevokedExport=req('/functions/v1/feedback-export','POST',
+      exportRequest,mfaToken);
+    const reached=await Promise.race([
+      awaitingGet.then(()=>true),sleep(16000).then(()=>false),
+    ]);
+    assert.equal(reached,true,'real Edge export must reach the held S3 GET');
+    assert.equal(sql('update public.platform_admins set active=false where user_id='+
+      qq(qaAdmin.id)+' and active=true returning active'),'f',
+    'revoke precisely the synthetic QA Admin during S3 transfer');
+    releaseGet();
+    const forbiddenExport=await pendingRevokedExport;
+    assert.ok([403,409].includes(forbiddenExport.status),
+      'in-flight revoke must reject ZIP (403 or snapshot conflict 409), never 200');
+    assert.ok(['EXPORT_ACCESS_CHANGED','ADMIN_AUTH_REVOKED',
+      'EXPORT_CHANGED_DURING_GENERATION'].includes(forbiddenExport.data?.message),
+    'in-flight revoke must fail with safe authorization/snapshot reason');
+    assert.ok(!(forbiddenExport.data instanceof Uint8Array));
+    console.log('F07_REAL_EDGE_ZIP_INFLIGHT_ADMIN_REVOKE PASS no ZIP after QA AAL2 Admin is revoked');
+  }finally{
+    releaseGet();
+    heldExportGet=null;
+    assert.equal(sql('update public.platform_admins set active=true where user_id='+
+      qq(qaAdmin.id)+' returning active'),'t',
+      'restore temporary QA Admin for positive ZIP regression and cleanup');
+    void pendingRevokedExport?.catch(()=>undefined);
+  }
   const exported=await req('/functions/v1/feedback-export','POST',exportRequest,mfaToken);
   assert.equal(exported.status,200,'real AAL2 Admin ZIP '+JSON.stringify(
     exported.data instanceof Uint8Array?'binary':exported.data).slice(0,250));
