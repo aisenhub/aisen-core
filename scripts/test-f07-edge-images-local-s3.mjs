@@ -241,9 +241,21 @@ async function testLensBrowserWithRealS3(){
   const browserTest=join(lensRoot,'tests','features','workflow',
     'core-account-feedback.browser.test.js');
   assert.ok(existsSync(browserTest),'expected local Lens browser suite');
+  // Prefer the independently tested long-running official :8443 Vite while
+  // this worker runs three real Edge functions. Starting a second Vite may
+  // time out under concurrent Edge/browser cold-start load. If :8443 is not
+  // available, retain the original disposable Vite fallback.
+  let reuseOfficial=false;
+  try{
+    const probe=await fetch('http://127.0.0.1:8443/',{
+      signal:AbortSignal.timeout(3500)});
+    reuseOfficial=probe.ok;
+  }catch{}
+  console.log('F07_LENS_VITE_MODE',reuseOfficial?'existing-8443':'isolated-fallback');
   const child=spawn('node.exe',['--test','--test-concurrency=1',
     'tests/features/workflow/core-account-feedback.browser.test.js'],{
-    cwd:lensRoot,env:{...process.env,AISENLENS_EXPECT_LOCAL_S3:'1'},
+    cwd:lensRoot,env:{...process.env,AISENLENS_EXPECT_LOCAL_S3:'1',
+      AISENLENS_REUSE_RUNNING_8443:reuseOfficial?'1':'0'},
     stdio:['ignore','pipe','pipe'],
   });
   let output='',errors='';
@@ -426,6 +438,47 @@ try{
       qq(qaAdmin.id)+' returning active'),'t',
       'restore temporary QA Admin for positive ZIP regression and cleanup');
     void pendingRevokedExport?.catch(()=>undefined);
+  }
+  // A real client can disappear after an authorized AAL2 export has started,
+  // while the Edge is waiting for private object bytes. Never assume that
+  // cancelling a download means the source ticket should be rolled back,
+  // removed, or that a later authorized retry should receive a partial ZIP.
+  let clientGetReached,releaseInterruptedGet;
+  const clientGetPromise=new Promise(resolve=>{clientGetReached=resolve});
+  const releaseClientGet=new Promise(resolve=>{releaseInterruptedGet=resolve});
+  heldExportGet={path:missingObjectPath,
+    entered:clientGetReached,resume:releaseClientGet};
+  const disconnect=new AbortController();
+  const savedObjects=objects.size;
+  let interruptedExport;
+  try{
+    interruptedExport=fetch(cfg.API_URL+'/functions/v1/feedback-export',{
+      method:'POST',
+      headers:{
+        apikey:key,authorization:'Bearer '+mfaToken,
+        'content-type':'application/json',
+      },
+      body:JSON.stringify(exportRequest),
+      signal:disconnect.signal,
+    });
+    const reached=await Promise.race([
+      clientGetPromise.then(()=>true),sleep(16000).then(()=>false),
+    ]);
+    assert.equal(reached,true,'real Edge AAL2 export reached private S3 GET before disconnect');
+    disconnect.abort();
+    await assert.rejects(interruptedExport,
+      error=>['AbortError','TypeError'].includes(error?.name),
+      'exporting client must see a transport cancellation, not a successful ZIP');
+    releaseInterruptedGet();
+    assert.equal(sql('select count(*) from public.feedback_attachments where feedback_id='+
+      qq(secondImageReportId)),'2','cancelled ZIP must retain its source attachments');
+    assert.equal(objects.size,savedObjects,'cancelled ZIP cannot mutate private S3 objects');
+    console.log('F07_REAL_EDGE_ZIP_CLIENT_DISCONNECT PASS abort during S3 GET; no client ZIP; source attachments preserved');
+  }finally{
+    disconnect.abort();
+    releaseInterruptedGet();
+    heldExportGet=null;
+    void interruptedExport?.catch(()=>undefined);
   }
   const exported=await req('/functions/v1/feedback-export','POST',exportRequest,mfaToken);
   assert.equal(exported.status,200,'real AAL2 Admin ZIP '+JSON.stringify(
