@@ -86,4 +86,4 @@ Core复用 `scripts/test-d2-auth-api-mfa.mjs`、成员004 SQL及对应HTTP测试
 
 | 范围 | 当前状态 | 后续记录 |
 | --- | --- | --- |
-| A-01～07 / A-T01～10（含A-T03B） | **PARTIAL**：2026-10-28 真GoTrue/Mailpit→独立Chrome注册确认/找回/旧密码拒绝/已消费恢复凭据重放拒绝1/1 PASS；Lens真实登录/登出、兑换首次加成员/只读不加、本人反馈也已PASS；refresh撤销、错误或过期邮件链接、多标签旧响应、跨产品切号与任务/凭据边界仍OPEN | 当前证据与逐项缺口见[2026-10-28 本地三端收口执行计划](./2026-10-28-stage2-local-closure-execution-plan.md)，不是整个A包PASS |
+| A-01～07 / A-T01～10（含A-T03B） | **PARTIAL**：GoTrue/Mailpit真Chrome注册确认、错误hash403、找回/旧密码/无证明重置/已消费链接拒绝均PASS；Lens AAL2兑换首次加成员/只读与反馈不加会员、明确left→rejoin保留ID与Grant、suspended无入口且直调409/Admin恢复、同浏览器A→B跨标签/迟到A回复不会串号、远端登出内存Key清理、同用户refresh保留Key及全局注销refresh拒绝，全部本地实测1/1 PASS且前后QA清洁；真TTL过期、跨设备离线、跨产品切换与人工持久数据保护等仍OPEN | 可复测代码与未测范围见[2026-10-28 本地三端收口执行计划](./2026-10-28-stage2-local-closure-execution-plan.md)，不据局部PASS判整个A包签收 |
