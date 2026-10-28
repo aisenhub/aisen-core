@@ -337,6 +337,7 @@ try{
   const faultId=randomUUID(),faultText='F07 second PUT fails then exact retry '+unique;
   const faultBlobs=images.map(bytes=>new Blob([bytes],{type:'image/png'}));
   const beforeFaultObjects=objects.size;
+  const priorKeys=new Set(objects.keys());
   secondPutFault={successfulPuts:0,failedKey:null};
   try{
     const failure=await req('/functions/v1/feedback-submit','POST',
@@ -350,6 +351,24 @@ try{
     '0','storage 503 must not fabricate a committed feedback');
   assert.equal(objects.size,beforeFaultObjects+1,
     'partial first S3 object remains for safe reference-aware reconciliation');
+  const firstFaultKey=[...objects.keys()].filter(k=>!priorKeys.has(k));
+  assert.equal(firstFaultKey.length,1,'one isolated uncommitted object');
+  // S3 protocol fixture Map includes /<bucket>/, whereas the real DB
+  // stores bucket-relative object keys. Never send HTTP path strings to RPC.
+  const objectKeys=paths=>paths.map(path=>{
+    assert.ok(path.startsWith('/f07-feedback-private/feedback/'));
+    return path.slice('/f07-feedback-private/'.length);
+  });
+  const checkReferences=async keys=>req('/rest/v1/rpc/feedback_referenced_keys',
+    'POST',{p_keys:keys},null,true);
+  const orphanBefore=await checkReferences(objectKeys(firstFaultKey));
+  assert.equal(orphanBefore.status,200,'service role real reference query');
+  assert.deepEqual(orphanBefore.data,[],
+    'a partially uploaded object is not a committed DB attachment');
+  const deniedReferences=await req('/rest/v1/rpc/feedback_referenced_keys',
+    'POST',{p_keys:objectKeys(firstFaultKey)},owner.token);
+  assert.equal(deniedReferences.status,403,
+    'ordinary authenticated member must not enumerate private object references');
   const recovered=await req('/functions/v1/feedback-submit','POST',
     form(faultText,faultBlobs,faultId),owner.token);
   assert.equal(recovered.status,201,
@@ -360,6 +379,13 @@ try{
     qq(recovered.data.id)),'2','both attachments committed after recovery');
   assert.equal(objects.size,beforeFaultObjects+2,
     'retry reused first deterministic object and added only missing second');
+  const finalFaultKeys=[...objects.keys()].filter(k=>!priorKeys.has(k));
+  assert.equal(finalFaultKeys.length,2,'recovered object set');
+  const referencesAfter=await checkReferences(objectKeys(finalFaultKeys));
+  assert.equal(referencesAfter.status,200);
+  assert.deepEqual([...referencesAfter.data].sort(),objectKeys(finalFaultKeys).sort(),
+    'both previously orphaned and newly uploaded objects must be committed references');
+  console.log('F07_REAL_DB_REFERENCE_RECONCILIATION PASS uncommitted object unreferenced then both committed; user RPC 403');
   const replayAfterFault=await req('/functions/v1/feedback-submit','POST',
     form(faultText,faultBlobs,faultId),owner.token);
   assert.equal(replayAfterFault.status,200,'confirmed exact replay after fault recovery');
