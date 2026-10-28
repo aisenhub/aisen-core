@@ -75,4 +75,4 @@ Lens设置/帮助内，已登录、邮箱已确认、非blocked本人可提交�
 
 | 范围 | 当前状态 | 后续记录 |
 | --- | --- | --- |
-| C-01～07 / C-T01～10 | **PARTIAL**：2026-10-28 Lens零图/丢201回复同号重放/无S3时503保留输入1/1 PASS；真Chrome双图→Core Edge/本机私有S3/SQL→本人短签URL/他人403→Admin AAL2 ZIP原图一致 PASS；Admin D3四队列/409 Chrome PASS；F07 Deno故障协议15/15、SQL反馈116/116 fixture PASS。**新增真实 Edge 第二图本机S3 PUT持续503**：第一张部分对象保留、DB未提交；正式最小权限引用RPC在此时返回空数组，普通JWT直调403；同UUID同图恢复201/200仅补第二图，RPC对账两张均已正式引用；UUID相同但内容改变409且未多写，整条exit0及QA/对象清理PASS。仍未覆盖真实DB提交未知、长期孤儿安全删除、在途导出断连及真实云R2（后者延期） | 最新可复测入口及未测在[独立收口执行计划](./2026-10-28-stage2-local-closure-execution-plan.md)，本地协议fixture不等于真实Cloudflare R2 |
+| C-01～07 / C-T01～10 | **PARTIAL**：2026-10-28 Lens零图/丢201回复同号重放/无S3时503保留输入1/1 PASS；真Chrome双图→Core Edge/本机私有S3/SQL→本人短签URL/他人403→Admin AAL2 ZIP原图一致 PASS；Admin D3四队列/409 Chrome PASS；F07 Deno故障协议15/15、SQL反馈116/116 fixture PASS。**真实Edge第二图S3 PUT持续503**：第一对象保留、DB未提交/引用RPC空，恢复同UUID同图201/200且引用RPC两图已登记，异参409且未多写；**真AAL2 Admin ZIP临时缺一张已登记私图时503拒绝残缺包，恢复隔离S3后200/两原图字节完全一致、DB两条附件保留**；普通JWT直调引用RPC403，整条F07 exit0且QA/对象清理PASS。仍未覆盖真实DB提交未知、长期孤儿安全删除、在途导出撤权/断连及真实云R2（后者延期） | 最新可复测入口及未测在[独立收口执行计划](./2026-10-28-stage2-local-closure-execution-plan.md)，本地协议fixture不等于真实Cloudflare R2 |

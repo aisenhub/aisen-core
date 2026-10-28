@@ -310,12 +310,33 @@ try{
     ids:[secondImageReportId],options:{identity:false}},qaAdmin.token);
   assert.equal(denied.status,403,'AAL1 Admin must not export private attachments');
   const mfaToken=await adminAal2(qaAdmin.token);
-  const exported=await req('/functions/v1/feedback-export','POST',{
+  const exportRequest={
     scope:'selected',queue_state:'inbox',
     ids:[secondImageReportId],options:{
       user_comments:false,public_replies:false,internal_notes:false,
       history:false,tags:false,status:false,identity:false,
-    }},mfaToken);
+    }};
+  const missingObjectKey=sql('select object_key from public.feedback_attachments where '+
+    'feedback_id='+qq(secondImageReportId)+' order by slot limit 1');
+  assert.ok(missingObjectKey.startsWith('feedback/'),'real committed private attachment');
+  const missingObjectPath='/f07-feedback-private/'+missingObjectKey;
+  const originalImage=objects.get(missingObjectPath);
+  assert.ok(originalImage?.length,'missing-image test must target a real stored object');
+  try{
+    objects.delete(missingObjectPath); // Only in the isolated in-memory S3 fixture.
+    const missingExport=await req('/functions/v1/feedback-export','POST',
+      exportRequest,mfaToken);
+    assert.equal(missingExport.status,503,
+      'AAL2 export must fail closed if a committed S3 image is missing');
+    assert.equal(missingExport.data?.message,'PRIVATE_ATTACHMENT_OR_ZIP_UNAVAILABLE',
+      'must return safe error, never a partial/private ZIP');
+    assert.ok(!(missingExport.data instanceof Uint8Array),
+      'missing attachment must not produce an archive');
+    assert.equal(sql('select count(*) from public.feedback_attachments where feedback_id='+
+      qq(secondImageReportId)),'2','failed export must not mutate source attachments');
+  }finally{objects.set(missingObjectPath,originalImage)}
+  console.log('F07_REAL_EDGE_ZIP_MISSING_IMAGE PASS 503 fail-closed; source SQL and S3 restored');
+  const exported=await req('/functions/v1/feedback-export','POST',exportRequest,mfaToken);
   assert.equal(exported.status,200,'real AAL2 Admin ZIP '+JSON.stringify(
     exported.data instanceof Uint8Array?'binary':exported.data).slice(0,250));
   assert.ok(exported.data instanceof Uint8Array);
