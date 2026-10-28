@@ -75,4 +75,4 @@ Lens设置/帮助内，已登录、邮箱已确认、非blocked本人可提交�
 
 | 范围 | 当前状态 | 后续记录 |
 | --- | --- | --- |
-| C-01～07 / C-T01～10 | NOT RUN；本次无反馈提交或云对象读取 | 版本/环境、JWT/HTTP/DB/对象/ZIP断言、命令退出码、截图、QA范围、未测及验收人 |
+| C-01～07 / C-T01～10 | **PARTIAL**：2026-10-28 Lens零图/丢201回复同号重放/私有S3未配置503保留输入1/1 PASS；Lens真Chrome双图→Core Edge/SQL/本机私有S3→本人私图/跨用户403→Admin AAL2 ZIP原图字节一致 PASS；Admin D3四队列/409 Chrome切片PASS；F07 Deno故障协议15/15、SQL反馈116/116相关fixture PASS。真实Edge上游故障注入、二图中断+DB未知与孤儿清理、完整导出失联仍OPEN，真实云R2按决定延期 | 最新可复测证据及未测在[独立收口执行计划](./2026-10-28-stage2-local-closure-execution-plan.md)，不得以本地协议 fixture 冒充云R2 |

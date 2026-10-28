@@ -1,6 +1,8 @@
 # 第二阶段B详细计划｜产品资格、安全历史与兑换闭环
 
-> **状态：DRAFT / NOT RUN。** 对应TODO LENS-04和审查F02/F03。入口为[第二阶段A](./02-stage2-auth-and-membership.md)真实会话/成员准出；有效永久Pro拒兑的独立SQL保护应已在[第一阶段](./01-stage1-core-readiness.md)修验。业务以[计费](../../architecture/domains/billing-and-entitlements.md)、[API与R-16](../../architecture/backend/api-contract-and-mvp-acceptance.md)为准。
+> **状态：Lens↔Core↔Admin 本地资格/发码/兑换/直授/撤销/封禁 Chrome 正向 PASS；剩余 B-T 异常矩阵 PARTIAL。** 对应TODO LENS-04和审查F02/F03。入口为[第二阶段A](./02-stage2-auth-and-membership.md)真实会话/成员准出；有效永久Pro拒兑的独立SQL保护应已在[第一阶段](./01-stage1-core-readiness.md)修验。业务以[计费](../../architecture/domains/billing-and-entitlements.md)、[API与R-16](../../architecture/backend/api-contract-and-mvp-acceptance.md)为准。
+
+**2026-10-27 最新实测**：Lens 新建 `features/auth/coreEntitlements.ts`，通过真正 Auth JWT 的 `check_access` 读取可信资格，本人授权历史仅查询安全字段、分页有界；`redeem_code` 两参数，HTTP200业务拒绝与网络故障分开，账号切换时丢弃旧结果，不因后续刷新失败反转已成功兑换。执行 Lens `node --test tests/features/workflow/core-entitlements.browser.test.js` **1/1 PASS**：真实 TOTP AAL2 Admin 发 30 天码→Chrome Lens 首次兑换→同事务创建会员/Grant/核销→Admin撤授权→Lens Free→Admin直授永久 Pro→Lens Lifetime→新期限码因 R-16 拒兑不消耗→Admin封禁/解封→Lens立即拒绝/恢复，完整 QA 清理。**Core 永久兑换码发行受既有运营政策明确禁止（`LIFETIME_CODES_NOT_ENABLED` HTTP422）**，不得更改此安全规则；永久 Pro 经 Admin 正式直授。限流、真实竞争、跨产品、失效链接、切换竞态等剩余 B-T 须实测后关闭本包。
 
 ## 1. 完成范围与非目标
 
@@ -71,4 +73,4 @@ R-16稳定业务拒绝码须在实现前与Core API/全部调用者同次固定�
 
 | 范围 | 当前状态 | 后续记录 |
 | --- | --- | --- |
-| B-01～06 / B-T01～10 | NOT RUN；本次无代码或RPC调用 | 两仓版本、命令/退出码、HTTP/DB/并发/截图、参数时效、未测范围和验收人 |
+| B-01～06 / B-T01～10 | **PARTIAL**：2026-10-28 Lens真实AAL2发码→Chrome兑换/Grant/会员→撤权→永久直授/R-16拒兑→封解1/1 PASS；Core pgTAP 93/93及独立PostgreSQL并发LCK-01～08全部PASS，同一用户再提交反馈→Admin AAL2审计的联合子链PASS；其他跨产品、会话竞争/缓存15分钟和部分真实HTTP故障矩阵仍OPEN | 最新命令、清理和范围见[独立收口执行计划](./2026-10-28-stage2-local-closure-execution-plan.md)，不将PARTIAL列为全部B包签收 |

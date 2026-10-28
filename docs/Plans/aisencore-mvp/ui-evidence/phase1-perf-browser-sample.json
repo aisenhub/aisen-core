@@ -1,10 +1,10 @@
 {
   "context": "single headless Chrome local production-preview authenticated navigation; no throttling",
   "sample": {
-    "domContentLoadedMs": 799,
-    "loadEventMs": 800,
-    "ttfbMs": 27,
-    "resourceRequests": 51,
+    "domContentLoadedMs": 791,
+    "loadEventMs": 791,
+    "ttfbMs": 122,
+    "resourceRequests": 52,
     "assetsRequested": 0,
     "scriptAssetRequests": 0,
     "sameOriginTransferBytes": 0,
