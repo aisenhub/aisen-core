@@ -26,7 +26,7 @@
 | CL-04 P0 | 权益/兑换 | Admin AAL2 发码/直授→Lens check_access/历史/兑换、30天/未来/永久/撤销、R-16不耗码、跨产品、抢最后一次、429/UNKNOWN/恢复 | 真 Chrome 主路径/两产品码隔离及并发 LCK01～08 **PASS**；其他限时快照/HTTP故障 OPEN |
 | CL-05 P0 | 反馈 Edge 与 S3 | 真 Lens 0/1/2图→Edge/SQL/本机私有对象，第二图中断、DB写失败/UNKNOWN、409、短URL与撤权、引用安全/孤儿清理 | 主路径、**真实第二图PUT 503→同UUID补齐、已提交双图却丢失客户端201回执→同号重试200不重复上传、异参409、正式引用RPC对账/普通用户403 PASS**；Edge→PostgREST提交成功但RPC响应丢失、长期孤儿删除策略 OPEN |
 | CL-06 P0 | Admin 反馈/ZIP | inbox/workbench/archive/trash、version409、敏感范围、AAL1拒绝与AAL2 ZIP字节一致、缺图/中断审计 | 四队列/409 Chrome与隔离 S3 AAL2 ZIP原字节、**真实缺图503无残缺ZIP，以及私图GET在途撤销临时Admin后拒绝ZIP/恢复后正常导出 PASS**；传输断连与完整敏感范围选项矩阵 OPEN |
-| CL-07 P0 | 三端统一 E2E | 同一合成用户注册→确认→兑换→Grant→反馈→Admin处理/ZIP→撤权/切号/断网，Chrome/HTTP/SQL/对象/审计/QA清理同环境证据 | **同一用户兑换→零图反馈→Admin AAL2修改审计→撤权/永久/封禁 Chrome 子链 PASS**；完整注册邮件+两图 ZIP+切号/失联组合仍 OPEN |
+| CL-07 P0 | 三端统一 E2E | 同一合成用户注册→确认→兑换→Grant→反馈→Admin处理/ZIP→撤权/切号/断网，Chrome/HTTP/SQL/对象/审计/QA清理同环境证据 | **同一用户兑换→零图反馈→Admin AAL2修改审计→撤权等 Chrome 子链 PASS；真实Mailpit确认的同一个QA用户→GoTrue登录→两图真实Edge/私有S3→Admin AAL2 ZIP原字节子链 PASS**；尚未将兑换/Grant/两图/撤权/切号/离线串入同一Chrome用户的完整矩阵 |
 | CL-08 P1 | 工程/UI/Free回归 | 两仓类型/lint/build、关键入口中英/键盘/320～1440px，Free项目/模板/密文不退化 | **两仓 typecheck/lint/build、主入口Chrome/局部窄屏及正式8443已加载编辑器断网/重联Free项目ID保持 PASS**；冷首次离线进入Vite懒加载失败、完整Free/UI/密文人工回归 OPEN |
 | CL-09 P1 | 文档清理 | 修正旧“脏库 BLOCKED”和陈旧 NOT RUN 说法，与最新证据/唯一TODO一致 | Core唯一TODO、02/03/04/06 进展表、历史事故/本轮范围、Lens身份报告、计划索引已修订；剩余交叉链接与旧长文描述专项核对 OPEN |
 | CL-10 P0 | 正式收口 | 每项适用 P0/P1 PASS 或清晰豁免，所有者签收、版本/数据清理/下一轮风险登记 | OPEN |
@@ -74,6 +74,7 @@ Core 门禁：`python scripts/check-local-admin-qa-cleanliness.py`。Admin：环
 | 2026-10-28 导出缺图安全负例 | Core正式 `feedback-export` Edge、真实AAL2管理员及DB两条已提交附件下，仅在隔离本机S3的Map中临时去掉第一图，真实Admin导出必须返回**503 / PRIVATE_ATTACHMENT_OR_ZIP_UNAVAILABLE**而不是部分ZIP，原DB两条附件保持；`finally` 恢复对象后同一请求AAL2 ZIP 200、两张原图字节完全一致。完整F07还跑通Lens双图/私图授权、第二图PUT503→同号恢复、引用RPC未提交→已提交/普通用户403、异参409和完全QA清理，**exit 0**。没有删除实际数据库记录/云对象 | **CL-06 真Edge缺图导出fail-closed PASS**；在途撤权/断连和敏感选项矩阵仍OPEN |
 | 2026-10-28 ZIP在途AAL2权限撤销 | 在同一真实 `feedback-export` Edge、已提交两图与隔离S3夹具中，暂停**第一张私图GET**，只将当轮创建的合成 `platform_admins.active` 改为false后放行GET；Core随后按最终快照及二次审计权限校验，**拒绝发送ZIP（HTTP 403/409安全拒绝）**。夹具 `finally` 恢复该临时Admin权限，随后的正向AAL2 ZIP仍200且两图字节一致；原管理员不被修改、DB前后QA清洁、私图对象清理成功；完整F07 **exit 0** | **CL-06 在途权限撤销PASS**；真正网络断开传输、敏感选项全矩阵与数据库结果未知仍OPEN |
 | 2026-10-28 已提交双图但客户端未知 | 正式 `feedback-submit` Edge→真实本地Postgres→隔离S3执行两图完整提交并给一次性127.0.0.1代理返回201，代理仅在收到上游201后**故意断开客户端连接、不转发成功回执**；客户端得到真实网络异常。SQL断言该UUID恰好一条feedback/两附件、S3仅两对象；同一请求ID、同一表单直接向真实Edge重试返回**200 replay且原记录UUID一致，零追加PUT**；同ID改内容**409**且SQL无重复。包括 Lens 真Chrome双图、AAL2 ZIP缺图/在途撤权、第二PUT 503恢复和引用RPC，完整F07 **exit 0**，前后 `LOCAL_ADMIN_QA_BASELINE_PASS` | **CL-05 客户端收不到成功201的未知结果恢复 PASS**；这不是Edge与DB之间RPC成功后丢失响应，后者仍OPEN |
+| 2026-10-28 邮件确认用户贯通两图与ZIP | 改进同一F07真实联调脚本，使原来后台直接创建的反馈owner改为合成用户**正式GoTrue signup→Mailpit实际投递邮件→读取真实signup确认链接→GoTrue有效链接回调（确认前SQL未激活、确认后已激活）→密码登录**；之后**同一owner**依次用正式Edge提交1/2图、本人签名短URL可读而其他用户403，Admin AAL1 ZIP 403 / AAL2 ZIP 200两图字节一致；S3中断/响应丢失、Admin在途撤权和幂等负例继续全部PASS，F07 **exit 0**。注册确认/反馈为实际HTTP和SQL而非全步骤同一个Chrome页面，Admin为另一合成管理员，后续仍需同一Chrome会话兑换→Grant→两图→撤权/切号/断网一次性统一流程 | **CL-07 邮件认证→同用户真实两图反馈→Admin AAL2 ZIP子链 PASS**；全套同一Chrome、兑换及失联组合仍OPEN |
 | 2026-10-28 | 其余三端完整组合与正式签收 | PARTIAL / OPEN，严禁合并各专项 PASS 冒充 CL-07 全项准出 |
 
 ## 6. 停止与交付标准
