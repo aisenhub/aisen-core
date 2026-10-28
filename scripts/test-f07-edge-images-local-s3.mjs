@@ -93,6 +93,54 @@ async function user(tag){
   assert.equal(login.status,200,'login fixture identity');
   return {id,token:login.data.access_token};
 }
+async function registeredMailOwner(){
+  // Unlike admin.createUser fixtures, this feedback owner must perform the
+  // actual GoTrue signup -> Mailpit delivery -> real email verification.
+  // All resulting identities are synthetic and deleted in the outer finally.
+  const email='f07-img-'+unique+'-signedup@example.invalid';
+  const callback='http://127.0.0.1:8443/auth/confirm';
+  const signup=await req('/auth/v1/signup?redirect_to='+encodeURIComponent(callback),
+    'POST',{email,password});
+  assert.equal(signup.status,200,'real signup endpoint for the feedback owner');
+  const id=sql("select id from auth.users where email='"+email+"'");
+  qq(id);created.push(id);
+  assert.equal(sql('select email_confirmed_at is null from auth.users where id='+qq(id)),
+    't','signup initially requires real email confirmation');
+  assert.equal(cfg.MAILPIT_URL,'http://127.0.0.1:55324');
+  let confirmationLink=null;
+  const prefix=cfg.API_URL+'/auth/v1/verify?';
+  for(let attempt=0;attempt<90&&!confirmationLink;attempt++){
+    const inbox=await fetch(cfg.MAILPIT_URL+'/api/v1/messages',{
+      signal:AbortSignal.timeout(6000)}).then(r=>r.json());
+    for(const item of inbox.messages??[]){
+      if(!item.To?.some(v=>v.Address?.toLowerCase()===email))continue;
+      const detail=await fetch(cfg.MAILPIT_URL+'/api/v1/message/'+
+        encodeURIComponent(item.ID),{signal:AbortSignal.timeout(6000)}).then(r=>r.json());
+      const html=String(detail.Text??'')+'\n'+String(detail.HTML??'');
+      const matches=html.match(/https?:\/\/[^\s<>"']+/g)??[];
+      for(const raw of matches){
+        const url=raw.replaceAll('&amp;','&');
+        if(!url.startsWith(prefix))continue;
+        if(new URL(url).searchParams.get('type')!=='signup')continue;
+        confirmationLink=url;break;
+      }
+      if(confirmationLink)break;
+    }
+    if(!confirmationLink)await sleep(330);
+  }
+  assert.ok(confirmationLink,'actual Mailpit signup confirmation link delivered');
+  const confirmed=await fetch(confirmationLink,{
+    redirect:'manual',headers:{apikey:key},signal:AbortSignal.timeout(12000)});
+  assert.ok([302,303].includes(confirmed.status),'GoTrue must redirect on valid confirmation');
+  assert.ok((confirmed.headers.get('location')??'').startsWith(callback),
+    'valid confirmation redirects only to the approved Lens callback');
+  assert.equal(sql('select email_confirmed_at is not null from auth.users where id='+qq(id)),
+    't','real mail proof confirmed the signup identity');
+  const login=await req('/auth/v1/token?grant_type=password','POST',{email,password});
+  assert.equal(login.status,200,'mail-confirmed user can use genuine GoTrue login');
+  console.log('F07_REAL_GOTRUE_MAIL_CONFIRMED_OWNER PASS signup -> Mailpit -> verified link -> login');
+  return {id,token:login.data.access_token};
+}
 function totp(secret){
   const alphabet='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
   let bits=0,value=0,bytes=[];
@@ -268,7 +316,7 @@ try{
   await testLensBrowserWithRealS3();
   const lensS3Objects=objects.size;
   assert.equal(lensS3Objects,2,'Lens must write 2 private objects');
-  const owner=await user('owner'),stranger=await user('stranger');
+  const owner=await registeredMailOwner(),stranger=await user('stranger');
   const images=[png(80),png(120)];
   for(const count of [1,2]){
     const requestId=randomUUID(),content='Real Edge local signed S3 '+count+' '+unique;
