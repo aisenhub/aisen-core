@@ -14,6 +14,10 @@ import { fileURLToPath } from 'node:url';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const win=process.platform==='win32';
 const preview=process.env.AISENCORE_UIQA_PREVIEW==='1';
+// Short, independently-cleaned runs avoid the previous 320s kill during writes.
+// Safe default is the read-only-resource/navigation suite (QA Auth is still temporary).
+const qaPhase=process.env.AISENCORE_UIQA_PHASE??'navigation';
+assert.ok(['full','navigation','operations','operations-grants','operations-issuance','operations-responsive','operations-feedback'].includes(qaPhase),'Unsupported Admin QA phase');
 const cli=spawnSync(win?'cmd.exe':'pnpm',
   win?['/d','/s','/c','pnpm dlx supabase status --output json']:
     ['dlx','supabase','status','--output','json'],
@@ -29,13 +33,22 @@ const chromePath=win?'C:/Program Files/Google/Chrome/Application/chrome.exe':'go
 const email='admin-uiqa-'+randomUUID().slice(0,12)+'@aisencore.test';
 const password='LocalUiQa!'+randomBytes(15).toString('base64url');
 const qaProductKey='qa_browser_'+randomBytes(6).toString('hex');
-let qaProductId=null,qaOrdUserId=null;
+let qaProductId=null,qaOrdUserId=null,qaFeedbackId=null,qaFeedbackRequestId=null;
 const qaCleanupFailures=[];
 const qaSecretDownloadPaths=[];
-let uid=null,site=null,chrome=null,ws=null;
+let uid=null,site=null,chrome=null,ws=null,qaFixtureStarted=false;
 let injectedFault=null,mfaBrowserRequests=0,interceptionFailure=null;
 const exclusiveGuard=createServer();
-const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+// A previous 320s external kill prevented finally cleanup. Every short QA
+// phase must exit voluntarily with enough time to clean temporary Auth, grants,
+// products, secrets and Chrome profiles before the runner's hard deadline.
+const qaSoftDeadline = Date.now() + 180_000;
+let qaInCleanup = false;
+const sleep=ms=>{
+  if(!qaInCleanup && uid && Date.now()+ms >= qaSoftDeadline)
+    return Promise.reject(Error('ADMIN_QA_SOFT_DEADLINE: stop phase and run finally before external timeout'));
+  return new Promise(resolve=>setTimeout(resolve,ms));
+};
 function sql(query) {
   const r=spawnSync('docker',['exec','supabase_db_Aisencore','psql','-X','-qAt',
     '-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-c',query],
@@ -112,8 +125,25 @@ try {
     exclusiveGuard.once('error',reject);
     exclusiveGuard.listen(3397,'127.0.0.1',resolve);
   });
+  // Fail BEFORE all writes when a previous timed-out suite left QA data.
+  // This acceptance suite is intentionally restricted to the owner's clean,
+  // two-product, single-admin local DB; never overwrite a real development user.
+  const baseline=sql("SELECT "+
+    "(SELECT count(*) FROM auth.users)||'|'||"+
+    "(SELECT count(*) FROM public.products WHERE product_key IN ('aisenhub','aisenlens') AND status='active')||'|'||"+
+    "(SELECT count(*) FROM public.products)||'|'||"+
+    "(SELECT count(*) FROM public.platform_admins WHERE active)||'|'||"+
+    "(SELECT count(*) FROM public.product_memberships)||'|'||"+
+    "(SELECT count(*) FROM public.entitlement_grants)||'|'||"+
+    "(SELECT count(*) FROM public.redemption_code_batches)||'|'||"+
+    "(SELECT count(*) FROM public.redemption_codes)||'|'||"+
+    "(SELECT count(*) FROM public.admin_audit_log)");
+  assert.equal(baseline,'1|2|2|1|0|0|0|0|0',
+    'LOCAL_QA_BASELINE_DIRTY: do NOT start write tests; review 2026-10-27-admin-uiqa-timeout-and-recovery.md');
+  console.log('CLEAN_LOCAL_QA_BASELINE PASS before Auth, product or grant writes');
   const newUser=await api('/auth/v1/admin/users','POST',{email,password,email_confirm:true},null,true);
   uid=newUser.id;
+  qaFixtureStarted=true;
   assert.match(uid,/^[a-f0-9-]{36}$/i);
   sql("INSERT INTO public.platform_admins(user_id,active) VALUES ('"+uid+"',true)");
   const signin=await api('/auth/v1/token?grant_type=password','POST',{email,password});
@@ -213,6 +243,44 @@ try {
     assert.equal(entry.violations.filter(v=>['critical','serious'].includes(v.impact)).length,0,
       'automated serious WCAG violations in '+label+'; inspect phase1-axe-wcag-baseline.json');
   }
+  const morePages=[
+    // Empty states hide result column headers. Check the real bounded-search
+    // controls instead; each verifies the secure Admin list actually mounted.
+    ['memberships','成员关系','精确成员 UUID'],
+    ['grants','授权记录','精确授权用户 UUID'],
+    ['code-batches','发行批次','准确请求编号'],
+    ['codes','兑换码记录','精确批次 UUID'],
+    ['redemptions','核销记录','精确授权 UUID'],
+    ['membership-events','成员事件','精确成员关系 UUID'],
+    ['admins','管理员权限','精确管理员 UUID'],
+    ['restrictions','账号限制','精确账号 UUID'],
+    ['audit-logs','管理审计','精确目标 UUID'],
+    ['users','查找账号','请输入邮箱查找账号'],
+    ['feedback','收件箱','收件箱'],
+  ];
+  const capture=async(name)=>{
+    const jpeg=name.endsWith('.jpg');
+    let r;
+    for(let attempt=0;attempt<2;attempt++){
+      try{
+        r=await send('Page.captureScreenshot',{
+          format:jpeg?'jpeg':'png',
+          ...(jpeg?{quality:name.includes('-review')?43:76}:{}),
+          captureBeyondViewport:false,
+        },attempt===0?30000:45000);
+        break;
+      }catch(error){
+        if(attempt===1)throw error;
+        // A single slow headless Chrome frame is not an application failure.
+        // Still fail the suite if the capture remains unresponsive on retry.
+        console.warn('SCREENSHOT_RETRY '+name+' after one CDP timeout');
+        await sleep(400);
+      }
+    }
+    if(!r?.result?.data)throw Error('Screenshot produced no data: '+name);
+    writeFileSync(join(dir,name),Buffer.from(r.result.data,'base64'));
+  };
+  if(!qaPhase.startsWith('operations')){
   await axeAudit('dashboard');
   const headerLayout=JSON.parse(await evaluate("JSON.stringify((()=>{const toolbar=document.querySelector('.MuiToolbar-root');return [...(toolbar?.children??[])].slice(0,8).map(el=>({tag:el.tagName,cls:String(el.className).slice(0,100),text:(el.innerText??'').slice(0,30),width:Math.round(el.getBoundingClientRect().width),left:Math.round(el.getBoundingClientRect().left)}))})())"));
   console.log('AC03_APPBAR_DOM '+JSON.stringify(headerLayout));
@@ -260,28 +328,6 @@ try {
     limitations:'Exploratory sample only; LCP/INP/CLS, P95, cold/warm repeated tests, 10k rows still NOT RUN',
   },null,2));
   console.log('P1_SAMPLE recorded headless local production dashboard performance (not Web Vitals signoff)');
-  const capture=async(name)=>{
-    const jpeg=name.endsWith('.jpg');
-    let r;
-    for(let attempt=0;attempt<2;attempt++){
-      try{
-        r=await send('Page.captureScreenshot',{
-          format:jpeg?'jpeg':'png',
-          ...(jpeg?{quality:name.includes('-review')?43:76}:{}),
-          captureBeyondViewport:false,
-        },attempt===0?30000:45000);
-        break;
-      }catch(error){
-        if(attempt===1)throw error;
-        // A single slow headless Chrome frame is not an application failure.
-        // Still fail the suite if the capture remains unresponsive on retry.
-        console.warn('SCREENSHOT_RETRY '+name+' after one CDP timeout');
-        await sleep(400);
-      }
-    }
-    if(!r?.result?.data)throw Error('Screenshot produced no data: '+name);
-    writeFileSync(join(dir,name),Buffer.from(r.result.data,'base64'));
-  };
   await capture('operator-dashboard-1440.png');
   await capture('operator-dashboard-desktop-qa.jpg');
   // Four operation button entries open a single modal and preserve route.
@@ -331,7 +377,8 @@ try {
 
   await send('Page.navigate',{url:base+'/#/products'});
   await visible('产品目录');
-  await visible('Atlas · 智识引擎');
+  // Only real active platform entries remain in the sanitized local DB.
+  await visible('aisenlens');
   const managementTabs=JSON.parse(await evaluate("JSON.stringify([...document.querySelectorAll('nav[aria-label=平台管理二级导航] a')].map(a=>({name:a.textContent?.trim(),current:a.getAttribute('aria-current')})))"));
   assert.deepEqual(managementTabs.map(x=>x.name),['产品','管理审计','账号限制','管理员权限'],
     'product resource belongs to platform management with exactly four child destinations');
@@ -341,7 +388,7 @@ try {
   assert.equal(platformSidebar.present,true,'management remains in the sidebar on product page');
   const managementClick=await evaluate("(()=>{const x=[...document.querySelectorAll('nav[aria-label=平台管理二级导航] a')].find(e=>e.textContent?.trim()==='管理审计');x?.click();return !!x})()");
   assert.equal(managementClick,true,'management audit child is clickable from products');
-  await visible('操作类型');
+  await visible('精确目标 UUID');
   assert.ok(String(await evaluate('location.hash')).includes('/audit-logs'),
     'management child uses original audit Resource URL');
   await send('Page.reload',{ignoreCache:true});
@@ -376,11 +423,12 @@ try {
 
   const mobileOverflow=await evaluate('Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth');
   assert.ok(mobileOverflow<=12,'390px must not have whole-page horizontal overflow: '+mobileOverflow);
-  const demoUserId=sql("SELECT id FROM auth.users WHERE email='aisen-demo-01@aisencore.test'");
+  // Current local baseline keeps only the real platforms: use the scoped QA Admin.
+  const demoUserId=uid;
   assert.match(demoUserId,/^[a-f0-9-]{36}$/i);
   await send('Page.navigate',{url:base+'/#/users/'+demoUserId+'/show'});
   await visible('用户编号');
-  await visible('aisen-demo-01@aisencore.test');
+  await visible(email);
   await capture('operator-user-390.png');
   await axeAudit('user360-mobile');
   const userOverflow=await evaluate('Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-document.documentElement.clientWidth');
@@ -412,7 +460,7 @@ try {
     await sleep(160);
   }
   assert.equal(actualTarget,demoUserId,'protected governance form must prefill the identified User360 account');
-  await visible('aisen-demo-01@aisencore.test');
+  await visible(email);
   console.log('NAV_USER360_FORM PASS prefilled precise identity, protected confirmation remains');
 
 
@@ -435,19 +483,6 @@ try {
   await axeAudit('account-actions');
 
 
-  const morePages=[
-    ['memberships','成员关系','成员账号'],
-    ['grants','授权记录','授权账号'],
-    ['code-batches','发行批次','发行数量'],
-    ['codes','兑换码记录','安全前缀'],
-    ['redemptions','核销记录','核销账号'],
-    ['membership-events','成员事件','事件类型'],
-    ['admins','管理员权限','管理员账号'],
-    ['restrictions','账号限制','目标账号'],
-    ['audit-logs','管理审计','操作类型'],
-    ['users','查找账号','请输入邮箱查找账号'],
-    ['feedback','收件箱','收件箱'],
-  ];
   for(const [route,title,expected] of morePages){
     await send('Page.navigate',{url:base+'/#/'+route});
     await visible(title);
@@ -584,7 +619,8 @@ try {
   // when a product is selected in the top workspace scope switch.
   await send('Emulation.setDeviceMetricsOverride',{width:320,height:740,deviceScaleFactor:1,mobile:true});
   await send('Page.navigate',{url:base+'/#/code-batches'});
-  await visible('发行数量');
+  // Clean DB has no issuance rows: the bounded search field is present.
+  await visible('准确请求编号');
   const redemptionMobile=JSON.parse(await evaluate("JSON.stringify({viewport:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth,links:[...document.querySelectorAll('nav[aria-label=兑换码二级导航] a')].map(a=>a.textContent?.trim())})"));
   assert.deepEqual(redemptionMobile.links,['发行批次','兑换码记录','核销记录'],'all redemption child destinations at 320px');
   if(redemptionMobile.scroll>redemptionMobile.viewport+12){
@@ -610,6 +646,8 @@ try {
   await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
   console.log('NAV_MOBILE PASS 320 redemption + product / 390 platform management no overflow, all child views visible');
 
+  const demoBaseline = sql("SELECT EXISTS(SELECT 1 FROM public.products WHERE product_key='demo_atlas')") === 't';
+  if (demoBaseline) {
   const scopedCases=[
     ['products', "SELECT id FROM public.products WHERE product_key='demo_atlas'",'产品详情'],
     ['memberships', "SELECT id FROM public.product_memberships WHERE product_id=(SELECT id FROM public.products WHERE product_key='demo_atlas') LIMIT 1",'成员详情'],
@@ -682,12 +720,23 @@ try {
 
     console.log('AUTHENTICATED_DETAIL PASS '+resource);
   }
+  } else {
+    // The current QA DB has no demo_atlas, demo grants or 48 demo members.
+    const realProduct=sql("SELECT id FROM public.products WHERE product_key='aisenlens' AND status='active'");
+    assert.match(realProduct,/^[a-f0-9-]{36}$/i);
+    await send('Page.navigate',{url:base+'/#/products/'+realProduct+'/show'});
+    await visible('产品详情');
+    await send('Page.navigate',{url:base+'/#/admins/'+uid+'/show'});
+    await visible('管理员资格详情');
+    console.log('CLEAN_BASELINE_DETAILS PASS real product and scoped temporary Admin; legacy demo associations N/A');
+  }
 
   await send('Page.navigate',{url:base+'/#/memberships'});
-  await visible('成员账号');
+  await visible('精确成员 UUID');
   await visible('条记录');
   // T1: a real sortable column must expose aria-sort AND request a new
   // server-sorted page, rather than rearranging only 20 local rows.
+  if (demoBaseline) {
   const initialSort=await evaluate("(()=>{const th=[...document.querySelectorAll('th')].find(e=>e.textContent?.includes('加入日期'));return th?.getAttribute('aria-sort')??null})()");
   assert.equal(initialSort,'descending','membership joined_at defaults to descending');
   const sortClicked=await evaluate("(()=>{const b=[...document.querySelectorAll('.MuiTableSortLabel-root')].find(e=>e.textContent?.includes('加入日期'));b?.click();return !!b})()");
@@ -705,6 +754,7 @@ try {
   assert.ok(actualDates.length>5,'real member rows remain after server-sort');
   assert.ok(actualDates.every((v,i)=>i===0||v>=actualDates[i-1]),'membership joined_at is sorted ascending by backend');
   console.log('T1 PASS real Chrome column sort + aria-sort + ascending server results');
+  } else console.log('T1_DEMO_SORT N/A: no synthetic multi-row members exist in sanitized DB');
   // Exact UUID filters should reject malformed input before issuing PostgREST.
   const filterFocused=await evaluate("(()=>{const x=[...document.querySelectorAll('input')].find(e=>e.closest('.MuiFormControl-root')?.textContent?.includes('精确成员 UUID'));x?.focus();return !!x})()");
   assert.equal(filterFocused,true);
@@ -713,7 +763,7 @@ try {
   assert.equal(await evaluate("(()=>{const f=[...document.querySelectorAll('form')].find(e=>e.textContent?.includes('精确成员 UUID'));return !!f&&!!f.querySelector('button[type=submit]')?.disabled})()"),true,'malformed UUID cannot be submitted');
   console.log('T1 PASS browser invalid UUID search blocked before backend request');
   await send('Page.navigate',{url:base+'/#/memberships'});
-  await visible('成员账号');
+  await visible('精确成员 UUID');
   await evaluate("(()=>{let x=[...document.querySelectorAll('[role=combobox]')].find(e=>e.textContent?.includes('全平台视角'));if(!x)throw Error('Top product scope select missing');x.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,button:0}));return true;})()");
   await sleep(350);
   const options=await evaluate("[...document.querySelectorAll('[role=option]')].map(e=>e.textContent?.trim())");
@@ -728,7 +778,7 @@ try {
   await visible('条记录');
   const globalMemberText=await evaluate('document.body.innerText');
   const globalMemberCount=Number(globalMemberText.match(/共\s*(\d+)\s*条记录/)?.[1]??0);
-  assert.ok(globalMemberCount>=48,'all baseline synthetic demo members should be visible regardless of other temporary fixtures');
+  assert.equal(globalMemberCount,Number(sql('SELECT count(*) FROM public.product_memberships')),'global member count must match actual DB');
   console.log('SCOPED_EMPTY_RECOVERY PASS aisenlens -> 全平台 '+globalMemberCount+' records');
   // UI-05: rapidly change scopes while requests are in flight. A late result
   // for the previous scope must never be presented as current data.
@@ -743,7 +793,7 @@ try {
   await selectWorkScope('全平台视角');
   await selectWorkScope('aisenlens');
   await visible('当前产品暂无成员关系');
-  assert.equal(await evaluate("document.body?.innerText.includes('共 48 条记录')"),false,
+  if(globalMemberCount>0) assert.equal(await evaluate("document.body?.innerText.includes('共 "+globalMemberCount+" 条记录')"),false,
     'UI05 stale global records must not be rendered into empty product scope');
   await selectWorkScope('全平台视角');
   await visible('共 '+globalMemberCount+' 条记录');
@@ -754,20 +804,22 @@ try {
   await visible('请输入邮箱查找账号');
   const focus=await evaluate("(()=>{const x=document.querySelector('input[type=text]');if(x){x.focus();return x.outerHTML.slice(0,180)}return null;})()");
   assert.ok(focus,'User lookup input must be focusable');
-  await send('Input.insertText',{text:'aisen-demo-01@aisencore.test'});
+  await send('Input.insertText',{text:email});
   await evaluate("document.querySelector('button[type=submit]')?.click()");
-  await visible('aisen-demo-01@aisencore.test');
+  await visible(email);
   await visible('共 1 条记录');
   await capture('operator-users-exact-lookup-1440.png');
   console.log('EXACT_IDENTITY_LOOKUP PASS real RPC email search');
   await send('Page.navigate',{url:base+'/#/memberships'});
-  await visible('成员账号');
+  await visible('精确成员 UUID');
   await send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
   await sleep(250);
   const memberMobile=await evaluate('Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-document.documentElement.clientWidth');
   assert.ok(memberMobile<=12,'memberships mobile document overflow '+memberMobile);
   await capture('operator-memberships-390.png');
 
+  } else console.log('ADMIN_NAVIGATION_SKIPPED operations-only slice; previous navigation acceptance is independent');
+  if(qaPhase!=='navigation'){
   // Isolated real write E2E: temporary QA-owned product only; never change demo rows.
   await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
   await send('Page.navigate',{url:base+'/#/products/create'});
@@ -846,6 +898,7 @@ try {
   assert.equal(sql("SELECT count(*) FROM public.membership_events WHERE membership_id='"+membershipId+"' AND actor_type='admin' AND action IN ('suspend','restore')"),'4');
   console.log('X07 PASS true AAL2 admin UI active/suspended/active and left/suspended/left, events preserved');
 
+  if(qaPhase!=='operations-issuance' && qaPhase!=='operations-responsive' && qaPhase!=='operations-feedback'){
   // A second real write using the dedicated Pro form and a temporary QA actor/product.
   await send('Page.navigate',{url:base+'/#/grant-new?user_id='+uid});
   await visible('授予 Pro 权益');
@@ -993,10 +1046,24 @@ try {
   }
 
 
+  } else console.log('ADMIN_GRANTS_SLICE_SKIPPED');
+  if(qaPhase==='operations-issuance'){
+    // Seed only the one QA-scoped grant needed by later revoke-detail tests.
+    // Its browser grant/UNKNOWN behavior belongs exclusively to the grants slice.
+    const seed=await api('/rest/v1/rpc/admin_grant_entitlement','POST',{
+      p_target_user_id:uid,p_product_id:qaProductId,p_tier:'pro',p_mode:'duration',
+      p_duration_days:30,p_starts_at:null,p_ends_at:null,p_is_lifetime:false,
+      p_reason:'QA issuer detail requires one owned grant',
+      p_request_id:'qa_issuer_'+randomBytes(10).toString('hex'),
+    },session.access_token);
+    assert.ok(seed.grant_id,'Issuer requires its own QA scoped grant');
+  }
+  if(qaPhase!=='operations-grants' && qaPhase!=='operations-responsive' && qaPhase!=='operations-feedback'){
   // Protected issuance: assert plaintext appears only in first-response modal,
   // never print/capture/export the actual secret code in QA artifacts.
   async function openIssuanceFromList(){
-    await visible('发行数量');
+    // The issuance list can be genuinely empty on the owner's sanitized DB.
+    await visible('准确请求编号');
     // The route and lazy-loaded list action can become visible in different frames.
     // Wait for the actual action rather than treating a table header as page readiness.
     let opened=false;
@@ -1252,6 +1319,8 @@ try {
   console.log('X05 PASS real product activation/suspension and safe audit path');
 
 
+  } else console.log('ADMIN_ISSUANCE_SLICE_SKIPPED');
+  if(qaPhase!=='operations-grants' && qaPhase!=='operations-issuance' && qaPhase!=='operations-feedback'){
   // X01/X17 limited browser-level responsive and keyboard acceptance.
   const viewportRoutes=[
     ['/memberships','成员关系'],['/grants','授权记录'],
@@ -1280,9 +1349,10 @@ try {
     for(const [route,title,expected] of morePages){
       await send('Page.navigate',{url:base+'/#/'+route});
       await visible(title);
-      // Below 768px the desktop table header is intentionally replaced by
-      // accessible record cards; do not mistake that responsive behavior for a failure.
-      await visible(w<900&&route!=='users'&&route!=='feedback'?'第 ':expected);
+      // Empty lists do not render row-number cards or desktop table headers.
+      // The bounded filter/lookup control is present in both empty and populated
+      // responsive states; validate it instead of requiring a fabricated row.
+      await visible(expected);
       const width=JSON.parse(await evaluate("JSON.stringify({client:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth})"));
       assert.ok(width.scroll<=width.client+12,route+' at '+w+'px overflows document; '+JSON.stringify(width));
       responsiveChecks++;
@@ -1423,9 +1493,103 @@ try {
   await visible('管理概览');
   console.log('X03 PASS actual Chrome email/password -> verified TOTP -> AAL2 dashboard; no secrets persisted in QA logs');
 
-  console.log('REAL Auth AAL2 + Chrome ALL 10 remaining resources + 5 baseline pages PASS.');
-  console.log('REAL Auth AAL2 + Chrome Dashboard/Products/User360/GrantForm/IssueCodes PASS; 390px overflow checked; 1440px/390px evidence saved.');
+  } else console.log('ADMIN_RESPONSIVE_SECURITY_SLICE_SKIPPED');
+
+  if(qaPhase==='operations-feedback'){
+    // F08 real Admin UI queue E2E. Existing F07 covers Lens JWT Edge/S3 upload;
+    // this one creates one strictly QA-scoped DB fixture to exercise four queues
+    // and actual AAL2 browser RPC transitions, without cloud/object storage.
+    qaFeedbackId=randomUUID();
+    qaFeedbackRequestId=randomUUID();
+    const feedbackText='Lens/Core Stage2 owned QA feedback '+randomBytes(5).toString('hex');
+    sql("INSERT INTO public.user_feedback(id,user_id,product_id,content,request_id) VALUES ("+
+      "'"+qaFeedbackId+"','"+uid+"','"+qaProductId+"','"+feedbackText+"','"+qaFeedbackRequestId+"')");
+    assert.equal(sql("SELECT queue_state||'|'||version FROM public.user_feedback WHERE id='"+qaFeedbackId+"'"),
+      'inbox|1','new QA feedback must begin in inbox at version 1');
+    const target=base+'/#/feedback/'+qaFeedbackId+'/show';
+    const queuePage=async(path,label)=>{
+      await send('Page.navigate',{url:base+'/#'+path});
+      await visible(label);
+      await visible(feedbackText);
+      console.log('FEEDBACK_QUEUE_UI PASS '+path);
+    };
+    const detail=async(label)=>{
+      await send('Page.navigate',{url:target});
+      // Same-route SPA navigation does not refresh a stale optimistic version.
+      // Force a fresh server read after an expected 409 before the next write.
+      await send('Page.reload',{ignoreCache:true});
+      await visible('反馈内容');
+      await visible(feedbackText);
+      await visible(label);
+    };
+    const click=async(label)=>{
+      assert.equal(await evaluate("(()=>{const x=[...document.querySelectorAll('button')].find(b=>b.textContent?.trim()==="+JSON.stringify(label)+");if(x&&!x.disabled)x.click();return !!x&&!x.disabled})()"),true,
+        'Admin feedback action must be enabled: '+label);
+    };
+    const state=async(queue,version)=>{
+      for(let i=0;i<80;i++){
+        if(sql("SELECT queue_state||'|'||version FROM public.user_feedback WHERE id='"+qaFeedbackId+"'")===queue+'|'+version)return;
+        await sleep(150);
+      }
+      throw Error('Feedback queue transition missing '+queue+' '+version);
+    };
+    await queuePage('/feedback','收件箱');
+    await detail('加入处理工作台');
+    await click('加入处理工作台');
+    await state('workbench',2);
+    await queuePage('/feedback/workbench','处理工作台');
+    await detail('归档反馈');
+
+    // Simulate a different authorized Admin process updating the same version
+    // while the browser has version=2. The stale browser must show 409 and
+    // must not silently override concurrent tags, star or priority changes.
+    const external=await api('/rest/v1/rpc/admin_feedback_v3','POST',{
+      p_feedback_id:qaFeedbackId,p_expected_version:2,p_action:'save',
+      p_priority:'high',p_tags:['qa-stage2'],p_is_starred:true,
+      p_internal_note:'QA concurrent update from a separate AAL2 request',
+    },session.access_token);
+    assert.equal(external.version,3,'server-side concurrent write increments version');
+    await click('归档反馈');
+    await visible('反馈已被其他操作更新，请刷新后核对并重试。');
+    assert.equal(sql("SELECT queue_state||'|'||version FROM public.user_feedback WHERE id='"+qaFeedbackId+"'"),
+      'workbench|3','stale UI may not change the queue');
+    assert.equal(sql("SELECT is_starred FROM public.user_feedback WHERE id='"+qaFeedbackId+"'"),'t');
+    console.log('FEEDBACK_UI_409 PASS actual stale Chrome update rejected, concurrent labels preserved');
+
+    await detail('归档反馈');
+    await click('归档反馈');
+    await state('archived',4);
+    await queuePage('/feedback/archived','已归档');
+    await detail('重新进入工作台');
+    await click('重新进入工作台');
+    await state('workbench',5);
+    await detail('移入回收站');
+    await click('移入回收站');
+    await visible('移入回收站？');
+    await click('确认移入');
+    await state('trashed',6);
+    await queuePage('/feedback/trash','回收站');
+    await detail('恢复到删除前位置');
+    await click('恢复到删除前位置');
+    await state('workbench',7);
+    await queuePage('/feedback/workbench','处理工作台');
+    // psql -qAt returns text: lexical comparisons misclassify 10+ rows (e.g. '10' < '5').
+    // Keep the actual numeric evidence instead of weakening the audit threshold.
+    const internalEventCount=Number(sql("SELECT count(*) FROM public.feedback_events WHERE feedback_id='"+qaFeedbackId+"' AND visibility='internal'"));
+    const feedbackAuditCount=Number(sql("SELECT count(*) FROM public.admin_audit_log WHERE actor_user_id='"+uid+"' AND target_id='"+qaFeedbackId+"' AND action LIKE 'feedback.%'"));
+    console.log('FEEDBACK_FOUR_QUEUES_COUNTS internal_events='+internalEventCount+' admin_audits='+feedbackAuditCount);
+    assert.ok(Number.isSafeInteger(internalEventCount)&&internalEventCount>=5,
+      'five or more internal feedback transitions required; observed '+internalEventCount);
+    assert.ok(Number.isSafeInteger(feedbackAuditCount)&&feedbackAuditCount>=6,
+      'six or more Admin feedback audit entries required; observed '+feedbackAuditCount);
+    console.log('FEEDBACK_ADMIN_FOUR_QUEUES PASS inbox->workbench->archived->workbench->trash->restored with full audit');
+  }
+
+  console.log('ADMIN_OPERATIONS_SLICE PASS '+qaPhase+' protected business checks');
+  } else console.log('ADMIN_NAVIGATION_SLICE PASS all 10 read-only resource views, UX/error/empty-state checks; no business product created');
+  if(qaPhase==='full')console.log('REAL Auth AAL2 + Chrome navigation and operations journey PASS.');
 } finally {
+  qaInCleanup = true; // Cleanup must never be refused by the QA soft deadline.
   try{exclusiveGuard.close();}catch{}
   try{ws?.close();}catch{}
   if(win){
@@ -1443,6 +1607,18 @@ try {
       sql("DELETE FROM public.admin_audit_log WHERE actor_user_id='"+uid+"'");
     }catch(error){qaCleanupFailures.push('QA actor audits');console.error('QA audit cleanup needs review: '+error.message);}
   }
+
+  if(qaFeedbackId&&uid&&qaProductId&&qaFeedbackRequestId){
+    try{
+      const owner=sql("SELECT user_id::text||'|'||product_id::text||'|'||request_id::text FROM public.user_feedback WHERE id='"+qaFeedbackId+"'");
+      assert.equal(owner,uid+'|'+qaProductId+'|'+qaFeedbackRequestId,
+        'QA feedback cleanup ownership verified; do not delete non-QA feedback');
+      sql("DELETE FROM public.feedback_events WHERE feedback_id='"+qaFeedbackId+"'");
+      sql("DELETE FROM public.user_feedback WHERE id='"+qaFeedbackId+"' AND user_id='"+uid+"' AND product_id='"+qaProductId+"' AND request_id='"+qaFeedbackRequestId+"'");
+      console.log('QA_FEEDBACK_CLEANUP PASS owned feedback and internal events removed');
+    }catch(error){qaCleanupFailures.push('QA feedback');console.error('Scoped QA feedback cleanup needs review: '+error.message);}
+  }
+
   // Scoped cleanup: only remove this test's random product and associated audit rows.
   try{
     const actual=qaProductId??sql("SELECT id FROM public.products WHERE product_key='"+qaProductKey+"'");
@@ -1501,7 +1677,9 @@ try {
   if(qaCleanupFailures.length){
     console.error('QA_CLEANUP_FAILED: '+qaCleanupFailures.join(', '));
     process.exitCode=1;
-  }else console.log('QA_CLEANUP_VERIFIED no QA Auth or product records remain');
+  }else console.log(qaFixtureStarted
+    ? 'QA_CLEANUP_VERIFIED no QA Auth or product records remain'
+    : 'QA_PRECHECK_BLOCKED no temporary QA identity or product was created');
   await sleep(350);
   try{rmSync(profile,{recursive:true,force:true,maxRetries:15,retryDelay:150});}
   catch{console.warn('Chrome profile still locked by Windows; manual Temp cleanup may be needed.');}

@@ -1,12 +1,14 @@
 # AisenCore｜当前执行计划索引
 
-> **2026-10-27 状态**：第一阶段开发由项目所有者宣布基本结束，第二阶段 AisenLens 本地对接处于准备中。正式第一阶段签收和未执行的质量门禁仍在 [唯一未完成清单](./TODO.md) 中保持 OPEN；第二阶段真实双端互通为 NOT RUN。旧 D1/D2/D3/S1/D4 是技术工作流，**不是五个交付阶段**。
+> **2026-10-28 状态**：Core×Lens 第二阶段实际本地联合开发已开始，真实 Auth/兑换/反馈与隔离本地对象已有分项 PASS，Admin D3 四队列与导航已分段复测 PASS，其余负例和整体签收仍 OPEN。第一阶段正式签收与独立 WCAG/性能门禁仍未关闭；旧 D1/D2/D3/S1/D4 是技术工作流，**不是五个交付阶段**。
 
 ## 当前阅读与执行顺序
 
+**2026-10-28 本轮独立收口施工**：[Core × Lens × Admin 三端计划](./aisenlens-aisencore-local-integration/2026-10-28-stage2-local-closure-execution-plan.md)。本文件记录继续开发/测试/清理/签收证据，不取代唯一 TODO。
+
 **本次双仓对接施工主控**：[详细总执行计划](./aisenlens-aisencore-local-integration/00-integration-master-plan.md)及其第一/二/三阶段文件；[阶段过渡计划B0～B4](./aisencore-mvp/phase-transition-optimization-plan-2026-10-27.md)保留前期事实/证据与原任务映射，不另行排一套对接步骤。
 
-**规划与审查分开**：[对接目录索引](./aisenlens-aisencore-local-integration/README.md)列出1份总计划、7份详细计划和[源码审查/已确认决定](./aisenlens-aisencore-local-integration/2026-10-27-cross-repository-audit-and-integration-plan.md)；当前只编写文档，实施与真实双端仍NOT RUN。
+**规划与审查分开**：[对接目录索引](./aisenlens-aisencore-local-integration/README.md)列出原总计划、详细计划和[源码审查/已确认决定](./aisenlens-aisencore-local-integration/2026-10-27-cross-repository-audit-and-integration-plan.md)；实施与真实本地双端验收按最新专项证据更新，未综合签收不得标整个阶段 PASS。
 
 1. **[唯一未完成任务清单](./TODO.md)** — 所有剩余事项、阶段、优先级和关闭条件，已完成施工流水不再夹杂。
 2. **[第二阶段 AisenLens 本地端联调方案](./aisencore-mvp/phase2-aisenlens-local-integration-plan.md)** — 实际 AisenLens 操作数据、两端接口/身份/Pro/兑换/反馈/备份的对齐与验收。

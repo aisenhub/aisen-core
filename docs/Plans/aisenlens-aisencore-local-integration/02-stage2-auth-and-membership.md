@@ -1,10 +1,12 @@
 # 第二阶段A详细计划｜环境、身份、成员、昵称与生命周期
 
-> **状态：联合开发 IN PROGRESS / PARTIAL。** 对应TODO LENS-01～03，审查F01/F03及决定7/8/9。必须先取得[第一阶段准出](./01-stage1-core-readiness.md)，本包通过后进入[资格与兑换](./03-stage2-entitlements-and-redemption.md)。总范围见[总计划](./00-integration-master-plan.md)。
+> **状态：本地真实注册/确认/恢复、登录登出主路径 PASS；全生命周期负例 PARTIAL。** 对应TODO LENS-01～03，审查F01/F03及决定7/8/9。必须先取得[第一阶段准出](./01-stage1-core-readiness.md)，本包通过后进入[资格与兑换](./03-stage2-entitlements-and-redemption.md)。总范围见[总计划](./00-integration-master-plan.md)。
 
 **2026-10-27 可复测切片**：Lens `features/auth/coreAuth.ts` 新建唯一 `@supabase/supabase-js@2.76.1` 共享浏览器 client（仅配置公开 `VITE_AISENCORE_URL`/`VITE_AISENCORE_PUBLISHABLE_KEY` 时启用、自动刷新、session 独立 storageKey）；真实 `AuthPage`/设置 AuthForm 接上登录/注册/邮件/恢复操作，配置缺失时 Free 及本机项目仍可用。设置展示真实会话邮箱/昵称，local 登出先锁 `aiCredentialVault` 内存密钥，再调用 `signOut({scope:'local'})`，不删除已加密仓库或项目。Core `supabase/config.toml` 新增仅 localhost/127.0.0.1:8443 的 confirm/reset 白名单，**配置尚未重启验证实际应用**。Lens 浏览器 QA `tests/features/workflow/core-account-feedback.browser.test.js` 使用真实临时确认账号、正常 `/login`→GoTrue→设置→Edge 零图→PostgreSQL 和 local logout，含用户名/产品归属、反馈不产生 membership、临时身份/反馈清理断言 **1/1 PASS**；WebApp TypeScript PASS。邮件确认/密码重置真实邮件链接、跨标签、多用户切换旧任务与 MFA 等仍 NOT RUN；不把当前切片记完整 A 包验收。
 
 **2026-10-27 本轮邮件复验补充**：直接运行 Core `node scripts/test-d2-auth-api-mfa.mjs`，真实 GoTrue+Mailpit 注册/确认、签名 JWT、密码重置链接/恢复密码及 HTTP/MFA 全部 PASS，合成测试账号清理。**环境差异仍 BLOCKED**：读取运行中 `supabase_auth_Aisencore` 非秘密配置发现 `GOTRUE_URI_ALLOW_LIST` **尚未包含 Lens `localhost/127.0.0.1:8443`**，虽然源文件 `supabase/config.toml` 已添加；尚未为载入配置停止/重建现有 DB/Auth，故不能将此标作 Lens 8443 邮件页面 E2E PASS。需要安全地重新加载 Auth 配置并复测 Lens 确认/找回页面、跨浏览器回调及无旧会话边界。
+
+**2026-10-27 最新实测（覆盖上方历史环境叙述）**：已安全更新正在运行的 GoTrue Auth，仅新增 localhost/127.0.0.1:8443 的回调，Kong/DB 保持健康；旧 Auth 以停机容器保留回滚。由于现有 8443 IPv4 Vite 是未配置 Core 公共变量的其他开发进程，不终止它；通过 `python scripts/test-stage2-lens-mail-browser.py` 在临时 9443 回调与独立 Vite/多个全新 Chrome 配置中，实测真实 GoTrue+Mailpit 注册、跨浏览器邮件确认及恢复密码，旧密码被拒/新密码成功、注册不产生会员、合成身份清理，**完整退出码 0 / 1/1 PASS**，最终恢复 8443 Auth 配置。修复 Lens `coreAuth.ts` 在 SDK 抢先消费 PASSWORD_RECOVERY 时 React effect 迟订阅造成的重置失败；普通登录不允许当作恢复会话。正式 8443 进程仍须启动时注入公开 Core 连接变量，撤销 refresh、多标签、切换在途任务负例仍开放。
 
 ## 1. 输入与完成结果
 
@@ -84,4 +86,4 @@ Core复用 `scripts/test-d2-auth-api-mfa.mjs`、成员004 SQL及对应HTTP测试
 
 | 范围 | 当前状态 | 后续记录 |
 | --- | --- | --- |
-| A-01～07 / A-T01～10（含A-T03B） | NOT RUN；SDK/真实页面接线未在本计划执行 | 两仓版本/环境、命令退出码、HTTP/Auth/DB/存储证据、QA清理、未覆盖及验收人 |
+| A-01～07 / A-T01～10（含A-T03B） | **PARTIAL**：2026-10-28 真GoTrue/Mailpit→独立Chrome注册确认/找回/旧密码拒绝/已消费恢复凭据重放拒绝1/1 PASS；Lens真实登录/登出、兑换首次加成员/只读不加、本人反馈也已PASS；refresh撤销、错误或过期邮件链接、多标签旧响应、跨产品切号与任务/凭据边界仍OPEN | 当前证据与逐项缺口见[2026-10-28 本地三端收口执行计划](./2026-10-28-stage2-local-closure-execution-plan.md)，不是整个A包PASS |
