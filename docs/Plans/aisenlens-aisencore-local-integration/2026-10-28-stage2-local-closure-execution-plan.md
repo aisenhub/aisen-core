@@ -21,8 +21,8 @@
 | --- | --- | --- | --- |
 | CL-00 P0 | 环境/清洁门禁 | 真实本地服务、原管理员/两产品保留、QA=0 | **PASS** |
 | CL-01 P0 | Admin D3 修复 | `operations-feedback` 四队列/事件/审计断言修复并跑绿；随后 `navigation`、`operations-grants`、`operations-issuance`、`operations-responsive` 全部**独立退出0且清洁**，禁止易超时 full 冒充 | **5/5 分段 PASS**；独立人工视觉/WCAG仍归第一阶段 |
-| CL-02 P0 | Auth/邮件/多会话 | 真实 Lens 注册确认和恢复链接的错误/失效/重放、普通登录不能 reset、refresh撤销、多标签旧响应、8443 env/allowlist | **跨浏览器注册/恢复、错误确认hash拒绝、无恢复凭据拒绝、已用恢复凭据拒绝 PASS**；真正 TTL 过期/refresh撤销/多标签仍 OPEN |
-| CL-03 P0 | 成员/身份隔离 | 登录/反馈/只读不 join；合法首次 active，left明确rejoin、suspended/blocked、跨产品、切号保险库Key/项目不损失 | PARTIAL |
+| CL-02 P0 | Auth/邮件/多会话 | 真实 Lens 注册确认和恢复链接的错误/失效/重放、普通登录不能 reset、refresh撤销、多标签旧响应、8443 env/allowlist | **邮件确认/恢复错误码、GoTrue全局登出旧refresh拒绝、双标签切号/登出/迟到响应及内存Key清理 Chrome PASS**；真TTL过期、正式8443 Vite配置及其他跨设备/离线组合 OPEN |
+| CL-03 P0 | 成员/身份隔离 | 登录/反馈/只读不 join；合法首次 active，left明确rejoin、suspended/blocked、跨产品、切号保险库Key/项目不损失 | **left→Lens显式rejoin→原membership UUID/Grant恢复、suspended无入口/直调409、Admin恢复，真实Chrome+SQL PASS**；跨产品/完整任务与存储保留人工矩阵 OPEN |
 | CL-04 P0 | 权益/兑换 | Admin AAL2 发码/直授→Lens check_access/历史/兑换、30天/未来/永久/撤销、R-16不耗码、跨产品、抢最后一次、429/UNKNOWN/恢复 | 真 Chrome 主路径及并发 LCK01～08 **PASS**；其他 HTTP/UI 异常 OPEN |
 | CL-05 P0 | 反馈 Edge 与 S3 | 真 Lens 0/1/2图→Edge/SQL/本机私有对象，第二图中断、DB写失败/UNKNOWN、409、短URL与撤权、引用安全/孤儿清理 | 主路径 PASS，故障 OPEN |
 | CL-06 P0 | Admin 反馈/ZIP | inbox/workbench/archive/trash、version409、敏感范围、AAL1拒绝与AAL2 ZIP字节一致、缺图/中断审计 | 四队列/409 Chrome与隔离 S3 AAL2 ZIP/原字节 **PASS**，缺图/导出在途撤权与异常矩阵 OPEN |
@@ -63,10 +63,12 @@ Core 门禁：`python scripts/check-local-admin-qa-cleanliness.py`。Admin：环
 | 2026-10-28 提交前历史审查 | 修正 Core 阶段 TODO、02/03/04/06 验证表与 Lens 实测记录；仅清除本轮 Deno 测试新增的根 `deno.lock`，保留先前并行成果。原始快照是 Core 43 modified / 6 untracked、Lens 106 modified / 12 untracked，均0冲突；当时尚未提交 | **历史状态，已由下方 GitHub 合并事实取代** |
 | 2026-10-28 GitHub正式合并 | **先 Lens 后 Core**：Lens 118文件经 [PR #41](https://github.com/aisenhub/aisenlens/pull/41) 合并 `b433c15`；Core 48文件经 [PR #21](https://github.com/aisenhub/aisen-core/pull/21) 合并 `4ca908b`；本地 main 均快进、GitHub与本地已删除原合并分支。后续新增 Lens 认证修复3文件经 [PR #42](https://github.com/aisenhub/aisenlens/pull/42) 合并 `81aec33`，其分支也清理 | **提交/合并/旧分支清理 PASS**，不代表 Stage2 整体签收 |
 | 2026-10-28 新增负例红→绿 | Lens 真GoTrue HTTP403 `otp_expired` 错误原被 UI 误报网络故障；先加无效确认hash测试发现FAIL，随后仅映射已证实的 `otp_expired` 到 `INVALID_CONFIRMATION`，真正上游故障不变；另加独立 Chrome 无任何恢复凭据直接改密拒绝。Lens完整新浏览器邮件确认/找回及旧密码、错误码、已消费凭据拒绝 **1/1 PASS / exit 0**，9443回调恢复8443，Core本地库前后清洁 | **CL-02 无效确认及无凭据重置安全负例 PASS**；真 TTL过期/refresh撤销/多标签仍OPEN |
+| 2026-10-28 新增跨标签安全红→绿 | Lens [PR #43](https://github.com/aisenhub/aisenlens/pull/43) 合并 `4ae3b39`：同一浏览器 A lifetime Pro→另标签 B 登录，真A `check_access` 响应被CDP截留、B切号后才放行，B不承接Pro/Grant/会员；最初发现旧A标签内存AI Key残留 **FAIL**，修复 Supabase 认证事件在身份变化/远端登出时清内存Key，不动加密密文/项目；同账号 GoTrue 正常 refresh 不误锁，GoTrue全局登出旧refresh被拒；真Chrome **1/1 PASS**，Core QA前后基线 PASS；临时分支已删除 | **CL-02/03 跨标签、撤销refresh凭据与内存Key隔离子项 PASS**；跨设备离线及完整存储人工准出仍 OPEN |
+| 2026-10-28 新增成员自助闭环 | Lens [PR #44](https://github.com/aisenhub/aisenlens/pull/44) 合并 `68666de`：增加仅在 `MEMBERSHIP_LEFT` 出现的“重新加入本产品”按钮，调用正式本人 `rejoin_product`、会话归属校验并重新查询权益。真实 AAL2+Chrome+SQL 证明真实left后查询不自恢复、点击后原membership UUID/终身Grant恢复且仅一条leave/rejoin事件；Admin暂停后无按钮且本人直调RPC 409，Admin恢复原active与Grant；完整权益/反馈/跨标签旧回复回归 **1/1 PASS**、QA清洁，typescript/lint/build/合同7/7 PASS；分支已删除 | **CL-03 left/rejoin/suspended负例 PASS**；跨产品和人工端到端仍OPEN |
 | 2026-10-28 | 其余三端完整组合与正式签收 | PARTIAL / OPEN，严禁合并各专项 PASS 冒充 CL-07 全项准出 |
 
 ## 6. 停止与交付标准
 
 发生 QA 数据/对象清理异常、Chrome外部强杀、并行写库冲突、身份/产品不符、未知提交时停止下一轮写入，先安全只读取证。每个条目记录「版本/环境→命令/退出码→浏览器/HTTP→SQL/对象/审计→清理→尚未覆盖」，不伪造通过，不以历史阶段记录代签。最终所有者确认前 CL-10 一直 OPEN。
 
-**尚未满足本轮完整准出的重点**：CL-02 真正 TTL 过期认证链接、refresh撤销、多标签及正式8443公开环境变量注入；CL-03 跨产品/left重新加入及用户切换在途任务；CL-04 更多真实客户端跨产品、15分钟快照和故障时效负例；CL-05/06 真Edge/Auth/DB故障注入、第二张图中断/安全孤儿清理、Admin敏感导出漂移；CL-07 同一QA用户从注册确认一直到两图ZIP及撤权/切号/离线恢复的全部综合矩阵；CL-08 人工UX/WCAG及本轮回归边界；CL-10 正式所有者签收。外部个人模板云备份/真实R2/云部署仍是**延期而非当前失败**。全部剩余事项已入表，不授权生成假的全部PASS或上线承诺。
+**尚未满足本轮完整准出的重点**：CL-02 真正 TTL 过期认证链接、跨设备离线refresh时效及正式8443公开环境变量注入；CL-03 跨产品及切号在途AI/项目状态与加密存储完整人工回归；CL-04 更多真实客户端跨产品、15分钟快照和故障时效负例；CL-05/06 真Edge/Auth/DB故障注入、第二张图中断/安全孤儿清理、Admin敏感导出漂移；CL-07 同一QA用户从注册确认一直到两图ZIP及撤权/切号/离线恢复的全部综合矩阵；CL-08 人工UX/WCAG及本轮回归边界；CL-10 正式所有者签收。外部个人模板云备份/真实R2/云部署仍是**延期而非当前失败**。全部剩余事项已入表，不授权生成假的全部PASS或上线承诺。
