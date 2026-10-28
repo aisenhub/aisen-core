@@ -21,7 +21,7 @@
 | --- | --- | --- | --- |
 | CL-00 P0 | 环境/清洁门禁 | 真实本地服务、原管理员/两产品保留、QA=0 | **PASS** |
 | CL-01 P0 | Admin D3 修复 | `operations-feedback` 四队列/事件/审计断言修复并跑绿；随后 `navigation`、`operations-grants`、`operations-issuance`、`operations-responsive` 全部**独立退出0且清洁**，禁止易超时 full 冒充 | **5/5 分段 PASS**；独立人工视觉/WCAG仍归第一阶段 |
-| CL-02 P0 | Auth/邮件/多会话 | 真实 Lens 注册确认和恢复链接的错误/失效/重放、普通登录不能 reset、refresh撤销、多标签旧响应、8443 env/allowlist | **邮件确认/恢复错误码、临时GoTrue真实2秒TTL确认+找回两类过期拒绝、全局登出旧refresh拒绝、双标签切号/登出/迟到响应及内存Key清理 PASS**；正式8443 Vite公开变量与跨设备/离线组合 OPEN |
+| CL-02 P0 | Auth/邮件/多会话 | 真实 Lens 注册确认和恢复链接的错误/失效/重放、普通登录不能 reset、refresh撤销、多标签旧响应、8443 env/allowlist | **邮件确认/恢复错误码、临时GoTrue真实2秒TTL两类过期拒绝、独立GoTrue双会话local/global登出与refresh隔离、双标签切号/迟到响应及内存Key清理、正式持续运行8443本地公开变量+真实Chrome登录 PASS**；跨设备离线恢复及所有组合 OPEN |
 | CL-03 P0 | 成员/身份隔离 | 登录/反馈/只读不 join；合法首次 active，left明确rejoin、suspended/blocked、跨产品、切号保险库Key/项目不损失 | **left→Lens显式rejoin→原membership UUID/Grant恢复、suspended无入口/直调409、Admin恢复，真实Chrome+SQL PASS**；跨产品/完整任务与存储保留人工矩阵 OPEN |
 | CL-04 P0 | 权益/兑换 | Admin AAL2 发码/直授→Lens check_access/历史/兑换、30天/未来/永久/撤销、R-16不耗码、跨产品、抢最后一次、429/UNKNOWN/恢复 | 真 Chrome 主路径/两产品码隔离及并发 LCK01～08 **PASS**；其他限时快照/HTTP故障 OPEN |
 | CL-05 P0 | 反馈 Edge 与 S3 | 真 Lens 0/1/2图→Edge/SQL/本机私有对象，第二图中断、DB写失败/UNKNOWN、409、短URL与撤权、引用安全/孤儿清理 | 主路径、**真实第二图PUT 503→同UUID补齐、原号异参409，以及前后正式引用RPC对账/普通用户403 PASS**；真DB提交未知及长期孤儿删除策略 OPEN |
@@ -69,10 +69,11 @@ Core 门禁：`python scripts/check-local-admin-qa-cleanliness.py`。Admin：环
 | 2026-10-28 F07 真实故障注入 | 仅修改隔离本机 S3 HTTP 夹具、不修改正式 Edge：两张图第1张PUT成功、第2张持续503导致 Edge 503，SQL无反馈记录、保留1个未确认对象以避免误删并发引用；恢复对象服务后**同UUID/同图**重试201、两图入库、同号重放200且不重复上传；同UUID改变内容返回409，不新增任何对象或记录。真实 Lens Chrome→Core Edge→本地S3原图→Admin AAL2 ZIP/AAL1拒绝及本人/他人私图均再次 PASS，隔离对象与数据库完全清理。一次运行曾在 Edge 冷启动的浏览器预探测遇503而 FAIL，修复夹具需连续4次401才认为就绪后全套 **exit 0 PASS** | **CL-05 第二张图存储503/安全恢复与同UUID异参409 PASS**；实际DB提交未知/孤儿审计/导出中断仍OPEN，绝不冒充真实Cloudflare R2 |
 | 2026-10-28 真实引用对账扩展 | 用相同实际Edge/S3故障夹具再调用 Core **现行 service-role only** `feedback_referenced_keys` RPC：在第二图PUT 503之后第1张对象未列入DB引用；同UUID恢复提交201之后两张对象均被列入正式附件引用；普通用户JWT直调RPC 403。初次测试误用带bucket的HTTP路径而RPC返回422，修正为bucket-relative真实object_key后才验收；Lens Chrome冷启动曾偶发503，Lens测试改为连续2次401健康确认（持续503仍FAIL）；最终完整F07 **exit 0**，Lens双图/ZIP原字节/503恢复/409和QA+本机对象清理全部PASS | **CL-05 未提交→已提交引用转换与RPC最小权限 PASS**；只读审计没有自动删孤儿，真实DB结果未知与长期安全删除仍OPEN |
 | 2026-10-28 真实邮件TTL过期 | 现行本地GoTrue `GOTRUE_MAILER_OTP_EXP=3600` 不可将随机坏链接等同真正过期。扩展现有**可回滚的临时9443 GoTrue容器**为专用 `--test-expired-only` 模式，临时OTP有效期仅2秒，实际注册确认邮件与真实恢复邮件均等待6秒后交给GoTrue验证，返回明确 `otp_expired`；账号未被确认，原密码仍有效，测试合成身份删除。外层脚本确认**原8443 Auth、原3600秒TTL与白名单已恢复**；前后 `LOCAL_ADMIN_QA_BASELINE_PASS`，总退出码0 | **CL-02 两类真实过期邮件链接 PASS**；此前无效证明/已使用重放亦保留独立PASS；正式8443 Lens环境变量与跨设备/离线仍OPEN |
+| 2026-10-28 双会话及正式8443本地入口 | Lens [PR #47](https://github.com/aisenhub/aisenlens/pull/47) 真实完整AAL2/Chrome 1/1 PASS，**同一合成账号两个独立GoTrue会话**：A local logout后A旧refresh被拒但B成功refresh，B global logout后B最新refresh亦被拒，会员/授撤权/跨标签/QA仍PASS。Lens [PR #48](https://github.com/aisenhub/aisenlens/pull/48)：实际运行 `http://127.0.0.1:8443` 的Vite原来缺Core公开配置；保持现有本地 Git 忽略 `apps/webapp/.env.local`，仅追加本地 `VITE_AISENCORE_URL` 和**publishable** key（绝非service-role），Vite配置重载后直接检查实际8443模块环境，再以独立隔离Chrome复用正式8443真GoTrue登录、进入项目、无隐式加会员，**1/1 PASS / exit 0**，QA前后原管理员1/产品2/残留0。不写入 Git 的本机配置需在其它机器另行设置，不是生产部署 | **CL-02 本机正式8443配置与登录、双独立会话撤权 PASS**；物理设备离线重联、人工持久数据不回退与完整三端注册两图仍OPEN |
 | 2026-10-28 | 其余三端完整组合与正式签收 | PARTIAL / OPEN，严禁合并各专项 PASS 冒充 CL-07 全项准出 |
 
 ## 6. 停止与交付标准
 
 发生 QA 数据/对象清理异常、Chrome外部强杀、并行写库冲突、身份/产品不符、未知提交时停止下一轮写入，先安全只读取证。每个条目记录「版本/环境→命令/退出码→浏览器/HTTP→SQL/对象/审计→清理→尚未覆盖」，不伪造通过，不以历史阶段记录代签。最终所有者确认前 CL-10 一直 OPEN。
 
-**尚未满足本轮完整准出的重点**：CL-02 跨设备离线refresh时效及正式8443公开环境变量注入（实测当前8443 Vite环境缺公开Core变量，真TTL过期已补测PASS）；CL-03 跨产品配置与切号在途AI/项目状态及加密存储完整人工回归；CL-04 15分钟快照（Pro能力本轮不启用）和更复杂的HTTP故障时效；CL-05/06 真Edge Auth/DB写入未知、长期孤儿引用二次确认与可控清理、Admin ZIP敏感范围与导出在途撤权/断连；CL-07 同一QA用户从注册确认一直到两图ZIP及撤权/切号/离线恢复的全部综合矩阵；CL-08 人工UX/WCAG及本轮回归边界；CL-10 正式所有者签收。外部个人模板云备份/真实R2/云部署仍是**延期而非当前失败**。全部剩余事项已入表，不授权生成假的全部PASS或上线承诺。
+**尚未满足本轮完整准出的重点**：CL-02 跨设备离线refresh时效与其它环境的公开变量配置（本地正式8443、真TTL过期及双会话撤权均已PASS，不等于云部署）；CL-03 跨产品配置与切号在途AI/项目状态及加密存储完整人工回归；CL-04 15分钟快照（Pro能力本轮不启用）和更复杂的HTTP故障时效；CL-05/06 真Edge Auth/DB写入未知、长期孤儿引用二次确认与可控清理、Admin ZIP敏感范围与导出在途撤权/断连；CL-07 同一QA用户从注册确认一直到两图ZIP及撤权/切号/离线恢复的全部综合矩阵；CL-08 人工UX/WCAG及本轮回归边界；CL-10 正式所有者签收。外部个人模板云备份/真实R2/云部署仍是**延期而非当前失败**。全部剩余事项已入表，不授权生成假的全部PASS或上线承诺。

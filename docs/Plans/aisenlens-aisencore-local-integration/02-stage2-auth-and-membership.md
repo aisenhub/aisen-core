@@ -6,7 +6,9 @@
 
 **2026-10-27 本轮邮件复验补充**：直接运行 Core `node scripts/test-d2-auth-api-mfa.mjs`，真实 GoTrue+Mailpit 注册/确认、签名 JWT、密码重置链接/恢复密码及 HTTP/MFA 全部 PASS，合成测试账号清理。**环境差异仍 BLOCKED**：读取运行中 `supabase_auth_Aisencore` 非秘密配置发现 `GOTRUE_URI_ALLOW_LIST` **尚未包含 Lens `localhost/127.0.0.1:8443`**，虽然源文件 `supabase/config.toml` 已添加；尚未为载入配置停止/重建现有 DB/Auth，故不能将此标作 Lens 8443 邮件页面 E2E PASS。需要安全地重新加载 Auth 配置并复测 Lens 确认/找回页面、跨浏览器回调及无旧会话边界。
 
-**2026-10-27 最新实测（覆盖上方历史环境叙述）**：已安全更新正在运行的 GoTrue Auth，仅新增 localhost/127.0.0.1:8443 的回调，Kong/DB 保持健康；旧 Auth 以停机容器保留回滚。由于现有 8443 IPv4 Vite 是未配置 Core 公共变量的其他开发进程，不终止它；通过 `python scripts/test-stage2-lens-mail-browser.py` 在临时 9443 回调与独立 Vite/多个全新 Chrome 配置中，实测真实 GoTrue+Mailpit 注册、跨浏览器邮件确认及恢复密码，旧密码被拒/新密码成功、注册不产生会员、合成身份清理，**完整退出码 0 / 1/1 PASS**，最终恢复 8443 Auth 配置。修复 Lens `coreAuth.ts` 在 SDK 抢先消费 PASSWORD_RECOVERY 时 React effect 迟订阅造成的重置失败；普通登录不允许当作恢复会话。正式 8443 进程仍须启动时注入公开 Core 连接变量，撤销 refresh、多标签、切换在途任务负例仍开放。
+**2026-10-27 历史实测（后续覆盖见下方）**：已安全更新 GoTrue 8443 回调，Kong/DB 保持健康；当时的 8443 Vite 未配置 Core 公共变量且未强行终止。通过 `python scripts/test-stage2-lens-mail-browser.py` 在临时 9443 回调与独立 Vite/全新 Chrome 配置中，实测 GoTrue+Mailpit 注册、跨浏览器邮件确认及恢复，旧密码拒绝/新密码成功、注册不产生会员、合成身份清理，**1/1 PASS**，最终恢复原 Auth。修复 SDK 抢先消费 PASSWORD_RECOVERY 使 React effect 迟订阅导致的重置失败，禁止普通登录充当恢复证明。彼时的 8443/refresh/多标签 OPEN 已由后续真实实测部分关闭，以最新独立收口执行计划为准。
+
+**2026-10-28 新实测**：Lens PR#47 真实双独立会话 local/global logout/refresh 隔离 PASS；Lens PR#48 在**现有正式8443持续Vite**使用 Git 忽略的本机 `apps/webapp/.env.local` 补齐本地公开 Core URL 与 publishable key，真 Chrome 复用该服务登录、进入项目，不隐式添加会员 **1/1 PASS**；原管理员/2正式产品/QA=0。新机器仍需单独设置本地公开变量，生产未配置/部署；完整跨设备离线恢复、项目/加密凭据人工验证仍OPEN。
 
 ## 1. 输入与完成结果
 
@@ -86,4 +88,4 @@ Core复用 `scripts/test-d2-auth-api-mfa.mjs`、成员004 SQL及对应HTTP测试
 
 | 范围 | 当前状态 | 后续记录 |
 | --- | --- | --- |
-| A-01～07 / A-T01～10（含A-T03B） | **PARTIAL**：GoTrue/Mailpit真Chrome注册确认、错误hash403、找回/旧密码/无证明重置/已消费链接拒绝均PASS；**真实OTP过期**另用临时且可恢复的GoTrue 2秒TTL生成两封真正注册确认/找回邮件，6秒后均明确otp_expired，原账号/密码不变，原3600秒配置/8443 Auth恢复、QA前后清洁PASS。Lens AAL2兑换/会员、明确left→rejoin、suspended拒绝/Admin恢复、双标签切号与迟到回复/内存Key清理、同用户refresh保留Key及全局登出旧refresh拒绝均实测PASS；正式8443 Vite公共Core变量、跨设备离线与人工持久数据保护等仍OPEN | 可复测代码与未测范围见[2026-10-28 本地三端收口执行计划](./2026-10-28-stage2-local-closure-execution-plan.md)，不据局部PASS判整个A包签收 |
+| A-01～07 / A-T01～10（含A-T03B） | **PARTIAL**：GoTrue/Mailpit真Chrome注册确认、错误hash403、找回/无证明重置/已消费链接拒绝PASS；真实临时GoTrue 2秒TTL的两类邮件过期拒绝PASS、原Auth恢复且QA清洁；Lens AAL2兑换/会员、left→rejoin、suspended拒绝/Admin恢复、双标签切号/迟到回复/内存Key清理、独立双会话local/global refresh撤销PASS；现有正式8443 Vite本地公开Core连接配置与复用该服务的Chrome真登录/进入项目/无隐式会员亦PASS。**仍未覆盖**真正物理设备断网重联、跨产品/AI在途与本机持久数据保护人工矩阵，以及线上环境配置 | 可复测代码与未测范围见[2026-10-28 本地三端收口执行计划](./2026-10-28-stage2-local-closure-execution-plan.md)，不据局部PASS判整个A包签收 |
