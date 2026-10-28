@@ -28,6 +28,7 @@ const key=cfg.PUBLISHABLE_KEY||cfg.ANON_KEY,adminKey=cfg.SERVICE_ROLE_KEY;
 assert.ok(key&&adminKey);
 const created=[],objects=new Map(),s3Events=[];
 let secondImageReportId=null;
+let secondPutFault=null;
 const unique=randomUUID().replaceAll('-','').slice(0,13);
 const password='F07fixture!'+randomBytes(14).toString('hex');
 let fixture=null,edgeWorker=null,gate=null,ownedEnvFile=null;
@@ -149,10 +150,21 @@ function s3Server(){
     if(request.method==='PUT'){
       s3Events.push({verb:'PUT',path,condition:request.headers['if-none-match']});
       if(request.headers['if-none-match']!=='*'){response.writeHead(412);response.end();return}
+      // A one-request, loopback-only fault injection. The first image can be
+      // stored, but all retries of the second image key receive 503 until the
+      // test explicitly restores storage. The real Edge code is untouched.
+      if(secondPutFault && (secondPutFault.failedKey===path ||
+        (secondPutFault.successfulPuts>=1 && !objects.has(path)))){
+        secondPutFault.failedKey=path;
+        response.writeHead(503,{'content-type':'application/xml'});
+        response.end('<Error><Code>ServiceUnavailable</Code></Error>');
+        return;
+      }
       const chunks=[];for await(const piece of request)chunks.push(piece);
       if(objects.has(path)){response.writeHead(412,{'content-type':'application/xml'});
         response.end('<Error><Code>PreconditionFailed</Code></Error>');return}
       objects.set(path,Buffer.concat(chunks));
+      if(secondPutFault)secondPutFault.successfulPuts++;
       response.writeHead(200,{etag:'"f07-fixture"'});response.end();return;
     }
     if(request.method==='GET'){
@@ -205,13 +217,19 @@ async function startWorker(){
       'feedback-export'],{cwd:root,stdio:['ignore','pipe','pipe']});
   let logs='';
   edgeWorker.stderr.on('data',data=>{logs=(logs+String(data)).slice(-12000);edgeDiagnostic=logs});
-  for(let n=0;n<68;n++){
+  // The local functions serve worker may answer one 401 while the Edge
+  // runtime is still warming and subsequently return 503 to a browser.
+  // Require repeated real unauthorized auth-gate responses before launching
+  // the longer Lens Chrome test; never treat a 503 as ready.
+  let readySamples=0;
+  for(let n=0;n<84;n++){
     try{
       const res=await fetch(cfg.API_URL+'/functions/v1/feedback-submit',{
         method:'POST',headers:{apikey:key,'content-type':'application/json'},
         body:'{}',signal:AbortSignal.timeout(1800)});
-      if(res.status===401)return;
-    }catch{}
+      readySamples=res.status===401?readySamples+1:0;
+      if(readySamples>=4){await sleep(900);return}
+    }catch{readySamples=0}
     await sleep(750);
   }
   throw Error('Edge with local S3 fixture not ready '+logs.slice(-1100));
@@ -311,6 +329,50 @@ try{
   assert.equal(s3Events.filter(x=>x.verb==='PUT').length,lensS3Objects+3,
     'image retries should not put second copy');
   console.log('F07_REAL_EDGE_S3_REPLAY PASS no additional writes');
+
+  // Real Edge + actual local S3 failure after the first of two uploads.
+  // Never treat the partial upload as a committed ticket or delete an object
+  // that a concurrent identical request might reference. Retrying the SAME
+  // UUID and attachments must reuse the first key and commit exactly once.
+  const faultId=randomUUID(),faultText='F07 second PUT fails then exact retry '+unique;
+  const faultBlobs=images.map(bytes=>new Blob([bytes],{type:'image/png'}));
+  const beforeFaultObjects=objects.size;
+  secondPutFault={successfulPuts:0,failedKey:null};
+  try{
+    const failure=await req('/functions/v1/feedback-submit','POST',
+      form(faultText,faultBlobs,faultId),owner.token);
+    assert.equal(failure.status,503,
+      'second image PUT failure must be reported as storage unavailable/unknown');
+    assert.equal(secondPutFault.successfulPuts,1,'only first image uploaded');
+    assert.ok(secondPutFault.failedKey,'second image PUT actually failed');
+  }finally{secondPutFault=null}
+  assert.equal(sql('select count(*) from public.user_feedback where request_id='+qq(faultId)),
+    '0','storage 503 must not fabricate a committed feedback');
+  assert.equal(objects.size,beforeFaultObjects+1,
+    'partial first S3 object remains for safe reference-aware reconciliation');
+  const recovered=await req('/functions/v1/feedback-submit','POST',
+    form(faultText,faultBlobs,faultId),owner.token);
+  assert.equal(recovered.status,201,
+    'same request ID retries successfully once isolated S3 fault is repaired');
+  assert.equal(sql('select count(*) from public.user_feedback where request_id='+qq(faultId)),
+    '1','one real Core feedback record after retry');
+  assert.equal(sql('select count(*) from public.feedback_attachments where feedback_id='+
+    qq(recovered.data.id)),'2','both attachments committed after recovery');
+  assert.equal(objects.size,beforeFaultObjects+2,
+    'retry reused first deterministic object and added only missing second');
+  const replayAfterFault=await req('/functions/v1/feedback-submit','POST',
+    form(faultText,faultBlobs,faultId),owner.token);
+  assert.equal(replayAfterFault.status,200,'confirmed exact replay after fault recovery');
+  assert.equal(objects.size,beforeFaultObjects+2,'replay must not upload again');
+  const mismatchedReplay=await req('/functions/v1/feedback-submit','POST',
+    form(faultText+' modified',faultBlobs,faultId),owner.token);
+  assert.equal(mismatchedReplay.status,409,
+    'same UUID with changed immutable content must be rejected, not overwritten');
+  assert.equal(sql('select count(*) from public.user_feedback where request_id='+qq(faultId)),
+    '1','409 mismatch cannot create a second feedback');
+  assert.equal(objects.size,beforeFaultObjects+2,'mismatched replay must not upload');
+  console.log('F07_REAL_EDGE_SECOND_PUT_RECOVERY PASS 503 no DB commit -> exact retry 201/200; two S3 objects');
+  console.log('F07_REAL_EDGE_REQUEST_MISMATCH PASS same UUID changed content gets 409, no new objects/records');
 }finally{
   if(edgeWorker?.pid){
     if(win)run('taskkill',['/PID',String(edgeWorker.pid),'/T','/F'],{timeout:11000});
