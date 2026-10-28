@@ -75,4 +75,4 @@ Lens设置/帮助内，已登录、邮箱已确认、非blocked本人可提交�
 
 | 范围 | 当前状态 | 后续记录 |
 | --- | --- | --- |
-| C-01～07 / C-T01～10 | **PARTIAL**：2026-10-28 Lens零图/丢201回复同号重放/私有S3未配置503保留输入1/1 PASS；Lens真Chrome双图→Core Edge/SQL/本机私有S3→本人私图/跨用户403→Admin AAL2 ZIP原图字节一致 PASS；Admin D3四队列/409 Chrome切片PASS；F07 Deno故障协议15/15、SQL反馈116/116相关fixture PASS。真实Edge上游故障注入、二图中断+DB未知与孤儿清理、完整导出失联仍OPEN，真实云R2按决定延期 | 最新可复测证据及未测在[独立收口执行计划](./2026-10-28-stage2-local-closure-execution-plan.md)，不得以本地协议 fixture 冒充云R2 |
+| C-01～07 / C-T01～10 | **PARTIAL**：2026-10-28 Lens零图/丢201回复同号重放/无S3时503保留输入1/1 PASS；真Chrome双图→Core Edge/本机私有S3/SQL→本人短签URL/他人403→Admin AAL2 ZIP原图一致 PASS；Admin D3四队列/409 Chrome PASS；F07 Deno故障协议15/15、SQL反馈116/116 fixture PASS。**新增真实 Edge 第二图本机S3 PUT持续503：第一张部分对象安全保留、DB未提交、同UUID同图重试201/200仅补第二图，UUID相同但内容改变409且未多写；全条测试 exit0 且QA/对象清理PASS**。仍未覆盖真实DB提交未知、长期孤儿引用对账/清理、在途导出断连及真实云R2（后者延期） | 最新可复测入口及未测在[独立收口执行计划](./2026-10-28-stage2-local-closure-execution-plan.md)，本地协议fixture不等于真实Cloudflare R2 |
