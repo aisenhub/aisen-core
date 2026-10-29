@@ -1,5 +1,16 @@
 import { createTheme } from '@mui/material/styles';
 
+// Central radius tokens. Use CSS strings in sx; MUI multiplies numeric
+// borderRadius values by theme.shape.borderRadius.
+export const adminRadii = {
+  small: '8px',       // chips and compact details
+  control: '12px',   // buttons, inputs and selectors
+  card: '16px',      // cards and list/table surfaces
+  container: '20px', // large workspaces and dialogs
+  pill: '999px',     // navigation pill (intentional exception)
+  circle: '50%',     // dots and avatar icons (intentional exception)
+} as const;
+
 // AisenCore Operator Studio / one shared MUI theme, no parallel CSS framework.
 export const theme = createTheme({
   palette: {
@@ -12,7 +23,7 @@ export const theme = createTheme({
     success: { main: '#217e60' }, warning: { main: '#a96622' },
     error: { main: '#c34758' }, info: { main: '#5179b3' },
   },
-  shape: { borderRadius: 14 },
+  shape: { borderRadius: Number.parseInt(adminRadii.control,10) },
   typography: {
     fontFamily: '"Segoe UI Variable","Inter","PingFang SC","Microsoft YaHei",system-ui,sans-serif',
     fontSize: 14,
@@ -30,16 +41,35 @@ export const theme = createTheme({
   },
   components: {
     MuiCssBaseline: { styleOverrides: {
+      ':root': {
+        '--aisen-radius-small': adminRadii.small,
+        '--aisen-radius-control': adminRadii.control,
+        '--aisen-radius-card': adminRadii.card,
+        '--aisen-radius-container': adminRadii.container,
+        '--aisen-radius-pill': adminRadii.pill,
+      },
       body: { backgroundColor: '#F3F5F8', WebkitFontSmoothing: 'antialiased' },
+      // Lock document scrolling only inside Admin; login/auth screens retain
+      // natural scrolling for small viewports.
+      'body:has(.RaLayout-appFrame)': { overflow: 'hidden' },
       '*:focus-visible': { outline: '3px solid #7964dc', outlineOffset: 3 },
       '::selection': { background: '#dcd5fc' },
       '.RaLayout-content': { minWidth:0,overflowX:'hidden',boxSizing:'border-box' },
       '.RaList-root': {minWidth:0,maxWidth:'100%',width:'100%'},
       '.RaList-main': {minWidth:0,maxWidth:'100%'},
-      '.RaDatagrid-root': {maxWidth:'100%',overflowX:'auto'},
-      '.RaDatagrid-tableWrapper': {maxWidth:'100%',overflowX:'auto'},
-      '.RaList-content': { minWidth:0,maxWidth:'100%',border: '1px solid #E3E8EF', borderRadius: 16, overflow: 'hidden' },
-      '.RaShow-card': { border: '1px solid #E3E8EF', borderRadius: 16 },
+      '.RaDatagrid-root': { minWidth:0,maxWidth:'100%' },
+      // Datagrid renders its own table wrapper. Scroll data rows there,
+      // keeping the column header and surrounding list toolbar in view.
+      '.RaDatagrid-tableWrapper': {
+        width:'100%',maxWidth:'100%',
+        maxHeight:'clamp(240px, calc(100dvh - 355px), 760px)',
+        overflowX:'auto',overflowY:'auto',overscrollBehavior:'contain',
+      },
+      '.RaDatagrid-tableWrapper .MuiTableCell-head': {
+        position:'sticky',top:0,zIndex:2,backgroundColor:'#F6F8FA',
+      },
+      '.RaList-content': { minWidth:0,maxWidth:'100%',border: '1px solid #E3E8EF', borderRadius: adminRadii.card, overflow: 'hidden' },
+      '.RaShow-card': { border: '1px solid #E3E8EF', borderRadius: adminRadii.card },
       '@media (prefers-reduced-motion: reduce)': {
         '*,*::before,*::after': { animationDuration: '0.01ms !important', transitionDuration: '0.01ms !important', scrollBehavior: 'auto !important' },
       },
@@ -57,18 +87,18 @@ export const theme = createTheme({
       boxShadow:'8px 0 32px rgba(36,52,71,.08)',
     } } },
     MuiCard: { styleOverrides: { root: {
-      border:'1px solid #E5EAF0',borderRadius:16,
+      border:'1px solid #E5EAF0',borderRadius:adminRadii.card,
       boxShadow:'0 5px 22px rgba(35,52,72,.035)',
     } } },
     MuiPaper: { styleOverrides: { root: { backgroundImage: 'none' } } },
     MuiButton: {
       defaultProps: { disableElevation: true },
-      styleOverrides: { root: { minHeight: 38, borderRadius: 10, paddingLeft: 15, paddingRight: 15, transition: 'background-color .18s ease,border-color .18s ease,color .18s ease' },
+      styleOverrides: { root: { minHeight: 38, borderRadius: adminRadii.control, paddingLeft: 15, paddingRight: 15, transition: 'background-color .18s ease,border-color .18s ease,color .18s ease' },
         outlined: { borderColor: '#DDE4EB' },
       },
     },
     MuiListItemButton: { styleOverrides: { root: {
-      borderRadius: 8, margin: '2px 12px', paddingTop: 9, paddingBottom: 9,
+      borderRadius: adminRadii.small, margin: '2px 12px', paddingTop: 9, paddingBottom: 9,
       '&.RaMenuItemLink-active,&.Mui-selected': { background: '#ece9f8', color: '#3b2e92',
         '& .MuiListItemIcon-root': { color: '#5140b8' }, '&:hover': { background: '#e7e2f6' } },
       '&:hover': { backgroundColor: '#F1F3F8' },
@@ -81,10 +111,15 @@ export const theme = createTheme({
       head: { fontSize: 13, fontWeight: 650, color: '#526475', whiteSpace: 'nowrap' },
     } },
     MuiTableRow: { styleOverrides: { root: { '&.MuiTableRow-hover:hover': { backgroundColor: '#F7F9FC' } } } },
-    MuiChip: { defaultProps: { size: 'small' }, styleOverrides: { root: { borderRadius: 8, fontSize: 12, fontWeight: 690, height: 27 } } },
+    MuiChip: { defaultProps: { size: 'small' }, styleOverrides: { root: { borderRadius: adminRadii.small, fontSize: 12, fontWeight: 690, height: 27 } } },
     MuiTextField: { defaultProps: { size: 'small', fullWidth: true, variant: 'outlined' } },
-    MuiOutlinedInput: { styleOverrides: { root: { borderRadius: 10 } } },
-    MuiDialog: { defaultProps: { fullWidth: true, maxWidth: 'sm' } },
+    MuiOutlinedInput: { styleOverrides: { root: { borderRadius: adminRadii.control } } },
+    MuiDialog: {
+      defaultProps: { fullWidth: true, maxWidth: 'sm' },
+      styleOverrides: { paper: { borderRadius: adminRadii.container } },
+    },
+    MuiAlert: { styleOverrides: { root: { borderRadius: adminRadii.control } } },
+    MuiTooltip: { styleOverrides: { tooltip: { borderRadius: adminRadii.small } } },
     MuiDialogTitle: { styleOverrides: { root: { fontSize: 20, fontWeight: 720, padding: '24px 26px 12px' } } },
     MuiDialogActions: { styleOverrides: { root: { padding: '16px 26px 24px' } } },
   },

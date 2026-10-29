@@ -1,0 +1,62 @@
+#!/usr/bin/env node
+// FB-V4 source + real installed URL codec regression; NOT a replacement for AAL2 Chrome E2E.
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {createRequire} from 'node:module';
+// Resolve from the installed React-admin package, not a stale pnpm store copy.
+const fromAdmin=createRequire(new URL('../apps/admin/package.json',import.meta.url));
+const fromReactAdmin=createRequire(fromAdmin.resolve('react-admin'));
+const queryString=fromReactAdmin('query-string');
+const decoded=queryString.parse('priority=urgent&star=true&category=bug');
+assert.equal(decoded.priority,'urgent');
+assert.equal(decoded.star,'true');
+assert.equal(decoded.category,'bug');
+assert.equal(queryString.stringify({priority:'urgent'}),'priority=urgent');
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const list=read('apps/admin/src/resources/FeedbackV2.tsx');
+const show=read('apps/admin/src/resources/Feedback.tsx');
+const editor=read('apps/admin/src/resources/FeedbackV3Editor.tsx');
+const exportUi=read('apps/admin/src/resources/FeedbackExport.tsx');
+const exportEdge=read('supabase/functions/feedback-export/index.ts');
+const deletion=read('supabase/functions/feedback-delete/index.ts');
+const migration=read('supabase/migrations/20261029210000_feedback_permanent_delete.sql');
+const labels=read('apps/admin/src/resources/feedbackLabels.ts');
+const app=read('apps/admin/src/App.tsx');
+for(const key of ['bug','account','experience','suggestion','other'])
+  assert.match(labels,new RegExp('\\b'+key+':'));
+assert.match(list,/label="反馈类别"/);
+// ListBase keeps filter controls outside any globally clipped RaList-content surface.
+assert.match(list,/<ListBase resource="feedback"/);
+assert.doesNotMatch(list,/<List resource="feedback"|RaList-content/);
+assert.match(list,/renderValue:value=>/);
+assert.match(list,/<FeedbackResults queue=\{queue\}/);
+assert.match(list,/<FeedbackListPagination\/>/);
+assert.match(list,/反馈读取失败，不能将结果视为空列表/);
+const pendingUi=read('apps/admin/src/resources/FeedbackPendingDeletes.tsx');
+assert.match(pendingUi,/待清理状态暂时无法读取/);
+assert.match(pendingUi,/if\(!rows.length\)return error\?/);
+assert.doesNotMatch(pendingUi,/有 \{rows.length\} 条历史或未完成的反馈清理任务/);
+assert.match(list,/categoryFilter=\{category\}/);
+assert.match(list,/批量永久删除/);
+assert.match(list,/categoryLabels\[item.category\]/);
+assert.doesNotMatch(list,/标签筛选|FeedbackTrash|useFeedbackTags|回收站/);
+assert.doesNotMatch(editor,/标签筛选|添加内部标签|移入回收站/);
+assert.doesNotMatch(app, /feedback\/trash/);
+assert.match(show,/selectedProduct/);
+assert.match(show,/所属产品/);
+assert.match(exportEdge,/\['product_id','feedback_no','category','status','priority','is_starred'\]/);
+assert.match(list,/label="反馈编号"/);
+assert.match(exportUi,/feedbackNoFilter/);
+assert.doesNotMatch(exportEdge,/query\.overlaps\('tags'/);
+assert.match(exportUi,/categoryFilter/);
+assert.match(deletion,/await deleteFile\(key\+'\.thumb\.jpg'\)/);
+assert.match(deletion,/await deleteFile\(key\)/);
+assert.match(deletion,/admin_prepare_feedback_delete/);
+assert.match(deletion,/admin_finish_feedback_delete/);
+assert.match(migration,/deletion_started_at/);
+assert.match(migration,/DELETE FROM public\.feedback_attachments/);
+assert.match(migration,/DELETE FROM public\.feedback_events/);
+assert.match(migration,/DELETE FROM public\.user_feedback/);
+assert.match(migration,/private\.require_admin\(\)/);
+assert.match(migration,/admin_feedback_pending_deletes/);
+console.log('FEEDBACK_V4_STATIC_CONTRACT PASS (source-only; requires browser/DB/Edge/R2 E2E)');

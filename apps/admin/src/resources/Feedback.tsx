@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Pagination, ReferenceManyField, Show,
-  useGetList, useGetMany, useListContext, useRecordContext, useRefresh,
+  useGetList, useGetMany, useGetOne, useNotify, useListContext, useRecordContext, useRefresh, useStore,
 } from 'react-admin';
 import {
   Alert, Box, Button, Card, Chip, CircularProgress, Dialog, DialogActions,
@@ -11,7 +11,7 @@ import {
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useSearchParams } from 'react-router-dom';
 import { callRpc } from '../data/dataProvider';
 import { supabase } from '../supabaseClient';
 import {
@@ -19,13 +19,14 @@ import {
 } from './FeedbackV2';
 import { categoryLabels, priorityLabels, statusLabels } from './feedbackLabels';
 import { FeedbackV3Editor } from './FeedbackV3Editor';
-import {useFeedbackTags} from './useFeedbackTags';
 import { formatAdminInstant } from '../dateDisplay';
+import { adminRadii } from '../theme';
 
 type FeedbackRecord={
   id:string;feedback_no:number;product_id:string;user_id:string;
+  contact_email?:string|null;
   content:string;category:string;status:string|null;priority:string|null;
-  queue_state:'inbox'|'workbench'|'archived'|'trashed';read_at?:string|null;
+  queue_state:'inbox'|'workbench'|'archived';read_at?:string|null;
   triaged_at?:string|null;is_starred:boolean;tags:string[];
   assigned_to?:string|null;version:number;
   created_at:string;updated_at:string;
@@ -38,9 +39,26 @@ type ImageRecord={id:string;slot:number;mime_type:string;size_bytes:number};
 
 function FeedbackPicture({record}:{record:ImageRecord}){
   const [url,setUrl]=useState('');
+  const [thumbnail,setThumbnail]=useState<{id:string;url:string}|null>(null);
+  const [thumbnailError,setThumbnailError]=useState<string|null>(null);
   const [loading,setLoading]=useState(false);
   const [open,setOpen]=useState(false);
   const [error,setError]=useState('');
+  useEffect(()=>{
+    let active=true;
+    // Thumbnails are server-generated in private storage, authorized by the
+    // SAME feedback-image-access RPC as original images. Never persist URLs
+    // or reuse them for another feedback/identity on SPA navigation.
+    void supabase.functions.invoke<{url:string}>('feedback-image-access',{
+      body:{attachment_id:record.id,variant:'thumbnail'},
+    }).then(({data,error})=>{
+      if(!active)return;
+      if(error||!data?.url){setThumbnailError(record.id);return;}
+      setThumbnail({id:record.id,url:data.url});
+      setThumbnailError(null);
+    }).catch(()=>{if(active)setThumbnailError(record.id)});
+    return ()=>{active=false};
+  },[record.id]);
   const load=async()=>{
     setLoading(true);setError('');
     try{
@@ -55,9 +73,14 @@ function FeedbackPicture({record}:{record:ImageRecord}){
   return <Box sx={{minWidth:0,flex:'1 1 150px',maxWidth:290}}>
     <Button fullWidth variant="outlined" onClick={()=>void load()} disabled={loading}
       sx={{display:'flex',flexDirection:'column',gap:.5,p:1,height:165,
-        borderRadius:2,alignItems:'center',justifyContent:'center'}}>
-      <Skeleton variant="rounded" animation={loading?'wave':false}
-        sx={{height:95,width:'100%',maxWidth:175,bgcolor:'action.hover'}}/>
+        borderRadius:adminRadii.card,alignItems:'center',justifyContent:'center'}}>
+      {thumbnail?.id===record.id&&thumbnailError!==record.id?
+        <Box component="img" src={thumbnail.url} alt={`图片 ${record.slot} 的缩略预览`}
+          referrerPolicy="no-referrer" decoding="async"
+          onError={()=>setThumbnailError(record.id)}
+          sx={{height:95,width:'100%',maxWidth:175,objectFit:'contain',borderRadius:adminRadii.small}}/>:
+        <Skeleton variant="rounded" animation={loading?'wave':false}
+          sx={{height:95,width:'100%',maxWidth:175,bgcolor:'action.hover'}}/>}
       <Typography variant="caption" sx={{textTransform:'none'}}>
         {loading?'加载原图授权…':'图片 '+record.slot+' · 点击查看高清'}
       </Typography>
@@ -88,7 +111,7 @@ function FeedbackEventsTimeline(){
         borderLeft:index===data.length-1?'2px solid transparent':'2px solid',
         borderColor:'divider',pb:index===data.length-1?0:2.5,
         '&::before':{content:'""',position:'absolute',left:-6,top:5,width:10,height:10,
-          borderRadius:'50%',bgcolor:event.visibility==='public'?'primary.main':'text.disabled',
+          borderRadius:adminRadii.circle,bgcolor:event.visibility==='public'?'primary.main':'text.disabled',
           boxShadow:'0 0 0 4px white'}}}>
       <Stack direction="row" sx={{justifyContent:'space-between',gap:1,flexWrap:'wrap',alignItems:'center'}}>
         <Typography sx={{fontWeight:700}}>{event.event_type==='internal_note'?'内部备注':
@@ -136,8 +159,12 @@ function FeedbackHistoryDialog({open,onClose}:{open:boolean;onClose:()=>void}){
 }
 
 function FeedbackBody(){
+  const [params]=useSearchParams();
+  const source=params.get('returnTo')??'';
+  const returnTo=/^\/feedback(?:\/(?:workbench|archived|history|trash))?(?:\?|$)/.test(source)?source:null;
   const record=useRecordContext<FeedbackRecord>();
   const refresh=useRefresh();
+  const notify=useNotify();
   const readAttempted=useRef<string|null>(null);
   const [historyOpen,setHistoryOpen]=useState(false);
   useEffect(()=>{
@@ -154,18 +181,30 @@ function FeedbackBody(){
   const submitter=useGetMany('users',{ids:record?[record.user_id]:[]},{enabled:!!record?.user_id});
   const handler=useGetMany('users',{ids:record?.last_handled_by?[record.last_handled_by]:[]},
     {enabled:!!record?.last_handled_by});
-  const {tags:tagOptions}=useFeedbackTags(record?.product_id);
+  const [selectedProduct]=useStore<string>('aisencore.current.product','');
+  const sourceProduct=useGetOne('products',{id:record?.product_id??''},
+    {enabled:!!record?.product_id&&!selectedProduct});
   if(!record)return <CircularProgress aria-label="正在加载反馈"/>;
+  const contactEmail=record.contact_email;
+  if(String(record.queue_state)==='trashed')return <Alert severity="warning" sx={{m:2}}>
+    此记录属于已取消的旧队列，请从反馈中心的待清理项执行永久删除。
+  </Alert>;
+  if(selectedProduct&&record.product_id!==selectedProduct)return <Alert severity="warning" sx={{m:2}}>
+    当前反馈不属于所选产品，请切换顶部产品选择器。
+  </Alert>;
   return <Box sx={{width:'100%',maxWidth:1720,mx:'auto',minWidth:0,pb:5}}>
     <Stack direction="row" sx={{justifyContent:'space-between',alignItems:'center',
       gap:1,flexWrap:'wrap',mb:1}}>
       <Button component={RouterLink} startIcon={<ArrowBackRoundedIcon/>}
-        to={record.queue_state==='workbench'?'/feedback/workbench':record.queue_state==='archived'?
-          '/feedback/archived':record.queue_state==='trashed'?'/feedback/trash':'/feedback'}
+        to={returnTo??(record.queue_state==='workbench'?'/feedback/workbench':record.queue_state==='archived'?
+          '/feedback/archived':'/feedback')}
         size="small" sx={{px:0}}>
         返回列表
       </Button>
       <Stack direction="row" sx={{gap:1,flexWrap:'wrap'}}>
+        <Button component={RouterLink}
+          to={'/feedback/history?user_id='+encodeURIComponent(record.user_id)}
+          variant="text" size="small">该用户全部反馈</Button>
         <Button variant="outlined" size="small" startIcon={<HistoryOutlinedIcon/>}
           onClick={()=>setHistoryOpen(true)}>处理历史</Button>
       </Stack>
@@ -184,7 +223,8 @@ function FeedbackBody(){
       </Stack>
       <Stack direction="row" spacing={1.5}
         sx={{color:'text.secondary',fontSize:13,alignItems:'center',flexWrap:'wrap',gap:1.5}}>
-        <Typography variant="body2">{categoryLabels[record.category]??record.category}</Typography>
+        <Chip size="small" variant="outlined" label={categoryLabels[record.category]??record.category}/>
+        {!selectedProduct&&<Typography variant="body2">所属产品：{String(sourceProduct.data?.name??'正在读取产品')}</Typography>}
         <Tooltip title={'提交用户 ID：'+record.user_id}>
           <Typography component={RouterLink} to={'/users/'+record.user_id+'/show'} variant="body2"
             sx={{color:'primary.main',overflowWrap:'anywhere',textDecoration:'none',
@@ -202,6 +242,11 @@ function FeedbackBody(){
         </Typography>
       </Stack>
     </Stack>
+    {contactEmail&&<Stack direction="row" sx={{alignItems:'center',gap:1,flexWrap:'wrap',mb:2}}>
+      <Typography variant="body2" sx={{overflowWrap:'anywhere'}}>用户填写的联系邮箱（未验证）：{contactEmail}</Typography>
+      <Tooltip title="用户填写，未经单独验证"><Button size="small" aria-label="复制联系邮箱" onClick={()=>void navigator.clipboard.writeText(contactEmail).then(
+        ()=>notify('已复制联系邮箱',{type:'success'}),()=>notify('复制失败，请手动选择邮箱',{type:'warning'}))}>复制</Button></Tooltip>
+    </Stack>}
     <Card variant="outlined" sx={{p:{xs:2,md:3},mb:2.5,width:'100%',minWidth:0}}>
       <Box sx={{display:'grid',gridTemplateColumns:(record.attachment_count??0)>0?
           {xs:'minmax(0,1fr)',md:'minmax(250px,2fr) minmax(0,3fr)'}:'minmax(0,1fr)',
@@ -231,7 +276,9 @@ function FeedbackBody(){
         </Box>
       </Box>
     </Card>
-    <FeedbackV3Editor key={record.id} record={record} tagOptions={tagOptions}/>
+    <FeedbackV3Editor key={record.id} record={record}
+      backTo={returnTo??(record.queue_state==='workbench'?'/feedback/workbench':
+        record.queue_state==='archived'?'/feedback/archived':'/feedback')}/>
     <FeedbackHistoryDialog open={historyOpen} onClose={()=>setHistoryOpen(false)}/>
   </Box>;
 }

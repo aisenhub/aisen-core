@@ -6,6 +6,8 @@
 
 **双仓对接子计划**：[本地对接总执行计划](../aisenlens-aisencore-local-integration/00-integration-master-plan.md)与[分阶段详细索引](../aisenlens-aisencore-local-integration/README.md)承接本次Core主导的实际顺序、修改边界、测试矩阵和准出。本文件仍是平台唯一MVP总计划，TODO仍是唯一开放任务入口；新计划不构成代码/云端实施或阶段签收许可。
 
+**2026-10-28 跨专项本地优化施工入口**：[AisenCore 优化统筹与逐项实施](./2026-10-28-optimization-execution-program.md)串联本轮用户查找/编号、授权表单、待冻结的权益信用/撤销规则以及既有 UI、性能、双端联调余项。仍由本文件统一管理 MVP 阶段，由 [TODO](../TODO.md)唯一记录 OPEN；新 Admin 代码静态 PASS 不代表权益引擎或最终验收通过。
+
 **当前专项**：[Admin UI 质量审查](./admin-frontend-ui-production-readiness-audit-and-remediation-plan-2026-10-27.md)、[性能优化计划](./admin-frontend-performance-optimization-plan-2026-10-26.md)、[反馈 V3 四队列](./feedback-v3-lightweight-implementation.md)、[AisenLens 小 JSON 备份 S1](./s1-aisenlens-r2-backup.md)与[第二阶段本地联调方案](./phase2-aisenlens-local-integration-plan.md)。旧 FB-V1/V2 已结束的五态/回复 UI 方案不再是施工依据；[FB-V2 记录](./fb-v2-inbox-workbench.md)只保存 ZIP 与旧安全测试背景，早期一次性过程计划从活动目录移除并通过 Git 历史恢复。
 
 ## 1. 当前事实、目标与阶段边界

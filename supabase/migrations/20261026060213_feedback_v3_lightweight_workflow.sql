@@ -134,6 +134,6 @@ SELECT f.id,f.feedback_no,f.product_id,f.user_id,f.content,f.category,
  (SELECT count(*)::integer FROM public.feedback_attachments a
    WHERE a.feedback_id=f.id) AS attachment_count,
  f.queue_state,f.read_at,f.triaged_at,f.is_starred,f.tags,
- f.archived_at,f.deleted_at,f.deleted_from,f.last_handled_by
+ f.archived_at,f.deleted_at,f.deleted_from,f.last_handled_by,f.contact_email
 FROM public.user_feedback f;
 NOTIFY pgrst,'reload schema';

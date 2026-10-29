@@ -1,0 +1,38 @@
+#!/usr/bin/env node
+// Source contract only; authenticated browser/Edge/R2 validation is separate.
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const src=readFileSync(new URL('../apps/admin/src/resources/FeedbackV2.tsx',import.meta.url),'utf8');
+const check=(re,msg)=>assert.match(src,re,msg);
+check(/function FeedbackSummary\(/,'Shared compact feedback summary');
+check(/function getFeedbackPreview\(/,'Dynamic preview helper');
+check(/return content\.replace\(\/\\s\+\/g,' '\)\.trim\(\)\|\|'（无正文）'/,'Full preview text without a fixed character limit');
+assert.doesNotMatch(src,/chars\.length>10|chars\.slice\(0,10\)/,'Fixed ten-character teaser must not return');
+check(/const preview=getFeedbackPreview\(item\.content\)/,'Only one compact content line');
+assert.doesNotMatch(src,/secondary&&<Typography/);
+check(/'& \.RaDatagrid-table':\{tableLayout:'fixed',width:'100%',maxWidth:'100%'\}/,'Table cannot expand to long text');
+check(/fontSize:15,\s*\n\s*fontWeight:500/,'Normal text weight for preview');
+check(/display:'block',width:'100%',maxWidth:'100%',\s*\n\s*overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'/,'Preview truncates only when the actual cell runs out of space');
+check(/'& \.column-feedback_no':\{width:'auto',minWidth:0,maxWidth:'100%',overflow:'hidden'\}/,'Feedback column does not widen the table');
+check(/role="img" aria-label="未读"/,'Accessible small unread dot');
+check(/width:7,height:7,borderRadius:adminRadii\.circle/,'Seven pixel unread dot');
+assert.doesNotMatch(src,/<Chip size="small" color="primary" label="未读"/);
+assert.doesNotMatch(src,/fontWeight:660/);
+check(/categoryLabels\[item\.category\]/,'Original feedback category');
+check(/!product&&<ReferenceField source="product_id"/,'Product column only in global scope');
+check(/function FeedbackPageSelection\(/,'Page selection');
+check(/if\(!selectedIds\.length&&!outcome\)return null/,'Batch toolbar conditional');
+check(/function FeedbackRowActions\(/,'Row action overflow menu');
+check(/<Menu anchorEl=\{anchor\}/,'Accessible MUI overflow menu');
+check(/查看详情<\/MenuItem>/,'Row detail action');
+check(/永久删除<\/MenuItem>/,'Row delete action');
+check(/p_expected_version:item\.version/,'Versioned queue operation');
+check(/expected_version:item\.version/,'Versioned permanent deletion');
+check(/intent\?\.scope!==scope/,'Confirmation bound to current scope and version');
+check(/<Dialog open=\{!!intent\}/,'Dangerous action confirmation');
+check(/function FeedbackPriority\(/,'Light priority text');
+check(/function FeedbackTime\(/,'Two-line compact time');
+check(/rowSx=\{record=>selectedIds/,'Selected row highlight');
+check(/<FeedbackPageSelection\/>/,'Select all available');
+check(/<FeedbackQueueTabs active=\{queue\}\/>/,'Shared three-queue UX');
+console.log('FEEDBACK_TRIAGE_REDESIGN_STATIC PASS (browser interaction not yet tested)');

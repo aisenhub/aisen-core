@@ -10,7 +10,7 @@ import ConfirmationNumberOutlinedIcon from '@mui/icons-material/ConfirmationNumb
 import ChatBubbleOutlineRoundedIcon from '@mui/icons-material/ChatBubbleOutlineRounded';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 
-import { theme } from './theme';
+import { theme, adminRadii } from './theme';
 import { chineseI18nProvider } from './i18n';
 import { authProvider } from './auth/authProvider';
 import { dataProvider } from './data/dataProvider';
@@ -26,30 +26,26 @@ const ProductCreate = lazy(() => import('./resources/ProductCreate').then(m => (
 const ProductShow = lazy(() => import('./resources/WorkspaceDetails').then(m => ({ default: m.ProductShow })));
 const MemberShow = lazy(() => import('./resources/WorkspaceDetails').then(m => ({ default: m.MemberShow })));
 const GrantShow = lazy(() => import('./resources/WorkspaceDetails').then(m => ({ default: m.GrantShow })));
-const BatchShow = lazy(() => import('./resources/WorkspaceDetails').then(m => ({ default: m.BatchShow })));
-const CodeShow = lazy(() => import('./resources/WorkspaceDetails').then(m => ({ default: m.CodeShow })));
+const BatchShow = lazy(() => import('./resources/RedemptionManagement').then(m => ({ default: m.RedemptionBatchShow })));
 const AdminShow = lazy(() => import('./resources/WorkspaceDetails').then(m => ({ default: m.AdminShow })));
-const RestrictionShow = lazy(() => import('./resources/WorkspaceDetails').then(m => ({ default: m.RestrictionShow })));
 const AuditShow = lazy(() => import('./resources/WorkspaceDetails').then(m => ({ default: m.AuditShow })));
 const MembersList = lazy(() => import('./resources/WorkspaceLists').then(m => ({ default: m.MembersList })));
 const GrantsList = lazy(() => import('./resources/WorkspaceLists').then(m => ({ default: m.GrantsList })));
-const BatchesList = lazy(() => import('./resources/WorkspaceLists').then(m => ({ default: m.BatchesList })));
-const CodesList = lazy(() => import('./resources/WorkspaceLists').then(m => ({ default: m.CodesList })));
-const RedemptionsList = lazy(() => import('./resources/WorkspaceLists').then(m => ({ default: m.RedemptionsList })));
+const BatchesList = lazy(() => import('./resources/RedemptionManagement').then(m => ({ default: m.RedemptionBatchesList })));
 const EventsList = lazy(() => import('./resources/WorkspaceLists').then(m => ({ default: m.EventsList })));
 const AdminsList = lazy(() => import('./resources/WorkspaceLists').then(m => ({ default: m.AdminsList })));
-const RestrictionsList = lazy(() => import('./resources/WorkspaceLists').then(m => ({ default: m.RestrictionsList })));
 const AuditList = lazy(() => import('./resources/WorkspaceLists').then(m => ({ default: m.AuditList })));
 const UsersList = lazy(() => import('./resources/WorkspaceLists').then(m => ({ default: m.UsersList })));
 const UserShow = lazy(() => import('./resources/UserShow').then(m => ({ default: m.UserShow })));
 const FeedbackList = lazy(() => import('./resources/FeedbackV2').then(m => ({ default: m.FeedbackInbox })));
 const FeedbackWorkbench = lazy(() => import('./resources/FeedbackV2').then(m => ({ default: m.FeedbackWorkbench })));
 const FeedbackArchived = lazy(() => import('./resources/FeedbackV2').then(m => ({ default: m.FeedbackArchived })));
-const FeedbackTrash = lazy(() => import('./resources/FeedbackV2').then(m => ({ default: m.FeedbackTrash })));
+const FeedbackUserHistory = lazy(() => import('./resources/FeedbackV2').then(m => ({ default: m.FeedbackUserHistory })));
 const FeedbackShow = lazy(() => import('./resources/Feedback').then(m => ({ default: m.FeedbackShow })));
 const GrantCreate = lazy(() => import('./resources/GrantCreate').then(m => ({ default: m.GrantCreate })));
 const IssueCodes = lazy(() => import('./resources/IssueCodes').then(m => ({ default: m.IssueCodes })));
 const AccountActions = lazy(() => import('./resources/AccountActions').then(m => ({ default: m.AccountActions })));
+const AdminRoleActions = lazy(() => import('./resources/AdminRoleActions').then(m => ({ default: m.AdminRoleActions })));
 
 function RouteLoading() {
   return <Box role="status" aria-live="polite" sx={{ minHeight: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, p: 4 }}>
@@ -83,7 +79,7 @@ function ScopeSelector() {
         }}
         onChange={e=>setProduct(String(e.target.value))}
         sx={{height:40,color:'text.primary',fontSize:{xs:12,sm:13},fontWeight:670,
-          bgcolor:'rgba(246,248,251,.94)',borderRadius:'12px',
+          bgcolor:'rgba(246,248,251,.94)',borderRadius:adminRadii.control,
           '& .MuiOutlinedInput-notchedOutline':{borderColor:'#DBE2EA'},
           '&:hover .MuiOutlinedInput-notchedOutline':{borderColor:'#B8C5D3'},
           '& .MuiSelect-icon':{color:'#627281'},
@@ -162,7 +158,7 @@ function AdminAppBar() {
     <Stack className="aisencore-brand" direction="row" spacing={1.1} sx={{
       order:1,alignItems:"center",flexShrink:0,mr:{xs:0,md:1},
     }}>
-      <Box aria-hidden sx={{width:34,height:34,borderRadius:'11px',
+      <Box aria-hidden sx={{width:34,height:34,borderRadius:adminRadii.control,
         background:'linear-gradient(140deg,#e2f5c8,#a7d6bc)',display:'grid',placeItems:'center',
         border:'1px solid rgba(81,137,105,.16)',
         boxShadow:'0 4px 12px rgba(36,78,62,.1)'}}>
@@ -213,7 +209,7 @@ function AdminMenu() {
     // Inset the active selection inside the rounded floating navigation card.
     '& .MuiMenuItem-root':{
       minHeight:46,py:.8,px:1.5,mx:1.25,my:.2,
-      width:'calc(100% - 20px)',borderRadius:2.5,
+      width:'calc(100% - 20px)',borderRadius:adminRadii.pill,
     },
     '& .MuiListItemIcon-root':{minWidth:32,'& svg':{fontSize:20}},
     '& .MuiListItemText-primary':{fontSize:15,fontWeight:520,lineHeight:1.5},
@@ -221,57 +217,104 @@ function AdminMenu() {
   }}>
     <GroupLabel>工作区</GroupLabel>
     <Menu.Item to="/" primaryText="概览" leftIcon={<DashboardRoundedIcon fontSize="small"/>}/>
-    <Menu.Item to="/memberships" primaryText="用户"
-      sx={domainStyle(current('/memberships','/users','/membership-events'))}
+    <Menu.Item to="/users" primaryText="用户中心"
+      sx={domainStyle(current('/users','/memberships','/membership-events','/account-actions'))}
       leftIcon={<GroupsOutlinedIcon fontSize="small"/>}/>
     <Menu.Item to="/grants" primaryText="权益"
       sx={domainStyle(current('/grants','/grant-new'))}
       leftIcon={<WorkspacePremiumOutlinedIcon fontSize="small"/>}/>
     <Menu.Item to="/code-batches" primaryText="兑换码"
-      sx={domainStyle(current('/code-batches','/codes','/redemptions','/issue-codes'))}
+      sx={domainStyle(current('/code-batches','/issue-codes'))}
       leftIcon={<ConfirmationNumberOutlinedIcon fontSize="small"/>}/>
     <Menu.Item to="/feedback" primaryText="用户反馈"
       sx={domainStyle(current('/feedback'))}
       leftIcon={<ChatBubbleOutlineRoundedIcon fontSize="small"/>}/>
     <Menu.Item to="/audit-logs" primaryText="平台管理"
-      sx={domainStyle(current('/products','/audit-logs','/restrictions','/admins','/account-actions'))}
+      sx={domainStyle(current('/products','/audit-logs','/admins','/admin-actions'))}
       leftIcon={<ShieldOutlinedIcon fontSize="small"/>}/>
     <Box sx={{mx:2,mt:'auto',borderTop:'1px solid',borderColor:'divider',pt:1.7,pb:.8,px:.5}}>
       <Stack direction="row" spacing={1} sx={{alignItems:'center'}}>
-        <Box aria-hidden sx={{width:7,height:7,borderRadius:'50%',bgcolor:'text.disabled'}}/>
+        <Box aria-hidden sx={{width:7,height:7,borderRadius:adminRadii.circle,bgcolor:'text.disabled'}}/>
         <Typography sx={{fontSize:12,color:'text.secondary',fontWeight:580}}>{environmentLabel}</Typography>
       </Stack>
     </Box>
   </Menu>;
 }
 function AdminLayout(props:React.ComponentProps<typeof Layout>) {
-  return <OperationModalProvider><Layout {...props} appBar={AdminAppBar} menu={AdminMenu} sx={{
+  return <OperationModalProvider><Layout {...props} appBar={AdminAppBar} menu={AdminMenu} appBarAlwaysOn sx={{
     backgroundColor:'background.default',
-    minWidth:0,
-    '& .RaLayout-appFrame':{marginTop:'64px'},
+    // The shell must not follow a long List or Show document.
+    height:'100dvh',maxHeight:'100dvh',minHeight:'0 !important',
+    width:'100%',minWidth:0,overflow:'hidden',
+    '& .RaLayout-appFrame':{
+      marginTop:'64px',height:'calc(100dvh - 64px)',
+      flex:'1 1 auto',minHeight:0,overflow:'hidden',
+    },
     '& .RaLayout-contentWithSidebar':{
-      display:'flex',alignItems:'flex-start',
+      display:'flex',alignItems:'stretch',flex:'1 1 auto',
+      height:'100%',minHeight:0,overflow:'hidden',
       gap:{xs:0,md:2},px:{xs:0,md:2},pt:{xs:0,md:2},pb:{xs:0,md:2},
       minWidth:0,
     },
     '& .RaLayout-content':{
-      minWidth:0,width:'auto',maxWidth:'none',boxSizing:'border-box',
-      padding:'0 !important',margin:0,overflowX:'hidden',
+      minWidth:0,width:'auto',maxWidth:'none',minHeight:0,
+      height:'100%',flex:'1 1 0%',boxSizing:'border-box',
+      padding:'0 !important',margin:0,
+      overflowX:'hidden',overflowY:'auto',overscrollBehaviorY:'contain',
+      // For list pages only, scrolling belongs exclusively to the data rows;
+      // details, forms and Dashboard retain normal workspace scrolling.
+      '@media (min-width:900px)':{
+        '&:has(.aisen-admin-list-page)':{overflowY:'hidden'},
+        '& .aisen-admin-list-page':{
+          height:'100%',maxHeight:'100%',minHeight:0,
+          display:'flex',flexDirection:'column',overflow:'hidden',
+          boxSizing:'border-box',
+        },
+        // RA ListView Root is actually .list-page (not .RaList-root).
+        // Its default min-height:auto is what allowed product tables to
+        // expand the entire List despite an internally scrollable wrapper.
+        '& .aisen-admin-list-page .list-page':{
+          flex:'1 1 auto',minHeight:0,maxHeight:'100%',
+          display:'flex',flexDirection:'column',overflow:'hidden',
+        },
+        '& .aisen-admin-list-page .RaList-main':{
+          flex:'1 1 auto',minHeight:0,display:'flex',flexDirection:'column',
+        },
+        '& .aisen-admin-list-page .RaList-content':{
+          flex:'1 1 auto',minHeight:0,display:'flex',flexDirection:'column',overflow:'hidden',
+        },
+        '& .aisen-admin-list-page .RaDatagrid-root':{
+          flex:'1 1 auto',minHeight:0,display:'flex',flexDirection:'column',overflow:'hidden',
+        },
+        '& .aisen-admin-list-page .RaDatagrid-tableWrapper':{
+          flex:'1 1 auto',minHeight:0,maxHeight:'none',
+          overflowY:'auto',overflowX:'auto',overscrollBehavior:'contain',
+        },
+      },
       background:{xs:'#F8FAFC',md:'rgba(255,255,255,.91)'},
       border:{xs:'none',md:'1px solid #E5EAF0'},
-      borderRadius:{xs:0,md:'21px'},
+      borderRadius:{xs:0,md:adminRadii.container},
       boxShadow:{xs:'none',md:'0 12px 40px rgba(35,52,72,.045), 0 2px 7px rgba(35,52,72,.025)'},
-      minHeight:{xs:'calc(100dvh - 64px)',md:'calc(100dvh - 96px)'},
     },
-    '@media (min-width:900px)':{
-      '& .RaSidebar-root':{flexShrink:0,height:'calc(100dvh - 96px)',minHeight:0},
+    // The real React-admin permanent Drawer uses the docked/fixed/paper
+    // layers. Keep all three inside one non-scrolling viewport-height rail.
+    // The temporary mobile Drawer is portalled and remains unchanged.
+    '@media (min-width:600px)':{
+      '& .RaSidebar-docked':{
+        position:'relative !important',top:'auto',alignSelf:'stretch',
+        flexShrink:0,height:'100%',minHeight:0,marginTop:'0 !important',
+      },
+      '& .RaSidebar-fixed':{
+        position:'relative !important',height:'100% !important',
+        width:'100%',minHeight:0,
+      },
       '& .RaSidebar-paper':{
         border:'1px solid #E5EAF0 !important',
         background:'rgba(255,255,255,.94) !important',
-        borderRadius:'20px !important',
+        borderRadius:`${adminRadii.container} !important`,
         boxShadow:'0 10px 32px rgba(33,50,69,.055), 0 2px 6px rgba(33,50,69,.025)',
-        minHeight:'calc(100dvh - 96px)',maxHeight:'calc(100dvh - 96px)',
-        overflowY:'auto',overflowX:'hidden',
+        height:'100%',minHeight:0,maxHeight:'100%',
+        overflowY:'auto',overflowX:'hidden',overscrollBehaviorY:'contain',
       },
     },
   }}/></OperationModalProvider>;
@@ -284,22 +327,20 @@ export default function App() {
     <Resource name="products" options={{label:'产品'}} list={ProductsList} create={ProductCreate} show={ProductShow}/>
     <Resource name="memberships" options={{label:'成员关系'}} list={MembersList} show={MemberShow}/>
     <Resource name="grants" options={{label:'Pro 授权'}} list={GrantsList} show={GrantShow}/>
-    <Resource name="code-batches" options={{label:'发行批次'}} list={BatchesList} show={BatchShow}/>
-    <Resource name="codes" options={{label:'兑换码记录'}} list={CodesList} show={CodeShow}/>
-    <Resource name="redemptions" options={{label:'核销记录'}} list={RedemptionsList}/>
+    <Resource name="code-batches" options={{label:'兑换码'}} list={BatchesList} show={BatchShow}/>
     <Resource name="admins" options={{label:'管理员权限'}} list={AdminsList} show={AdminShow}/>
-    <Resource name="restrictions" options={{label:'平台封禁'}} list={RestrictionsList} show={RestrictionShow}/>
     <Resource name="audit-logs" options={{label:'管理审计'}} list={AuditList} show={AuditShow}/>
     <Resource name="membership-events" options={{label:'成员事件'}} list={EventsList}/>
-    <Resource name="users" options={{label:'查找账号'}} list={UsersList} show={UserShow}/>
+    <Resource name="users" options={{label:'用户中心'}} list={UsersList} show={UserShow}/>
     <Resource name="feedback" options={{label:'用户反馈'}} list={FeedbackList} show={FeedbackShow}/>
     <CustomRoutes>
       <Route path="/grant-new" element={<Authenticated><GrantCreate/></Authenticated>}/>
       <Route path="/issue-codes" element={<Authenticated><IssueCodes/></Authenticated>}/>
       <Route path="/account-actions" element={<Authenticated><AccountActions/></Authenticated>}/>
+      <Route path="/admin-actions" element={<Authenticated><AdminRoleActions/></Authenticated>}/>
       <Route path="/feedback/workbench" element={<Authenticated><FeedbackWorkbench/></Authenticated>}/>
       <Route path="/feedback/archived" element={<Authenticated><FeedbackArchived/></Authenticated>}/>
-      <Route path="/feedback/trash" element={<Authenticated><FeedbackTrash/></Authenticated>}/>
+      <Route path="/feedback/history" element={<Authenticated><FeedbackUserHistory/></Authenticated>}/>
     </CustomRoutes>
   </Admin></Suspense>;
 }

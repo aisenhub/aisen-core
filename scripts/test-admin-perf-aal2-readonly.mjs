@@ -24,11 +24,19 @@ let lazyRoute=null;
 let revocation=null;
 const verifyRevocation=process.argv.includes('--revocation');
 const verifySpaTags=process.argv.includes('--spa-tags');
+const verifyIdentityUX=process.argv.includes('--identity-ux');
+const verifyScroll=process.argv.includes('--scroll');
 let spaTags=null;
+let identityUX=null;
 const verifyPendingAxe=process.argv.includes('--axe-pending');
 const a11y=[];
 const axeBundle=verifyPendingAxe?readFileSync(join(root,'apps','admin','node_modules','axe-core','axe.min.js'),'utf8'):null;
 const pending=new Map(),held=new Set(),failures=[],results=[];
+const grantReadUrls=[];
+const memberReadUrls=[];
+const feedbackReadUrls=[];
+const runtimeErrors=[];
+const feedbackResponses=[];
 const sleep=ms=>new Promise(ok=>setTimeout(ok,ms));
 function sql(q){
   const x=spawnSync('docker',['exec','supabase_db_Aisencore','psql','-X','-qAt','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-c',q],{encoding:'utf8',timeout:17000});
@@ -66,7 +74,8 @@ function send(method,params={},timeoutMs=16000){
 }
 async function evaluate(expression){
   const v=await send('Runtime.evaluate',{expression,returnByValue:true,awaitPromise:true});
-  if(v.result?.exceptionDetails)throw Error('Chrome evaluate failed: '+v.result.exceptionDetails.text);
+  if(v.result?.exceptionDetails)throw Error('Chrome evaluate failed: '+
+    String(v.result.exceptionDetails.exception?.description??v.result.exceptionDetails.text).slice(0,450));
   return v.result?.result?.value;
 }
 async function until(fn,timeout=11000){
@@ -81,14 +90,34 @@ async function release(){
 }
 function onMessage(event){
   const msg=JSON.parse(event.data);
+  if(msg.method==='Runtime.exceptionThrown'){
+    const e=msg.params?.exceptionDetails;
+    runtimeErrors.push(String(e?.exception?.description??e?.text??'unknown browser exception')
+      .split('\n')[0].slice(0,300));
+  }
+  if(msg.method==='Runtime.consoleAPICalled'&&msg.params?.type==='error'){
+    runtimeErrors.push((msg.params.args??[]).map(a=>String(a.value??a.description??'')).join(' ')
+      .split('\n')[0].slice(0,300));
+  }
+  if(msg.method==='Network.responseReceived'){
+    const response=msg.params?.response;
+    if(response?.url?.includes('/rest/v1/admin_feedback_summaries?'))
+      feedbackResponses.push({status:response.status,
+        filterUser:response.url.includes('user_id=eq.')});
+  }
   const wait=pending.get(msg.id);
   if(wait){pending.delete(msg.id);msg.error?wait.reject(Error(msg.error.message)):wait.resolve(msg);}
   if(msg.method==='Network.requestWillBeSent'){
     const url=msg.params?.request?.url??'';
+    if(url.includes('/rest/v1/entitlement_grants?'))grantReadUrls.push(url);
+    if(url.includes('/rest/v1/product_memberships?'))memberReadUrls.push(url);
     if(url.includes('/rest/v1/rpc/admin_check_access'))requests.access++;
     if(url.includes('/rest/v1/rpc/admin_feedback_tags'))requests.tags++;
     if(url.includes('/rest/v1/products?'))requests.products++;
-    if(url.includes('/rest/v1/admin_feedback_summaries?'))requests.feedback++;
+    if(url.includes('/rest/v1/admin_feedback_summaries?')){
+      requests.feedback++;
+      feedbackReadUrls.push(url);
+    }
   }
   if(msg.method!=='Fetch.requestPaused')return;
   const req=msg.params;
@@ -201,7 +230,370 @@ try{
       cls:loaded.cls,docOverflowPx:loaded.docOverflow,requests:{...requests}});
     console.log('AAL2_READONLY_UI PASS '+name+' '+width+'px');
   }
-  if(verifySpaTags){
+  if(verifyScroll){
+    // Real headed DOM using an isolated AAL2 QA admin, with synthetic rows
+    // cloned in-browser only. No existing business row is altered.
+    await release();
+    await send('Emulation.setDeviceMetricsOverride',
+      {width:1440,height:900,deviceScaleFactor:1,mobile:false});
+    const cases=[
+      {route:'audit-logs',kind:'mui',name:'audit'},
+      {route:'feedback',kind:'ra',name:'feedback'},
+      {route:'products',kind:'ra',name:'products'},
+      {route:'code-batches',kind:'mui',name:'redemption-batches'},
+    ];
+    const sampleBatch=sql('SELECT id FROM public.redemption_code_batches ORDER BY created_at DESC LIMIT 1');
+    if(sampleBatch)cases.push({route:'code-batches/'+sampleBatch+'/show',kind:'mui',name:'redemption-batch-detail'});
+    for(const item of cases){
+      await send('Page.navigate',{url:base+'/?scroll='+item.name+'#/'+item.route});
+      await until(async()=>await evaluate('document.readyState')==='complete');
+      const readyRow=item.kind==='ra'?'.RaDatagrid-tableWrapper tbody tr':'.MuiTableContainer-root tbody tr';
+      await until(async()=>await evaluate("!!document.querySelector('.RaLayout-content') && !!document.querySelector("+JSON.stringify(readyRow)+")"),19000);
+      // A single page can contain only 2-3 records. Add copies to the
+      // *browser DOM* so actual scroll can be tested without DB writes.
+      const result=await evaluate(`(async()=>{
+        const selector=${JSON.stringify(item.kind==='ra'?'.RaDatagrid-tableWrapper':'.MuiTableContainer-root')};
+        const main=document.querySelector('.RaLayout-content');
+        const table=main?.querySelector(selector);
+        const body=table?.querySelector('tbody');
+        const row=body?.querySelector('tr');
+        if(!main||!table||!row) return {error:'missing-main-or-table',
+          route:location.hash,hasMain:!!main,hasTable:!!table,hasRow:!!row,
+          raWrappers:main?.querySelectorAll('.RaDatagrid-tableWrapper').length,
+          tableContainers:main?.querySelectorAll('.MuiTableContainer-root').length,
+          status:(main?.innerText??'').includes('暂无匹配')?'empty':'not-empty',
+          errorNotice:!!main?.querySelector('[role=alert]'),
+          pending:(main?.innerText??'').includes('正在读取记录')};
+        for(let i=0;i<36;i++)body.appendChild(row.cloneNode(true));
+        await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+        const bar=document.querySelector('.MuiAppBar-root');
+        const rail=document.querySelector('.RaSidebar-paper');
+        const tools=main.querySelector('button');
+        const th=table.querySelector('thead th');
+        const geom=()=>({
+          bar:bar?.getBoundingClientRect().top,
+          rail:rail?.getBoundingClientRect().top,
+          tools:tools?.getBoundingClientRect().top,
+          head:th?.getBoundingClientRect().top,
+          row:row.getBoundingClientRect().top,
+        });
+        const before=geom();
+        window.scrollTo(0,350);
+        main.scrollTop=150;
+        table.scrollTop=350;
+        await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+        const chain=[];let node=table;
+        while(node&&chain.length<10){
+          const s=getComputedStyle(node);
+          chain.push({cls:String(node.className).slice(0,100),
+            tag:node.tagName,clientHeight:node.clientHeight,scrollHeight:node.scrollHeight,
+            flex:s.flex,display:s.display,minHeight:s.minHeight,maxHeight:s.maxHeight,
+            height:s.height,overflowY:s.overflowY});
+          node=node.parentElement;
+        }
+        return {before,after:geom(),chain,
+          windowScrollY:window.scrollY,mainScrollTop:main.scrollTop,
+          tableScrollTop:table.scrollTop,tableScrollHeight:table.scrollHeight,
+          tableClientHeight:table.clientHeight,
+          bodyOverflow:getComputedStyle(document.body).overflow,
+          mainOverflow:getComputedStyle(main).overflowY};
+      })()`);
+      assert.ok(!result.error,item.name+' '+JSON.stringify(result));
+      assert.equal(result.windowScrollY,0,item.name+' must never scroll browser document');
+      assert.equal(result.mainScrollTop,0,item.name+' must keep list toolbar fixed');
+      assert.ok(result.tableScrollTop>=120,item.name+' table must scroll data rows');
+      for(const key of ['bar','rail','tools','head'])
+        assert.ok(Math.abs(result.before[key]-result.after[key])<=2,
+          item.name+' '+key+' moved: '+JSON.stringify(result));
+      assert.ok(result.after.row<result.before.row-100,
+        item.name+' row must move without its header');
+      results.push({name:item.name,scrollport:'table',windowScrollY:result.windowScrollY,
+        mainScrollTop:result.mainScrollTop,tableScrollTop:result.tableScrollTop,
+        fixedElements:true});
+      console.log('ADMIN_SCROLL_REAL_CDP PASS '+item.name);
+    }
+  }else if(verifyIdentityUX){
+    // A real AAL2 Chrome read-only acceptance of the new exact-email flows.
+    // This suite uses the disposable QA admin created above; unlike the
+    // historical write-suite it does not require deleting existing business data.
+    async function openRoute(route){
+      await send('Page.navigate',{url:base+'/?qa=identity-'+encodeURIComponent(route)+'#/'+route});
+      await until(async()=>await evaluate('document.readyState')==='complete');
+    }
+    async function searchEmail(address){
+      await until(async()=>await evaluate("!!document.querySelector('input[type=email]')"),12000);
+      await evaluate(`(()=>{const input=document.querySelector('input[type=email]');
+        const setter=Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set;
+        setter.call(input,${JSON.stringify(address)});
+        input.dispatchEvent(new Event('input',{bubbles:true}));
+        input.dispatchEvent(new Event('change',{bubbles:true}));
+        return true;})()`);
+      await until(async()=>await evaluate(`document.querySelector('input[type=email]')?.value===${JSON.stringify(address)}`));
+      await evaluate(`(()=>{const input=document.querySelector('input[type=email]');
+        const find=[...document.querySelectorAll('button')].find(b=>b.innerText.trim()==='查找账号');
+        if(find) find.click(); else input.closest('form').requestSubmit();
+      })()`);
+    }
+    await openRoute('');
+    await until(async()=>await evaluate(`!![...document.querySelectorAll('a[href]')]
+      .find(a=>a.textContent?.trim()==='用户中心'&&
+        a.getAttribute('href')?.endsWith('/users'))`),12000);
+    const clickUserCenter=await evaluate(`(()=>{
+      const a=[...document.querySelectorAll('a[href]')].find(a=>
+        a.textContent?.trim()==='用户中心'&&
+        a.getAttribute('href')?.endsWith('/users'));
+      a?.click();return !!a;
+    })()`);
+    assert.equal(clickUserCenter,true,'left User Center navigation must lead to /users');
+    await until(async()=>await evaluate("location.hash.includes('/users')&&document.body.innerText.includes('全平台 · 注册用户')"),14000);
+    console.log('USER_CENTER_SIDEBAR_REAL_CLICK_ROUTE PASS');
+    await until(async()=>await evaluate(`!![...document.querySelectorAll('tbody tr')]
+      .find(r=>r.innerText.includes(${JSON.stringify(qaEmail)}))`),14000);
+    const directory=await evaluate(`(()=>({
+      heading:document.body.innerText.includes('用户中心'),
+      rows:document.querySelectorAll('tbody tr').length,
+      primary:!![...document.querySelectorAll('tbody a[href]')].find(a=>
+        a.textContent?.includes('用户360°')&&
+        a.getAttribute('href')?.includes(${JSON.stringify('/users/'+uid+'/show')})),
+      noTopLevelMembership:![...document.querySelectorAll('nav a')].some(a=>
+        a.textContent?.trim()==='成员关系'),
+    }))()`);
+    assert.ok(directory.heading&&directory.rows>=1&&directory.primary&&directory.noTopLevelMembership,
+      'User menu should show a real account directory, not a membership list: '+JSON.stringify(directory));
+    console.log('USER_CENTER_REAL_AAL2_LIST_UNFILTERED_AND_USER360_ENTRY PASS');
+    const headers={apikey:cfg.PUBLISHABLE_KEY,authorization:'Bearer '+upgraded.access_token,
+      'content-type':'application/json'};
+    const directoryPage=await fetch(cfg.API_URL+'/rest/v1/rpc/admin_list_users',{
+      method:'POST',headers,body:JSON.stringify({p_page:1,p_per_page:1}),
+      signal:AbortSignal.timeout(12000),
+    });
+    assert.equal(directoryPage.status,200,'AAL2 admin may read one paginated directory user');
+    const firstPage=await directoryPage.json();
+    assert.equal(firstPage.items.length,1,'server pagination must return one Auth user, not one membership');
+    assert.ok(firstPage.total>=1&&typeof firstPage.items[0].membership_count==='number');
+    const directoryBadLimit=await fetch(cfg.API_URL+'/rest/v1/rpc/admin_list_users',{
+      method:'POST',headers,body:JSON.stringify({p_page:1,p_per_page:51}),
+      signal:AbortSignal.timeout(12000),
+    });
+    assert.equal(directoryBadLimit.status,422,'unbounded user directory read must be denied');
+    const directoryAal1=await fetch(cfg.API_URL+'/rest/v1/rpc/admin_list_users',{
+      method:'POST',headers:{...headers,authorization:'Bearer '+sign.access_token},
+      body:JSON.stringify({p_page:1,p_per_page:20}),signal:AbortSignal.timeout(12000),
+    });
+    assert.equal(directoryAal1.status,403,'AAL1 must not enumerate accounts');
+    const actualProductId=sql("SELECT id FROM public.products WHERE product_key='aisenlens'");
+    assert.match(actualProductId,/^[0-9a-f-]{36}$/i);
+    const productDirectory=await fetch(cfg.API_URL+'/rest/v1/rpc/admin_list_users',{
+      method:'POST',headers,
+      body:JSON.stringify({p_product_id:actualProductId,p_page:1,p_per_page:50}),
+      signal:AbortSignal.timeout(12000),
+    });
+    assert.equal(productDirectory.status,200,'AAL2 product directory must be a restricted read');
+    const selectedProduct=await productDirectory.json();
+    assert.ok(selectedProduct.items.every(item=>
+      item.scope_membership_status!==null&&item.id!==uid),
+      'product scope must contain real members only and exclude the membership-free QA admin');
+    assert.equal(new Set(selectedProduct.items.map(item=>item.id)).size,selectedProduct.items.length,
+      'the product user directory must have unique auth users');
+    console.log('USER_CENTER_AAL2_SINGLE_PRODUCT_UNIQUE_USERS PASS');
+    console.log('USER_CENTER_AAL2_PAGINATION_AND_AAL1_DENIAL PASS');
+    await searchEmail(qaEmail);
+    await until(async()=>await evaluate(`document.querySelector('tbody')?.innerText.includes(${JSON.stringify(uid)})`),14000);
+    const account=await evaluate(`(()=>{const rows=[...document.querySelectorAll('tbody tr')];
+      const cell=rows[0]?.querySelectorAll('td')[1];
+      return {count:rows.length,id:cell?.innerText,copy:!!cell?.querySelector('button[aria-label="复制用户编号"]'),
+        duplicate:!!rows[0]?.querySelector('td:last-child button[aria-label="复制完整编号"]')};})()`);
+    assert.equal(account.count,1,'exact lookup must display only matching user');
+    assert.ok(account.id.includes(uid)&&account.copy&&!account.duplicate,'user number copy belongs to its cell');
+    console.log('CA01_CA02_REAL_AAL2 PASS');
+    const keyboard=await evaluate(`(()=>{
+      const button=document.querySelector('tbody button[aria-label="复制用户编号"]');
+      button?.focus();
+      return !!button&&document.activeElement===button;
+    })()`);
+    assert.equal(keyboard,true,'User-ID copy must be reachable by keyboard focus');
+    await evaluate(`(()=>{
+      Object.defineProperty(navigator,'clipboard',{configurable:true,value:{
+        writeText:()=>Promise.reject(Error('synthetic clipboard permission denied'))}});
+      document.querySelector('tbody button[aria-label="复制用户编号"]').click();
+    })()`);
+    await until(async()=>await evaluate("document.body.innerText.includes('复制失败')"),9000);
+    console.log('CA02_CLIPBOARD_PERMISSION_DENIED_FEEDBACK_REAL_AAL2 PASS');
+    const aal1Lookup=await fetch(cfg.API_URL+'/rest/v1/rpc/admin_lookup_users',{
+      method:'POST',headers:{apikey:cfg.PUBLISHABLE_KEY,authorization:'Bearer '+sign.access_token,
+        'content-type':'application/json'},
+      body:JSON.stringify({p_user_ids:null,p_email_exact:qaEmail,p_page:1,p_per_page:2}),
+      signal:AbortSignal.timeout(12000),
+    });
+    assert.equal(aal1Lookup.status,403,'AAL1 actor must not read restricted user identities');
+    console.log('CA11_AAL1_IDENTITY_LOOKUP_DENIED PASS');
+    await openRoute('users/'+uid+'/show');
+    await until(async()=>await evaluate("document.body.innerText.includes('用户编号：')"),12000);
+    const cards=await evaluate(`(()=>['账号状态与权限','成员关系','订阅与 Pro 权益','用户反馈','账号管理审计'].every(title=>!!document.querySelector('button[aria-label="展开'+title+'详情"]')))()`);
+    assert.equal(cards,true,'user 360 must show five expandable account, member, subscription, feedback and audit cards');
+    const openPro=await evaluate(`(()=>{const b=document.querySelector('button[aria-label="展开订阅与 Pro 权益详情"]');b?.click();return !!b})()`);
+    assert.equal(openPro,true,'subscription card must expand details and record links');
+    await until(async()=>await evaluate("document.body.innerText.includes('为此用户新建 Pro 授权')"),10000);
+    const userShow=await evaluate(`(()=>({id:document.body.innerText.includes(${JSON.stringify(uid)}),
+      copy:!!document.querySelector('button[aria-label="复制用户编号"]'),
+      grant:document.body.innerText.includes('为此用户新建 Pro 授权'),
+      records:document.body.innerText.includes('完整授权记录')}))()`);
+    assert.ok(userShow.id&&userShow.copy&&userShow.grant);
+    console.log('CA03_USER_SHOW_REAL_AAL2 PASS');
+    console.log('USER360_FOUR_EXPANDABLE_CARDS_AND_SUBSCRIPTION_DETAILS_REAL_AAL2 PASS');
+    const auditExpanded=await evaluate(`(()=>{const b=document.querySelector('button[aria-label="展开账号管理审计详情"]');b?.click();return !!b})()`);
+    assert.equal(auditExpanded,true,'account audit must expand to its own protected history');
+    await until(async()=>await evaluate("document.body.innerText.includes('查看此用户完整管理审计')"),10000);
+    assert.ok(await evaluate(`!!document.querySelector('a[href*="audit-logs?target_id=${uid}"]')`),
+      'account audit history deep link must retain this user UUID');
+    console.log('USER360_AUDIT_DETAIL_AND_EXACT_TARGET_LINK_REAL_AAL2 PASS');
+    const historyStart=feedbackReadUrls.length;
+    await openRoute('feedback/history?user_id='+uid);
+    try{
+      await until(async()=>await evaluate("document.body.innerText.includes('该用户全部反馈')"),14000);
+    }catch(error){
+      const diagnostic=await evaluate(`(()=>({route:location.hash,
+        heading:document.querySelector('h1')?.innerText??'none',
+        hint:(()=>{const t=document.body.innerText;const i=t.indexOf('页面遇到了问题');return i>=0?t.slice(i,i+280):''})(),
+        login:document.body.innerText.includes('使用平台管理员身份登录'),
+        blocked:document.body.innerText.includes('已阻止无筛选的查询'),
+        busy:document.body.innerText.includes('正在加载工作区')}))()`).catch(()=>null);
+      console.error('USER360_FEEDBACK_ROUTE_DIAGNOSTIC '+JSON.stringify({
+        ...diagnostic,feedbackRequests:feedbackReadUrls.length,
+        browserErrors:runtimeErrors.slice(-3),feedbackResponses:feedbackResponses.slice(-4),
+      }));
+      throw error;
+    }
+    console.log('USER360_FEEDBACK_HISTORY_ROUTE_RENDERED_REAL_AAL2 PASS');
+    await until(async()=>feedbackReadUrls.slice(historyStart)
+      .some(url=>url.includes('user_id=eq.')&&url.includes(uid)),14000);
+    const scopedFeedback=feedbackReadUrls.slice(historyStart)
+      .filter(url=>url.includes('/rest/v1/admin_feedback_summaries?'));
+    assert.ok(scopedFeedback.length>0&&scopedFeedback.every(url=>
+      url.includes('user_id=eq.')&&url.includes(uid)),
+      'user feedback history must never fetch a full-platform unfiltered list: '+JSON.stringify(
+        scopedFeedback.map(url=>({filtered:url.includes('user_id=eq.'),hasOwner:url.includes(uid)}))));
+    assert.ok(await evaluate("document.body.innerText.includes('返回用户综合详情')"),
+      'user feedback record history must retain a path back to the same user');
+    console.log('USER360_REAL_AAL2_FEEDBACK_ALL_QUEUES_USER_SCOPED PASS');
+    const stageStart=feedbackReadUrls.length;
+    await openRoute('feedback/history?user_id='+uid+'&queue_state=archived');
+    await until(async()=>feedbackReadUrls.slice(stageStart).some(url=>
+      url.includes('user_id=eq.')&&url.includes(uid)&&url.includes('queue_state=eq.archived')),14000);
+    assert.ok(feedbackReadUrls.slice(stageStart).every(url=>
+      url.includes('user_id=eq.')&&url.includes(uid)),
+      'switching a user feedback stage must not strip identity scope');
+    console.log('USER360_REAL_AAL2_FEEDBACK_ARCHIVE_STAGE_PRESERVES_TARGET PASS');
+    await send('Emulation.setDeviceMetricsOverride',
+      {width:320,height:720,deviceScaleFactor:1,mobile:true});
+    await openRoute('feedback/history?user_id='+uid);
+    await until(async()=>await evaluate("document.body.innerText.includes('该用户全部反馈')"),12000);
+    const smallHistory=await evaluate(`(()=>({
+      overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-innerWidth,
+      tabs:!!document.querySelector('[aria-label="该用户反馈阶段"]'),
+      sameUser:document.body.innerText.includes(${JSON.stringify(uid)}),
+    }))()`);
+    assert.ok(smallHistory.overflow<=12&&smallHistory.tabs&&smallHistory.sameUser,
+      '320px user-feedback history should stay in viewport: '+JSON.stringify(smallHistory));
+    console.log('USER360_REAL_AAL2_FEEDBACK_HISTORY_320PX PASS');
+    await send('Emulation.setDeviceMetricsOverride',
+      {width:1440,height:900,deviceScaleFactor:1,mobile:false});
+    const beforeInvalid=feedbackReadUrls.length;
+    await openRoute('feedback/history?user_id=invalid-user-id');
+    await until(async()=>await evaluate("document.body.innerText.includes('已阻止无筛选的查询')"),10000);
+    await sleep(350);
+    assert.equal(feedbackReadUrls.length,beforeInvalid,'invalid user UUID must not issue unfiltered feedback reads');
+    console.log('USER360_REAL_AAL2_INVALID_FEEDBACK_USER_FAIL_CLOSED PASS');
+    await openRoute('memberships');
+    await until(async()=>await evaluate("document.body.innerText.includes('成员关系记录')"),12000);
+    await searchEmail(qaEmail);
+    await until(async()=>await evaluate("document.body.innerText.includes('共 0 条记录')"),14000);
+    assert.ok(memberReadUrls.some(url=>url.includes('user_id=eq.')&&url.includes(uid)),
+      'memberships must filter by verified user_id');
+    console.log('CA05_MEMBERSHIP_EMAIL_REAL_AAL2 PASS');
+    await openRoute('grants');
+    await until(async()=>await evaluate("document.body.innerText.includes('授权记录')"),12000);
+    await searchEmail(qaEmail);
+    await until(async()=>await evaluate("document.body.innerText.includes('共 0 条记录')"),14000);
+    const firstFiltered=grantReadUrls.slice();
+    assert.ok(firstFiltered.some(url=>url.includes('user_id=eq.')&&url.includes(uid)),
+      'grants must filter by verified user_id');
+    const priorCount=grantReadUrls.length;
+    await searchEmail('not-found-identity-qa@aisencore.test');
+    await until(async()=>await evaluate("document.body.innerText.includes('未找到此邮箱的唯一注册账号')"),14000);
+    await sleep(350);
+    const missing=await evaluate(`(()=>({
+      noRows:!document.querySelector('tbody tr'),
+      refreshDisabled:!!document.querySelector('button[aria-label="刷新数据"]')?.disabled
+    }))()`);
+    assert.ok(missing.noRows&&missing.refreshDisabled,'missing identity must fail closed');
+    assert.equal(grantReadUrls.length,priorCount,'unknown email may not trigger unfiltered grants read');
+    console.log('CA06_EXACT_EMAIL_FAIL_CLOSED_REAL_AAL2 PASS');
+    await openRoute('grant-new?user_id='+uid);
+    await until(async()=>await evaluate("document.body.innerText.includes('已核实目标账号')"),12000);
+    const grant=await evaluate(`(()=>({email:document.body.innerText.includes(${JSON.stringify(qaEmail)}),
+      uuid:document.body.innerText.includes(${JSON.stringify(uid)}),
+      noUuidInput:!document.body.innerText.includes('目标用户 UUID'),
+      shortcut:document.body.innerText.includes('7 天')&&document.body.innerText.includes('365 天')
+    }))()`);
+    assert.ok(Object.values(grant).every(Boolean),'grant preselection and shortcuts');
+    console.log('CA07_PRO_GRANT_PREFILL_REAL_AAL2 PASS');
+    const preview=await evaluate(`(()=>({
+      noDateControls:document.querySelectorAll('input[type="datetime-local"]').length===0,
+      cannotSubmit:!![...document.querySelectorAll('button')].find(
+        b=>b.innerText.includes('确认授予 Pro'))?.disabled
+    }))()`);
+    assert.ok(Object.values(preview).every(Boolean),
+      'Pro form must not submit without verified product or allow date input: '+JSON.stringify(preview));
+    console.log('GE19_20_PRO_FORM_NO_DATES_AND_UNSELECTED_PRODUCT_DENIED PASS');
+    await openRoute('grant-new?user_id='+uid+'&product_id=invalid');
+    await until(async()=>await evaluate("document.body.innerText.includes('用户中心传入的产品编号无效')"),10000);
+    assert.ok(await evaluate("!![...document.querySelectorAll('button')].find(b=>b.innerText.includes('确认授予 Pro'))?.disabled"),
+      'invalid product card context must never enable a grant');
+    console.log('USER360_INVALID_PRO_CARD_PRODUCT_FAIL_CLOSED_REAL_AAL2 PASS');
+    await openRoute('grant-new');
+    await searchEmail(qaEmail);
+    await until(async()=>await evaluate("document.body.innerText.includes('确认选择此用户')"),14000);
+    await evaluate("([...document.querySelectorAll('button')].find(b=>b.innerText.includes('确认选择此用户'))).click()");
+    await until(async()=>await evaluate("document.body.innerText.includes('已核实目标账号')"),12000);
+    assert.ok(await evaluate(`document.body.innerText.includes(${JSON.stringify(uid)})`),
+      'direct grant form must select the verified UUID, not an email string');
+    console.log('CA08_DIRECT_EMAIL_TARGET_SELECTION_REAL_AAL2 PASS');
+    await openRoute('account-actions?user_id='+uid);
+    await until(async()=>await evaluate("document.body.innerText.includes('已核实目标账号')"),12000);
+    const gov=await evaluate(`(()=>({verified:document.body.innerText.includes(${JSON.stringify(qaEmail)}),
+      review:document.body.innerText.includes('核对目标与操作'),
+      oldInput:document.body.innerText.includes('目标用户 UUID')}))()`);
+    assert.ok(gov.verified&&gov.review&&!gov.oldInput,'governance must retain independent review');
+    console.log('CA14_GOVERNANCE_PREFILL_REAL_AAL2 PASS');
+    await until(async()=>await evaluate("document.body.innerText.includes('当前状态：平台账号')"),14000);
+    const noopOpen=await evaluate("(()=>{const x=[...document.querySelectorAll('[role=combobox]')].find(e=>e.closest('.MuiFormControl-root')?.textContent?.includes('管理操作'));x?.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,button:0}));return !!x})()");
+    assert.equal(noopOpen,true,'governance selector must be accessible');
+    await until(async()=>await evaluate("!![...document.querySelectorAll('[role=option]')].find(e=>e.textContent?.includes('解除平台封禁'))"),10000);
+    const noopChoice=await evaluate("(()=>{const x=[...document.querySelectorAll('[role=option]')].find(e=>e.textContent?.includes('解除平台封禁'));x?.click();return !!x})()");
+    assert.equal(noopChoice,true,'no-op governance option must be selectable to show explanation');
+    const noOp=await evaluate(`(()=>({notice:document.body.innerText.includes('无需重复提交'),
+      reviewDisabled:[...document.querySelectorAll('button')].find(b=>b.textContent?.includes('核对目标与操作'))?.disabled,
+      submitDisabled:[...document.querySelectorAll('button')].find(b=>b.textContent?.includes('提交管理操作'))?.disabled}))()`);
+    assert.ok(noOp.notice&&noOp.reviewDisabled&&noOp.submitDisabled,
+      'unblocked account cannot submit an unnecessary unblock command: '+JSON.stringify(noOp));
+    console.log('U01_REAL_AAL2_GOVERNANCE_NOOP_BLOCKED PASS no unnecessary unblock submission');
+    await send('Emulation.setDeviceMetricsOverride',
+      {width:390,height:844,deviceScaleFactor:1,mobile:true});
+    await openRoute('users');
+    await searchEmail(qaEmail);
+    await until(async()=>await evaluate("!!document.querySelector('button[aria-label=\"复制用户编号\"]')"),14000);
+    const mobile=await evaluate(`(()=>({
+      userId:document.body.innerText.includes(${JSON.stringify(uid)}),
+      copyCount:document.querySelectorAll('button[aria-label="复制用户编号"]').length,
+      overflow:Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)-
+        document.documentElement.clientWidth
+    }))()`);
+    assert.ok(mobile.userId&&mobile.copyCount===1&&mobile.overflow<=0,
+      '390px mobile identity and copy must remain usable without horizontal overflow');
+    console.log('CA12_MOBILE_COPY_LAYOUT_REAL_AAL2 PASS');
+    identityUX={account,userShow,missing,grant,gov,mobile,pass:true};
+  }else if(verifySpaTags){
     await release();
     await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
     requests={access:0,tags:0,products:0,feedback:0};
@@ -245,7 +637,6 @@ try{
   await probe('redemptions-mobile','redemptions','redemptions','核销账号',390);
   await probe('events-mobile','membership-events','membership_events','对应成员',390);
   await probe('admins-mobile','admins','platform_admins','管理员账号',390);
-  await probe('restrictions-mobile','restrictions','platform_account_restrictions','目标账号',390);
   await probe('audit-mobile','audit-logs','admin_audit_log','操作类型',390);
   await probe('memberships-phone-small','memberships','product_memberships','加入日期',320);
   await probe('memberships-tablet','memberships','product_memberships','加入日期',768);
@@ -261,7 +652,7 @@ try{
     const during=await evaluate("({hasBar:!!document.querySelector('.MuiAppBar-root'),hasSidebar:!!document.querySelector('.MuiDrawer-paper'),routeLoading:document.body.innerText.includes('正在加载工作区')})");
     lazyRoute={chunk:'AccountActions',suspended:true,...during};
     await release();
-    await until(async()=>await evaluate("document.body.innerText.includes('平台账号操作')"),12000);
+    await until(async()=>await evaluate("document.body.innerText.includes('平台账号封禁与解封')"),12000);
     lazyRoute.restoredBar=await evaluate("!!document.querySelector('.MuiAppBar-root')");
     console.log('LAZY_ROUTE_SHELL '+JSON.stringify(lazyRoute));
   }catch(e){
@@ -307,17 +698,20 @@ finally{
   // Windows Chrome can keep its profile locked briefly after taskkill exits.
   // Retry boundedly and treat final deletion failure as an actual test failure.
   let profileDeleted=false;
-  for(let retry=0;retry<15&&!profileDeleted;retry++){
+  let profileError='';
+  for(let retry=0;retry<45&&!profileDeleted;retry++){
     try{rmSync(profile,{force:true,recursive:true,maxRetries:3,retryDelay:200});profileDeleted=true;}
-    catch{await sleep(900)}
+    catch(error){profileError=String(error?.code??error?.message??error);await sleep(1100)}
   }
-  if(!profileDeleted){failures.push('profile deletion');console.error('QA_PROFILE_CLEANUP FAILED');}
+  if(!profileDeleted){failures.push('profile deletion');console.error('QA_PROFILE_CLEANUP FAILED '+profileError);}
   const safe={context:'temporary local AAL2 admin; production preview; read-only business queries artificially paused by CDP; no credentials/data retained',
-    createdAt:'2026-10-26',results,lazyRoute,revocation,spaTags,a11y,pass:!primaryError&&failures.length===0,
+    createdAt:'2026-10-28',results,lazyRoute,revocation,spaTags,identityUX,a11y,pass:!primaryError&&failures.length===0,
     limitations:['Synthetic local fixture; no real-user p75/p95','Only GET paused; not application request latency','No data-volume stress test','No manual screen-reader or owner signoff']};
-  writeFileSync(join(root,'docs','Plans','aisencore-mvp','ui-evidence',verifySpaTags?
-    'admin-perf-spa-tags-2026-10-26.json':verifyRevocation?
-    'admin-perf-aal2-revocation-2026-10-26.json':verifyPendingAxe?
-    'admin-perf-aal2-loading-axe-2026-10-26.json':'admin-perf-aal2-readonly-2026-10-26.json'),JSON.stringify(safe,null,2));
+  writeFileSync(join(root,'docs','Plans','aisencore-mvp','ui-evidence',verifyScroll?
+    'admin-global-table-scroll-2026-10-29.json':verifyIdentityUX?
+    'admin-identity-ux-2026-10-28.json':verifySpaTags?
+    'admin-perf-spa-tags-2026-10-28.json':verifyRevocation?
+    'admin-perf-aal2-revocation-2026-10-28.json':verifyPendingAxe?
+    'admin-perf-aal2-loading-axe-2026-10-28.json':'admin-perf-aal2-readonly-2026-10-28.json'),JSON.stringify(safe,null,2));
   if(primaryError||failures.length)process.exitCode=1;
 }

@@ -10,6 +10,7 @@ import { callRpc } from '../data/dataProvider';
 import { DomainNavigation } from './DomainNavigation';
 import { OperationLink } from './OperationDialogs';
 import { PendingDatagrid } from './PendingDatagrid';
+import { adminRadii } from '../theme';
 
 type ActionProps = { title: string; rpc: string; keyName: string; targetId?: string;
   payload?: Record<string, unknown>; danger?: boolean };
@@ -68,7 +69,7 @@ function ProductIdentity(_props:{label?:string;source?:string}) {
   const item=useRecordContext();
   if(!item)return null;
   return <Stack direction="row" spacing={1.7} sx={{alignItems:"center"}}>
-    <Box aria-hidden sx={{width:40,height:40,borderRadius:2.6,display:'grid',placeItems:'center',
+    <Box aria-hidden sx={{width:40,height:40,borderRadius:adminRadii.circle,display:'grid',placeItems:'center',
       bgcolor:'#f0eeff',color:'primary.main',fontWeight:800,flexShrink:0,fontSize:16}}>
       {String(item.name??'P').slice(0,1).toUpperCase()}
     </Box>
@@ -101,7 +102,7 @@ export function ProductsList() {
   const total=all.total;
   const isPending=all.isPending||running.isPending||drafts.isPending||suspended.isPending;
   const isError=all.isError||running.isError||drafts.isError||suspended.isError;
-  return <Box sx={{px:{xs:2,sm:3,lg:4.5},py:{xs:2,lg:2.5},maxWidth:1720,width:'100%',minWidth:0,mx:'auto'}}>
+  return <Box className="aisen-admin-list-page" sx={{px:{xs:2,sm:3,lg:4.5},py:{xs:2,lg:2.5},maxWidth:1720,width:'100%',minWidth:0,mx:'auto'}}>
     <DomainNavigation resource="products"/>
     <Stack direction={{xs:'column',sm:'row'}} spacing={1.5} sx={{alignItems:{sm:'center'},justifyContent:'space-between',mb:1.8}}>
       <Typography component="h1" sx={{fontSize:{xs:22,md:26},fontWeight:740,lineHeight:1.3}}>
@@ -120,7 +121,7 @@ export function ProductsList() {
         variant={statusFilter===c.status?'contained':'outlined'}
         aria-pressed={statusFilter===c.status}
         onClick={()=>setStatusFilter(c.status)}
-        sx={{minHeight:38,fontSize:13,fontWeight:630,borderRadius:2}}>
+        sx={{minHeight:38,fontSize:13,fontWeight:630,borderRadius:adminRadii.pill}}>
         {c.label} · {isPending||isError||typeof c.count!=='number'?'—':c.count}
       </Button>)}
     </Box>

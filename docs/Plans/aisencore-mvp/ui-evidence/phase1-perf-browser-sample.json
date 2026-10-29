@@ -1,9 +1,9 @@
 {
   "context": "single headless Chrome local production-preview authenticated navigation; no throttling",
   "sample": {
-    "domContentLoadedMs": 791,
-    "loadEventMs": 791,
-    "ttfbMs": 122,
+    "domContentLoadedMs": 790,
+    "loadEventMs": 790,
+    "ttfbMs": 113,
     "resourceRequests": 52,
     "assetsRequested": 0,
     "scriptAssetRequests": 0,

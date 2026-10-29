@@ -10,8 +10,6 @@ const columns: Record<string, { table: string; id: string; fields: string }> = {
   memberships: { table: 'product_memberships', id: 'id', fields: 'id,user_id,product_id,status,pre_suspend_status,joined_at,updated_at' },
   grants: { table: 'entitlement_grants', id: 'id', fields: 'id,user_id,product_id,tier,source_type,grant_mode,requested_duration_days,starts_at,ends_at,revoked_at,created_at' },
   'code-batches': { table: 'redemption_code_batches', id: 'id', fields: 'id,product_id,tier,created_by,request_id,quantity,grant_duration_days,is_lifetime,max_redemptions_per_code,code_expires_at,note,created_at' },
-  codes: { table: 'admin_redemption_code_summaries', id: 'id', fields: 'id,batch_id,batch_ordinal,code_prefix,product_id,tier,grant_duration_days,is_lifetime,max_redemptions,redeemed_count,expires_at,created_by,created_at,revoked_at' },
-  redemptions: { table: 'redemptions', id: 'id', fields: 'id,code_id,user_id,product_id,grant_id,created_at' },
   admins: { table: 'platform_admins', id: 'user_id', fields: 'user_id,active,granted_by,created_at,updated_at' },
   restrictions: { table: 'platform_account_restrictions', id: 'user_id', fields: 'user_id,kind,reason_code,created_by,created_at' },
   'audit-logs': { table: 'admin_audit_log', id: 'id', fields: 'id,actor_user_id,action,target_type,target_id,before,after,reason,created_at' },
@@ -69,11 +67,44 @@ async function listRecords(resource: string, opts: {
   sort?: { field: string; order: string };
   filter?: Record<string, unknown>;
 }) {
+  if (resource === 'redemption-batches-v2' || resource === 'redemption-batch-codes-v2') {
+    const filter=opts.filter??{};
+    const scope=filter.product_id?String(filter.product_id):null;
+    const params=resource==='redemption-batches-v2'?{
+      p_product_id:scope,p_page:opts.pagination?.page??1,
+      p_per_page:opts.pagination?.perPage??20,
+      p_request_id:filter.request_id?String(filter.request_id):null,
+      p_batch_id:filter.batch_id?String(filter.batch_id):null,
+    }:{
+      p_batch_id:String(filter.batch_id??''),
+      p_product_id:scope,p_page:opts.pagination?.page??1,
+      p_per_page:opts.pagination?.perPage??20,
+      p_status:filter.status?String(filter.status):null,
+    };
+    if(resource==='redemption-batch-codes-v2'&&
+      !/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(String(filter.batch_id??'')))
+      throw new Error('缺少有效的批次编号');
+    const data=await callRpc<{items:AnyRecord[];total:number}>(
+      resource==='redemption-batches-v2'?'admin_code_batches_v2':'admin_batch_codes_v2',params);
+    if(!Array.isArray(data?.items)||!Number.isSafeInteger(data.total)||data.total<0)
+      throw new Error('兑换码业务统计返回格式异常');
+    return {data:data.items,total:data.total};
+  }
   if (resource === 'users') {
     const email = String(opts.filter?.email ?? '').trim();
-    if (!email && !opts.filter?.id) return { data: [], total: 0 };
-    const result = await lookup(opts.filter?.id ? [String(opts.filter?.id)] : [], email || undefined,
-      (opts.pagination?.page ?? 1), (opts.pagination?.perPage ?? 25));
+    // User center is a real, deduplicated Auth-user directory. Only the
+    // dedicated AAL2-admin, server-paginated RPC may list users; existing
+    // strict lookup() remains unchanged for identity joins and getOne/getMany.
+    const result = await callRpc<{ items: AnyRecord[]; total: number }>(
+      'admin_list_users', {
+        p_product_id: opts.filter?.product_id || null,
+        p_email_exact: email || null,
+        p_page: opts.pagination?.page ?? 1,
+        p_per_page: opts.pagination?.perPage ?? 20,
+      });
+    if (!Array.isArray(result?.items) || !Number.isInteger(result.total)) {
+      throw new Error('用户目录返回格式异常，未能确认当前结果');
+    }
     return { data: result.items, total: result.total };
   }
   const s = spec(resource);
@@ -81,10 +112,10 @@ async function listRecords(resource: string, opts: {
   const field = (opts.sort?.field ?? 'id') === 'id' ? s.id : (opts.sort?.field ?? 'id');
   if (!allowed.includes(field)) throw new Error('不支持的排序字段');
   let query = supabase.from(s.table).select(s.fields, { count: 'exact' });
+  if(resource==='feedback'&&opts.filter?.active_only===true)
+    query=query.neq('queue_state','trashed');
   for (const [key, value] of filterRows(resource, opts.filter ?? {})) {
-    if(resource==='feedback'&&key==='tags') query=query.overlaps('tags',
-      Array.isArray(value)?value.map(String):[String(value)]);
-    else query = query.eq(key === 'id' ? s.id : key, value as string);
+    query = query.eq(key === 'id' ? s.id : key, value as string);
   }
   const offset = ((opts.pagination?.page ?? 1) - 1) * (opts.pagination?.perPage ?? 25);
   const { data, error, count, status } = await query.order(field, {
@@ -99,12 +130,37 @@ async function listRecords(resource: string, opts: {
 export const dataProvider = {
   getList: (resource, params) => listRecords(resource, params),
   getOne: async (resource, params) => {
+    if (resource === 'dashboard-metrics') {
+      const scope=String(params.id);
+      const productId=scope==='all'?null:scope;
+      if(productId&&!/^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(productId))
+        throw new Error('当前产品编号无效，不能读取统计');
+      const summary=await callRpc<Record<string,unknown>>('admin_dashboard_metrics',{
+        p_product_id:productId,
+      });
+      const keys=['normal_users','new_users_month','pro_members','new_pro_month',
+        'open_feedback','new_feedback'] as const;
+      if(!summary||keys.some(key=>!Number.isSafeInteger(summary[key])||
+        Number(summary[key])<0))
+        throw new Error('概览统计响应不完整，不能显示为零');
+      return {data:{id:scope,...summary}};
+    }
+    if (resource === 'user-pro-entitlements') {
+      // Virtual, restricted read-through resource: React-admin's refresh and
+      // cache invalidation must update the User360 live entitlement summary
+      // after a grant, revocation or account-state change.
+      const result = await callRpc<{items: unknown}>('admin_get_user_pro_entitlements',{
+        p_target_user_id:String(params.id),
+      });
+      if (!Array.isArray(result?.items)) throw new Error('服务端综合权益数据格式异常，无法确认当前状态');
+      return { data: { id:String(params.id), items:result.items } };
+    }
     if (resource === 'users') {
       const result = await lookup([String(params.id)]);
       return { data: result.items[0] ?? { id: params.id, email: null } };
     }
     const s = spec(resource);
-    const { data, error, status } = await supabase.from(s.table).select(s.fields)
+    const { data, error, status } = await supabase.from(s.table).select(resource==='feedback'?s.fields+',contact_email':s.fields)
       .eq(s.id, String(params.id)).single();
     if (error) throw asError({ message:error.message, code:error.code, status });
     return { data: recordOf(resource, data as unknown as Record<string, unknown>) };

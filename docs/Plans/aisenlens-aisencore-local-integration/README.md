@@ -10,6 +10,8 @@
 
 ## 分阶段详细计划
 
+**2026-10-29 本地实施的联系邮箱专项**：[CORE-FEEDBACK-001｜反馈联系邮箱与真实提交用户身份关联](./CORE-FEEDBACK-001-contact-email-design.md)。对应 Lens 的 LENS-UI-004 反馈弹窗重构；现已实现唯一提交字段、幂等、Admin受限详情/复制与ZIP隐私，已通过本地JWT/SQL/Deno/Lens图片回归；本地实施不改变第一阶段签收及第三阶段线上验证边界。
+
 | 交付阶段/工作包 | 文件 | 负责内容 |
 | --- | --- | --- |
 | 第一阶段 | [01 Core/Admin独立修验与签收](./01-stage1-core-readiness.md) | 现有缺陷、Auth/DB/反馈/永久拒兑、完整UI/WCAG/性能/人工签收 |

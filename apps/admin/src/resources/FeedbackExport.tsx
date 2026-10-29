@@ -3,25 +3,26 @@ import { useListContext, useNotify, useStore } from 'react-admin';
 import { Alert, Button, Checkbox, Dialog, DialogActions, DialogContent,
   DialogTitle, FormControlLabel, Stack, Typography } from '@mui/material';
 import { supabase } from '../supabaseClient';
+import {categoryLabels} from './feedbackLabels';
 
-type OptionKey='user_comments'|'public_replies'|'internal_notes'|'history'|'tags'|'status'|'identity';
+type OptionKey='user_comments'|'public_replies'|'internal_notes'|'history'|'status'|'identity';
 type Options=Record<OptionKey,boolean>;
 type ExportSnapshot={
   scopeKey:string;count:number;ids:string[];
   filters:Record<string,string|boolean|string[]>;
 };
 const defaults:Options={user_comments:true,public_replies:true,internal_notes:false,
-  history:true,tags:true,status:true,identity:false};
+  history:true,status:true,identity:false};
 const optionLabels:Record<OptionKey,string>={
   user_comments:'用户补充与评论',public_replies:'公开回复',
   internal_notes:'内部评论（敏感资料）',history:'处理历史',
-  tags:'标签',status:'优先级、处理状态及星标',
-  identity:'包含反馈人身份（默认关闭）',
+  status:'优先级、处理状态及星标',
+  identity:'反馈人身份与联系邮箱（默认关闭）',
 };
 const optionKeys=Object.keys(optionLabels) as OptionKey[];
-export function FeedbackExport({queue,mode,selectedTags=[],priorityFilter='',starFilter=''}:{
+export function FeedbackExport({queue,mode,categoryFilter='',feedbackNoFilter='',priorityFilter='',starFilter=''}:{
   queue:'inbox'|'workbench'|'archived'|'trashed';
-  mode:'selected'|'filtered';selectedTags?:string[];
+  mode:'selected'|'filtered';categoryFilter?:string;feedbackNoFilter?:string;
   priorityFilter?:string;starFilter?:string;
 }){
   const {selectedIds,filterValues,total}=useListContext();
@@ -41,7 +42,8 @@ export function FeedbackExport({queue,mode,selectedTags=[],priorityFilter='',sta
   }
   if(priorityFilter)filters.priority=priorityFilter;
   if(starFilter)filters.is_starred=starFilter;
-  if(selectedTags.length)filters.tags=[...selectedTags];
+  if(categoryFilter)filters.category=categoryFilter;
+  if(feedbackNoFilter)filters.feedback_no=feedbackNoFilter;
   const ids=selectedIds.map(String);
   const scopeKey=JSON.stringify({queue,mode,product,ids,count,filters});
   const scopeChanged=!!snapshot&&snapshot.scopeKey!==scopeKey;
@@ -99,6 +101,10 @@ export function FeedbackExport({queue,mode,selectedTags=[],priorityFilter='',sta
           <Typography color="text.secondary" variant="body2">
             {mode==='selected'?('已选 '+(snapshot?.count??count)+' 条'):('当前匹配 '+(snapshot?.count??count)+' 条')}。
             一次最多 20 条，包含原始反馈及全部截图。
+            {' 队列：'+({inbox:'收件箱',workbench:'处理工作台',archived:'已归档',trashed:'回收站'}[queue])+
+              ' · 产品：'+(product?'当前所选产品':'全平台')+
+              (categoryFilter?' · 类别：'+(categoryLabels[categoryFilter]??categoryFilter):'')+
+              (feedbackNoFilter?' · 编号：'+feedbackNoFilter:'')}
           </Typography>
           {optionKeys.map(key=><FormControlLabel key={key}
             control={<Checkbox disabled={busy||sensitiveReview} checked={options[key]} onChange={(_,checked)=>{

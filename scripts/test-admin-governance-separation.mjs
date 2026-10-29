@@ -1,0 +1,33 @@
+#!/usr/bin/env node
+// Source-level UI separation contract. No database writes or browser auth.
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=file=>readFileSync(new URL('../'+file,import.meta.url),'utf8');
+const nav=read('apps/admin/src/resources/domainNavigationModel.ts');
+const app=read('apps/admin/src/App.tsx');
+const shell=read('apps/admin/src/resources/OperationDialogs.tsx');
+const lists=read('apps/admin/src/resources/WorkspaceLists.tsx');
+const details=read('apps/admin/src/resources/WorkspaceDetails.tsx');
+const account=read('apps/admin/src/resources/AccountActions.tsx');
+const role=read('apps/admin/src/resources/AdminRoleActions.tsx');
+assert.match(nav,/\['products','产品'\],\['audit-logs','管理审计'\],\['admins','管理员权限'\]/);
+assert.doesNotMatch(nav,/\['restrictions','账号限制'\]/);
+assert.doesNotMatch(app,/<Resource name="restrictions"/);
+assert.match(app,/path="\/account-actions"/);
+assert.match(app,/path="\/admin-actions"/);
+assert.match(shell,/'\/account-actions':'account','\/admin-actions':'admin'/);
+assert.match(shell,/opened\.kind==='admin'&&<AdminRole/);
+assert.match(shell,/opened\.kind==='account'&&<Account/);
+assert.match(lists,/action:\{label:'管理员资格操作',to:'\/admin-actions'\}/);
+assert.match(details,/to=\{'\/admin-actions\?user_id='/);
+for(const name of ['admin_block_account','admin_unblock_account'])assert.match(account,new RegExp(name));
+for(const name of ['admin_grant_admin','admin_revoke_admin'])assert.match(role,new RegExp(name));
+assert.doesNotMatch(account,/admin_grant_admin|admin_revoke_admin/);
+assert.doesNotMatch(role,/admin_block_account|admin_unblock_account/);
+assert.match(role,/UserIdentityPicker/);
+assert.match(role,/reviewedKey/);
+assert.match(role,/useGetList\('admins'/);
+assert.match(role,/useGetList\('restrictions'/);
+assert.match(account,/UserIdentityPicker/);
+assert.match(account,/reviewedKey/);
+console.log('ADMIN_GOVERNANCE_SEPARATION_STATIC PASS (browser AAL2 workflow not executed)');

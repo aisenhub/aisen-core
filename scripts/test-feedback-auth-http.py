@@ -64,7 +64,7 @@ def main():
         code, _ = http("POST", "/rest/v1/rpc/feedback_submit_from_edge", anon,
             {"p_user_id": user_id, "p_product_key": "aisenlens",
              "p_request_id": "22222222-2222-4222-8222-222222222222",
-             "p_content": "forgery", "p_category": "bug", "p_attachments": []}, jwt)
+             "p_content": "forgery", "p_category": "bug", "p_attachments": [], "p_contact_email": "fixture@example.com"}, jwt)
         assert code in (401, 403, 404), "client must not invoke service-only submit RPC"
         print("SERVICE_ONLY_SUBMIT direct client forbidden: PASS"); tests += 1
 

@@ -1,0 +1,11 @@
+{
+  "version": "5",
+  "specifiers": {
+    "jsr:@matmen/imagescript@3.3.0": "3.3.0"
+  },
+  "jsr": {
+    "@matmen/imagescript@3.3.0": {
+      "integrity": "4d07414aeeb3e4cd31d1f75033ea89fe86fbde1ddfdffd76f564c5675de0c618"
+    }
+  }
+}

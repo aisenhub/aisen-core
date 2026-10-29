@@ -22,12 +22,12 @@ SELECT has_function('public','reply_to_feedback',ARRAY['uuid','text','integer'],
 SELECT has_function('public','admin_update_feedback',
   ARRAY['uuid','integer','text','text','text','text'],'admin write present');
 SELECT has_function('public','feedback_submit_from_edge',
-  ARRAY['uuid','text','uuid','text','text','jsonb'],'Edge commit present');
+  ARRAY['uuid','text','uuid','text','text','jsonb','text'],'Edge commit present');
 SELECT ok(NOT has_function_privilege('authenticated',
- 'public.feedback_submit_from_edge(uuid,text,uuid,text,text,jsonb)','EXECUTE'),
+ 'public.feedback_submit_from_edge(uuid,text,uuid,text,text,jsonb,text)','EXECUTE'),
  'authenticated cannot forge attachment keys');
 SELECT ok(has_function_privilege('service_role',
- 'public.feedback_submit_from_edge(uuid,text,uuid,text,text,jsonb)','EXECUTE'),
+ 'public.feedback_submit_from_edge(uuid,text,uuid,text,text,jsonb,text)','EXECUTE'),
  'only service role can commit uploaded files');
 SELECT ok(NOT (SELECT prosecdef FROM pg_proc
   WHERE oid='public.admin_update_feedback(uuid,integer,text,text,text,text)'::regprocedure),
@@ -39,31 +39,31 @@ SELECT is((SELECT proowner::regrole::text FROM pg_proc
 SET LOCAL ROLE authenticated;
 SELECT throws_ok($$SELECT public.feedback_submit_from_edge(
  '18000000-0000-4000-8000-000000000001','fb2_product',
- '48000000-0000-4000-8000-000000000001','hello','bug','[]'::jsonb)$$,'42501');
+ '48000000-0000-4000-8000-000000000001','hello','bug','[]'::jsonb,'fixture@example.com')$$,'42501');
 RESET ROLE;
 
 SET LOCAL ROLE service_role;
 SELECT is((public.feedback_submit_from_edge(
  '18000000-0000-4000-8000-000000000001','fb2_product',
- '48000000-0000-4000-8000-000000000001','hello','bug','[]'::jsonb)->>'status'),
+ '48000000-0000-4000-8000-000000000001','hello','bug','[]'::jsonb,'fixture@example.com')->>'status'),
  'received','Edge-created feedback starts in inbox');
 SELECT is((public.feedback_submit_from_edge(
  '18000000-0000-4000-8000-000000000001','fb2_product',
- '48000000-0000-4000-8000-000000000001','hello','bug','[]'::jsonb)->>'replayed'),
+ '48000000-0000-4000-8000-000000000001','hello','bug','[]'::jsonb,'fixture@example.com')->>'replayed'),
  'true','same request is idempotent');
 SELECT throws_ok($$SELECT public.feedback_submit_from_edge(
  '18000000-0000-4000-8000-000000000001','fb2_product',
- '48000000-0000-4000-8000-000000000001','changed','bug','[]'::jsonb)$$,'PT409');
+ '48000000-0000-4000-8000-000000000001','changed','bug','[]'::jsonb,'fixture@example.com')$$,'PT409');
 SELECT throws_ok($$SELECT public.feedback_submit_from_edge(
  '18000000-0000-4000-8000-000000000001','absent_product',
- gen_random_uuid(),'hello','bug','[]'::jsonb)$$,'PT409');
+ gen_random_uuid(),'hello','bug','[]'::jsonb,'fixture@example.com')$$,'PT409');
 SELECT throws_ok($$SELECT public.feedback_submit_from_edge(
  '18000000-0000-4000-8000-000000000001','fb2_product',
- gen_random_uuid(),'   ','bug','[]'::jsonb)$$,'PT422');
+ gen_random_uuid(),'   ','bug','[]'::jsonb,'fixture@example.com')$$,'PT422');
 SELECT is((public.feedback_submit_from_edge(
  '18000000-0000-4000-8000-000000000002','fb2_product',
  '48000000-0000-4000-8000-000000000002','images','other',
- '[{"slot":1,"object_key":"feedback/28000000-0000-4000-8000-000000000001/18000000-0000-4000-8000-000000000002/48000000-0000-4000-8000-000000000002/1-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png","mime_type":"image/png","size_bytes":123},{"slot":2,"object_key":"feedback/28000000-0000-4000-8000-000000000001/18000000-0000-4000-8000-000000000002/48000000-0000-4000-8000-000000000002/2-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.webp","mime_type":"image/webp","size_bytes":456}]'::jsonb)->>'status'),
+ '[{"slot":1,"object_key":"feedback/28000000-0000-4000-8000-000000000001/18000000-0000-4000-8000-000000000002/48000000-0000-4000-8000-000000000002/1-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png","mime_type":"image/png","size_bytes":123},{"slot":2,"object_key":"feedback/28000000-0000-4000-8000-000000000001/18000000-0000-4000-8000-000000000002/48000000-0000-4000-8000-000000000002/2-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.webp","mime_type":"image/webp","size_bytes":456}]'::jsonb,'fixture@example.com')->>'status'),
  'received','two-image Edge commit stays untriaged');
 RESET ROLE;
 
@@ -206,11 +206,11 @@ RESET ROLE;
 SET LOCAL ROLE service_role;
 SELECT throws_ok($$SELECT public.feedback_submit_from_edge(
  '18000000-0000-4000-8000-000000000001','fb2_product',
- gen_random_uuid(),'limit exceeded','other','[]'::jsonb)$$,
+ gen_random_uuid(),'limit exceeded','other','[]'::jsonb,'fixture@example.com')$$,
  'PT429','FEEDBACK_RATE_LIMITED','locked DB submission cannot bypass preflight');
 SELECT is((public.feedback_submit_from_edge(
  '18000000-0000-4000-8000-000000000001','fb2_product',
- '48000000-0000-4000-8000-000000000001','hello','bug','[]'::jsonb)->>'replayed'),
+ '48000000-0000-4000-8000-000000000001','hello','bug','[]'::jsonb,'fixture@example.com')->>'replayed'),
  'true','successful original request may be safely replayed even at quota');
 RESET ROLE;
 -- Reference-aware orphan janitor is service-only and cannot be called with

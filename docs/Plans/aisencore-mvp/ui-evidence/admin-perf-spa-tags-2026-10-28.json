@@ -1,0 +1,21 @@
+{
+  "context": "temporary local AAL2 admin; production preview; read-only business queries artificially paused by CDP; no credentials/data retained",
+  "createdAt": "2026-10-28",
+  "results": [],
+  "lazyRoute": null,
+  "revocation": null,
+  "spaTags": {
+    "cold": 2,
+    "afterTwoSpaRoutes": 2,
+    "additional": 0
+  },
+  "identityUX": null,
+  "a11y": [],
+  "pass": true,
+  "limitations": [
+    "Synthetic local fixture; no real-user p75/p95",
+    "Only GET paused; not application request latency",
+    "No data-volume stress test",
+    "No manual screen-reader or owner signoff"
+  ]
+}

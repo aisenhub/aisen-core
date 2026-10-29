@@ -74,7 +74,7 @@ const messages: Record<string, string> = {
 
 const resourceNames:Record<string,string> = {
   products:'产品',memberships:'成员关系',grants:'授权记录','code-batches':'发行批次',
-  codes:'兑换码记录',redemptions:'核销记录',admins:'管理员权限',restrictions:'账号限制',
+  codes:'兑换码记录',redemptions:'核销记录',admins:'管理员权限',
   'audit-logs':'管理审计','membership-events':'成员事件',users:'查找账号',
 };
 for(const [key,label] of Object.entries(resourceNames)){

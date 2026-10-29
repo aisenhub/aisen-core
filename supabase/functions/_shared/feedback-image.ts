@@ -6,9 +6,11 @@ import {detectMime} from './feedback.ts';
 // enforced by the decoder before allocating the RGBA output buffer.
 export const MAX_FEEDBACK_IMAGE_PIXELS=12_000_000;
 export const MAX_FEEDBACK_IMAGE_DIMENSION=6000;
-export async function validateFeedbackImage(
-  bytes:Uint8Array,declaredMime:string
-):Promise<{mime:string;ext:string}|null>{
+const THUMB_MAX_EDGE=320;
+const THUMB_MAX_BYTES=256*1024;
+export const feedbackThumbnailKey=(originalObjectKey:string)=>
+  originalObjectKey+'.thumb.jpg';
+async function decodeFeedbackImage(bytes:Uint8Array,declaredMime:string){
   if(!bytes.length||bytes.length>3*1024*1024)return null;
   const parsed=detectMime(bytes);
   if(!parsed||parsed.mime!==declaredMime)return null;
@@ -34,10 +36,35 @@ export async function validateFeedbackImage(
       image.width>MAX_FEEDBACK_IMAGE_DIMENSION||
       image.height>MAX_FEEDBACK_IMAGE_DIMENSION||
       image.width*image.height>MAX_FEEDBACK_IMAGE_PIXELS)return null;
-    return parsed;
+    return {parsed,image};
   }catch{
     // Malformed content, unsupported animation and decompression bombs are
     // all rejected without returning decoder internals to the caller.
     return null;
   }
+}
+export async function validateFeedbackImage(
+  bytes:Uint8Array,declaredMime:string
+):Promise<{mime:string;ext:string}|null>{
+  const result=await decodeFeedbackImage(bytes,declaredMime);
+  return result?.parsed??null;
+}
+// Private, server-generated, content-addressed derivative. Never accept a
+// caller-supplied thumbnail. The same decoder and pixel bomb protections
+// govern both the original and JPEG output; one decode per submission image.
+export async function makeFeedbackThumbnail(
+  bytes:Uint8Array,declaredMime:string
+):Promise<{mime:string;ext:string;thumbnail:Uint8Array}|null>{
+  const decoded=await decodeFeedbackImage(bytes,declaredMime);
+  if(!decoded)return null;
+  try{
+    const {image,parsed}=decoded;
+    const scale=Math.min(1,THUMB_MAX_EDGE/Math.max(image.width,image.height));
+    const resized=scale===1?image:image.resize(
+      Math.max(1,Math.round(image.width*scale)),
+      Math.max(1,Math.round(image.height*scale)));
+    const thumbnail=await resized.encodeJPEG(72);
+    if(thumbnail.length===0||thumbnail.length>THUMB_MAX_BYTES)return null;
+    return {...parsed,thumbnail};
+  }catch{return null}
 }

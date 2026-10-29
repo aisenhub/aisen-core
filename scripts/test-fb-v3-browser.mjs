@@ -126,7 +126,7 @@ try{
   })();
   const ticket=await http('/rest/v1/rpc/feedback_submit_from_edge',{
     p_user_id:uid,p_product_key:productKey,p_request_id:requestId,
-    p_content:'浏览器真实反馈详情与指派验收',p_category:'bug',p_attachments:[]
+    p_content:'浏览器真实反馈详情与指派验收',p_category:'bug',p_attachments:[],p_contact_email:'fixture@example.com'
   },null,true);
   feedbackId=ticket.id;
   const session={access_token:upgraded.access_token,
@@ -169,7 +169,7 @@ try{
   await send('Page.enable');await send('Runtime.enable');
   const second=await http('/rest/v1/rpc/feedback_submit_from_edge',{
     p_user_id:uid,p_product_key:productKey,p_request_id:randomUUID(),
-    p_content:'收件箱删除恢复测试',p_category:'suggestion',p_attachments:[]
+    p_content:'收件箱删除恢复测试',p_category:'suggestion',p_attachments:[],p_contact_email:'fixture@example.com'
   },null,true);
   await send('Page.navigate',{url:base+'/#/feedback'});
   await sleep(400);
