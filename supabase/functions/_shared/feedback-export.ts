@@ -10,6 +10,7 @@ export type ExportEvent={
 export type ExportImage={slot:number;mime_type:string;bytes:Uint8Array};
 export type ExportFeedback={
   id:string;feedback_no:number;product_id:string;user_id:string;
+  contact_email:string|null;
   content:string;category:string;queue_state:string;created_at:string;version:number;
   priority:string|null;status:string|null;is_starred:boolean;tags:string[];
   events:ExportEvent[];images:ExportImage[];
@@ -48,7 +49,7 @@ function exportedFeedback(item:ExportFeedback,options:ExportOptions){
     data.status=item.status;data.is_starred=item.is_starred;
   }
   if(options.tags)data.tags=item.tags;
-  if(options.identity)data.user_id=item.user_id;
+  if(options.identity){data.user_id=item.user_id;data.contact_email=item.contact_email;}
   return data;
 }
 function markdownFor(item:ExportFeedback,options:ExportOptions):string{
@@ -57,7 +58,7 @@ function markdownFor(item:ExportFeedback,options:ExportOptions):string{
     '产品：'+item.product_id,'类型：'+item.category,
     '提交时间：'+item.created_at,'',
     '## 用户反馈原文','',quote(item.content),''];
-  if(options.identity)sections.push('反馈人：'+item.user_id,'');
+  if(options.identity)sections.push('反馈人：'+item.user_id,...(item.contact_email?['联系邮箱：'+item.contact_email]:[]),'');
   if(options.status)sections.push('## 处理信息','',
     '队列：'+item.queue_state,'优先级：'+(item.priority??'未分配'),
     '处理状态：'+(item.status??'未受理'),'星标：'+(item.is_starred?'是':'否'),'');

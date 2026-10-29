@@ -1,6 +1,6 @@
 import {boundedForm,cors,fail,feedbackIdentityFailure,feedbackObjectKey,
   feedbackRpcReadFailure,json} from '../_shared/feedback.ts';
-import {validateFeedbackImage} from '../_shared/feedback-image.ts';
+import {makeFeedbackThumbnail,feedbackThumbnailKey} from '../_shared/feedback-image.ts';
 
 const MAX_IMAGE=3*1024*1024;
 const MAX_BODY=7*1024*1024;
@@ -8,7 +8,7 @@ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export type CommitAttachment={slot:number;object_key:string;mime_type:string;size_bytes:number};
 export type CommitArgs={p_user_id:string;p_product_key:string;p_request_id:string;
-  p_content:string;p_category:string;p_attachments:CommitAttachment[]};
+  p_content:string;p_category:string;p_contact_email:string;p_attachments:CommitAttachment[]};
 export type RpcReply<T>={data:T|null;error:{code?:string}|null};
 export type FeedbackPorts={
   actor?:string|null;
@@ -46,9 +46,12 @@ export async function submitFeedback(req:Request,ports:FeedbackPorts):Promise<Re
   const requestId=String(form.get('request_id')??'').trim();
   const content=String(form.get('content')??'').trim();
   const category=String(form.get('category')??'other');
+  const contactValue=form.get('contact_email');
+  const contactEmail=typeof contactValue==='string'?contactValue.trim():'';
+  const validEmail=contactEmail.length<=254&&/^[A-Za-z0-9.!#$%&'*+/=?^_{|}~-]+@[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)+$/.test(contactEmail);
   const images=form.getAll('images');
   if(!/^[a-z][a-z0-9_]{0,63}$/.test(productKey)||!uuid.test(requestId)||
-    !content||content.length>5000||images.length>2||
+    !content||content.length>5000||!validEmail||images.length>2||
     !['bug','account','experience','suggestion','other'].includes(category)||
     images.some(image=>!(image instanceof File)))return fail('INVALID_ARGUMENT',422);
   // UNKNOWN/timeout recovery uses the original request ID, not a new ticket.
@@ -75,14 +78,16 @@ export async function submitFeedback(req:Request,ports:FeedbackPorts):Promise<Re
     return fail('SUBMISSION_UNAVAILABLE',503);
   if(previous&&previous.product_id!==productId)
     return fail('REQUEST_CONFLICT',409);
-  const pending:{slot:number;key:string;mime:string;size:number;bytes:Uint8Array}[]=[];
+  const pending:{slot:number;key:string;mime:string;size:number;
+    bytes:Uint8Array;thumbnail:Uint8Array}[]=[];
   for(const [index,file] of images.entries()){
     const bytes=new Uint8Array(await (file as File).arrayBuffer());
     if(!bytes.length||bytes.length>MAX_IMAGE)return fail('IMAGE_TOO_LARGE',413);
-    const parsed=await validateFeedbackImage(bytes,(file as File).type);
+    const parsed=await makeFeedbackThumbnail(bytes,(file as File).type);
     if(!parsed)return fail('UNSUPPORTED_IMAGE',422);
     const key=await feedbackObjectKey(productId,actor,requestId,index+1,bytes,parsed.ext);
-    pending.push({slot:index+1,key,mime:parsed.mime,size:bytes.length,bytes});
+    pending.push({slot:index+1,key,mime:parsed.mime,size:bytes.length,bytes,
+      thumbnail:parsed.thumbnail});
   }
   // A repeated ID must match every immutable attachment, not merely the
   // number of photos. No R2 write occurs before this comparison.
@@ -90,7 +95,7 @@ export async function submitFeedback(req:Request,ports:FeedbackPorts):Promise<Re
     let check:Awaited<ReturnType<FeedbackPorts['commit']>>;
     try{check=await ports.commit({
       p_user_id:actor,p_product_key:productKey,p_request_id:requestId,
-      p_content:content,p_category:category,
+      p_content:content,p_category:category,p_contact_email:contactEmail,
       p_attachments:pending.map(({slot,key,mime,size})=>({
         slot,object_key:key,mime_type:mime,size_bytes:size,
       })),
@@ -105,10 +110,15 @@ export async function submitFeedback(req:Request,ports:FeedbackPorts):Promise<Re
   // a separate successful request may already reference that object.
   // Orphans require delayed reconciliation against committed DB references.
   try{
-    for(const file of pending)await ports.putFile(file.key,file.bytes,file.mime);
+    for(const file of pending){
+      await ports.putFile(file.key,file.bytes,file.mime);
+      // The original and its JPEG derivative share one content-derived key.
+      // A partial 503 keeps them for later reference-aware reconciliation.
+      await ports.putFile(feedbackThumbnailKey(file.key),file.thumbnail,'image/jpeg');
+    }
     const result=await ports.commit({
       p_user_id:actor,p_product_key:productKey,p_request_id:requestId,
-      p_content:content,p_category:category,
+      p_content:content,p_category:category,p_contact_email:contactEmail,
       p_attachments:pending.map(({slot,key,mime,size})=>({
         slot,object_key:key,mime_type:mime,size_bytes:size,
       })),

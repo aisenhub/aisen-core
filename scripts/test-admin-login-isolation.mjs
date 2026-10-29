@@ -94,7 +94,14 @@ finally{
     const v=results.filter(x=>x.condition===label).map(x=>x.lcp).sort((a,b)=>a-b);
     return [label,v.length===5?v[2]:null];
   }));
-  const outputName=process.argv.includes('--entry-split')?'admin-login-entry-split-2026-10-26.json':process.argv.includes('--network-chain')?'admin-login-network-chain-2026-10-26.json':process.argv.includes('--after-shell')?'admin-login-after-shell-2026-10-26.json':'admin-login-cpu-network-2026-10-26.json';
+  const outputName=process.argv.includes('--modulepreload-baseline')?'admin-login-modulepreload-baseline-2026-10-29.json':
+    process.argv.includes('--modulepreload-trial')?'admin-login-modulepreload-trial-2026-10-29.json':
+    process.argv.includes('--prefetch-baseline')?'admin-login-prefetch-baseline-2026-10-29.json':
+    process.argv.includes('--prefetch-trial')?'admin-login-prefetch-trial-2026-10-29.json':
+    process.argv.includes('--entry-split')?'admin-login-entry-split-2026-10-26.json':
+    process.argv.includes('--network-chain')?'admin-login-network-chain-2026-10-26.json':
+    process.argv.includes('--after-shell')?'admin-login-after-shell-2026-10-26.json':
+    'admin-login-cpu-network-2026-10-26.json';
   writeFileSync(join(root,'docs','Plans','aisencore-mvp','ui-evidence',outputName),
     JSON.stringify({context:'Local loopback production preview, anonymous headless Chrome cold HTTP cache, independent CPU-only and network-only emulation; n=5 each',pass:done,medians,results,
       caveat:'Not real-user P75/P95; CDP throttling uncalibrated; desktop hardware and background load may differ; comparison with prior audit different run, not an A/B outcome.'},null,2));

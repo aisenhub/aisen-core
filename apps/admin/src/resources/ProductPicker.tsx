@@ -36,11 +36,12 @@ export function ProductPicker({value,onChange,disabled=false}:{
       isError?<Alert severity="error">产品目录读取失败。请检查管理员权限或网络连接。</Alert>:null}
     {(total??0)>100&&<Stack spacing={1}>
       <Typography variant="caption" color="text.secondary">未找到产品？使用完整产品键查找。</Typography>
-      <Stack direction={{xs:'column',sm:'row'}} spacing={1} component="form"
-        onSubmit={event=>{event.preventDefault();setExactKey(draft.trim())}}>
+      <Stack direction={{xs:'column',sm:'row'}} spacing={1}>
         <TextField size="small" label="精确产品键" value={draft} disabled={disabled}
-          onChange={event=>setDraft(event.target.value)} helperText="例如 aisenlens"/>
-        <Button type="submit" variant="outlined" disabled={disabled||!draft.trim()}>查找产品</Button>
+          onChange={event=>setDraft(event.target.value)} helperText="例如 aisenlens"
+          onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();if(draft.trim())setExactKey(draft.trim())}}}/>
+        <Button type="button" variant="outlined" disabled={disabled||!draft.trim()}
+          onClick={()=>setExactKey(draft.trim())}>查找产品</Button>
       </Stack>
       {exactKey&&match.isError?<Alert severity="error">产品键查询失败，请重试。</Alert>:null}
       {exactKey&&!match.isPending&&!match.isError&&(match.data??[]).length===0?<Alert severity="info">找不到该产品键。</Alert>:null}

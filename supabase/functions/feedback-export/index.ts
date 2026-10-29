@@ -5,10 +5,10 @@ import {buildFeedbackZip,type ExportFeedback,type ExportOptions} from '../_share
 
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const optionNames=['user_comments','public_replies','internal_notes','history',
-  'tags','status','identity'] as const;
+  'status','identity'] as const;
 const defaults:ExportOptions={
   user_comments:true,public_replies:true,internal_notes:false,
-  history:true,tags:true,status:true,identity:false,
+  history:true,tags:false,status:true,identity:false,
 };
 async function limitedInput(req:Request):Promise<unknown>{
   const reader=req.body?.getReader();
@@ -52,7 +52,7 @@ const handle=withSupabase({auth:'user'},async(req,ctx)=>{
   const scope=(input.scope??'') as 'selected'|'filtered';
   const queue=input.queue_state??'';
   if(!['selected','filtered'].includes(scope)||
-     !['inbox','workbench','archived','trashed'].includes(queue)||
+     !['inbox','workbench','archived'].includes(queue)||
      !input.options||typeof input.options!=='object')return fail('INVALID_SCOPE',422);
   if(Object.keys(input.options).some(k=>!optionNames.includes(k as typeof optionNames[number])))
     return fail('INVALID_OPTIONS',422);
@@ -72,25 +72,18 @@ const handle=withSupabase({auth:'user'},async(req,ctx)=>{
   // Always query RLS-backed invoker view with current JWT, never trust
   // client-supplied user/product information as proof of authorization.
   let query=ctx.supabase.from('admin_feedback_summaries').select(
-    'id,feedback_no,product_id,user_id,content,category,queue_state,created_at,version,priority,status,is_starred,tags')
+    'id,feedback_no,product_id,user_id,contact_email,content,category,queue_state,created_at,version,priority,status,is_starred,tags')
     .eq('queue_state',queue).order('created_at',{ascending:false}).limit(21);
   if(scope==='selected')query=query.in('id',ids);
   else {
-    const fields=['product_id','category','status','priority','is_starred','tags'] as const;
+    const fields=['product_id','feedback_no','category','status','priority','is_starred'] as const;
     for(const field of fields){
       const v=input.filters?.[field];
       if(v!==undefined){
-        if(field==='tags'){
-          // Preserve legacy one-tag callers; V3 multi-tag filter is OR.
-          const values=typeof v==='string'?[v]:v;
-          if(!(Array.isArray(values)&&values.length>0&&values.length<=8&&
-            values.every(x=>typeof x==='string'&&x.length>=1&&x.length<=32)))
-            return fail('INVALID_FILTER',422);
-          query=query.overlaps('tags',values);
-          continue;
-        }
         if(typeof v!=='string'&&typeof v!=='boolean')return fail('INVALID_FILTER',422);
         if(field==='product_id'&&(!v||typeof v!=='string'||!uuid.test(v)))
+          return fail('INVALID_FILTER',422);
+        if(field==='feedback_no'&&(typeof v!=='string'||!/^[1-9]\d{0,17}$/.test(v)))
           return fail('INVALID_FILTER',422);
         query=query.eq(field,v);
       }

@@ -42,6 +42,7 @@
 - 账号已认证不等于获得任何产品 Pro 权益，也不等于具备 Admin 管理权限。授权必须按用户、产品和具体操作核验。
 - **产品成员 API 最小原则**：首次合法使用需登录的产品服务时按需幂等创建成员；可信 SaaS 后端用现有用户 JWT 代用户调用公共接口，纯本地客户端可直接以本人 JWT 调用。状态查询无副作用，云端受保护的关键操作由可信服务端复核，客户端状态缓存不作为最终授权证明；不预建独立授权 Token、通用 API 网关或复杂缓存。详见[公共 API MVP 与 SaaS 接入](../architecture/backend/public-api-and-saas-integration.md)。
 - **统一用户 MVP 安全与会话**：必须避免普通用户读取/修改他人资料；成员变更和最小审计不可出现部分成功；管理员权限需可信、可及时撤销；产品级封禁与全局限制相互独立；邮箱确认和密码找回需可靠，跨 SaaS 不强求共享登录态。具体隔离与事务方案见[数据库权限](../architecture/database/database-access-and-transactions.md)，平台限制见[账号生命周期](../architecture/domains/platform-admin-and-account-lifecycle.md)，接口错误/验收见[API 契约](../architecture/backend/api-contract-and-mvp-acceptance.md)。
+- **Admin 治理入口分工**：平台账号封禁与解封只从用户中心的账号状态卡操作；平台管理仅提供产品、审计和管理员权限，管理员资格授予/撤销使用独立专用弹窗与路由，不复用封禁弹窗。两类操作沿用受限身份查询、理由、确认、AAL2 实时权限及最小审计。
 - **首版低请求量身份认证**：Supabase Auth SDK 统一维护登录/会话/必要的自动刷新；**不得每次页面/点击都联网 `getUser()`**，优先复用当前有效会话和经可信验证的 JWT。普通用户**不强制 TOTP MFA**；JWT 仅证明身份，不将缓存 Pro/管理员角色作为当前授权。实际 Auth/数据库/Edge 免费配额和令牌新鲜度需在真实环境取证，长期信任边界见[多 SaaS 会话架构](../architecture/applications/auth-and-multi-saas-sessions.md)及[管理员领域](../architecture/domains/platform-admin-and-account-lifecycle.md)；测试排程留在 Plans。
 - **BaaS/计量 MVP 原则**：复用 Supabase 原生 Auth、PostgREST/RLS/可信 PostgreSQL RPC 和少量必要 Edge，**首版不新增 Redis、独立公共服务器、公共积分余额/通用消费 RPC 或 AisenCore AI 网关**。未来产品真有可扣减额度时，必须由产品可信服务**决定费用、验证请求主体及属主**，在受保护数据库事务内做正数/边界校验、并发扣减/预留、幂等与必要审计；绝不授权前端直写余额/权益。Supabase Free 的 Unlimited Data API Requests **并不等于数据库算力、流量和 Edge 用量无限**，真实性能和成本需按计划单独验收。长期约束见[权益领域](../architecture/domains/billing-and-entitlements.md)、[可信事务](../architecture/database/database-access-and-transactions.md)。
 
@@ -113,12 +114,14 @@
 - **Admin 页面与交互要求**：基于[Admin 应用与安全合同](../architecture/applications/admin-console.md)和[通用 UI 质量规范](../architecture/applications/admin-ui-design-system.md)实现 MFA、Pro 资格和期限、一次性明文、UNKNOWN、成员操作及高风险确认。具体菜单、栅格、对话框和视觉形态按本次任务设计；不增加公共 Free/Pro 功能/额度编辑或旧 Pro 功能版本克隆。
 - **Admin 视觉评审与正式开发授权**：正式前端基于 React-admin/MUI 单一全局 Theme，重要交互可以先原型验证，视觉方案由用户明确评审并留可追溯版本，发布前进行浏览器、无障碍和安全实测。正式 Admin 视觉与交互须按当前实际页面由所有者评审；独立的数据库/后端开发不以过时的原型数量或像素规范作为前置条件。离线模拟不替代正式代码、安全和上线验收。
 
-### 用户反馈 V3：四队列轻量处理 / 私有图片 / 可选内容 ZIP
+### 用户反馈 V4：三队列、五分类、批量移动与永久删除 / 私有图片 / ZIP
+
+2026-10-29 联系邮箱合同：新反馈必填独立contact_email，默认注册邮箱且允许提交前修改；可信JWT仍决定user_id，不修改认证邮箱。去首尾空白后最多254个ASCII字符，单一local@domain格式，拒绝空白/控制字符/多地址及无域名点，保留大小写。字段与正文/分类/原图纳入同号不变性，变更409。授权Admin详情可查看/复制，默认identity=false的ZIP/JSONL/Markdown不得包含。没有邮件发送API。直接替换唯一提交签名及所有调用者，不做数据转换、旧调用兜底或清库；已保存记录保持原事实，无联系方式时不推测或回填。
 
 - 各 SaaS 已登录、邮箱已确认且未被全局 blocked 的本人可按产品提交文字及最多 2 张图片；不要求 Pro 或既有产品成员，不自动创建成员或变更权益。AisenLens 匿名离线 Free 必须保持可用，匿名反馈本期不实现。
-- **当前 Admin V3 合同**：收件箱（可预标记优先级/星标/标签/内部备注）→处理工作台→已归档，软删除进入回收站并能原位恢复。管理员不再编辑旧五态、不指派负责人、不主动回复用户；实际最近处理人由服务端记录。原 V2 五态/公开回复/负责人数据仅保留旧事实读取，不复活为新 UI 操作。当前实现与安全见[用户反馈领域架构](../architecture/domains/user-feedback.md)和[V3 施工/未完成项](../Plans/aisencore-mvp/feedback-v3-lightweight-implementation.md)。
+- **当前 Admin V4 合同**：仅保留收件箱（优先级/星标/内部备注）→处理工作台→已归档，归档可重新处理；支持当前页 1–20 条合法批量移动与单项/批量永久删除。后者必须真实删除反馈、内部事件、附件元数据、R2 原图及缩略图，失败保留可重试任务且不得伪称成功。不提供回收站或管理员自定义标签；使用用户提交时五个固定类别筛选并显示类别。只有全平台视角显示所属产品，单产品视角依顶部选择器。维持 AAL2/版本锁/无内容审计，不恢复旧五态/指派/回复。见 [V4 实施计划](../Plans/aisencore-mvp/2026-10-29-feedback-admin-ux-bulk-delete-remediation-plan.md) 与 [反馈领域合同](../architecture/domains/user-feedback.md)。
 - Admin 可按产品或有权限的全平台范围读取、使用受控 ZIP 选择记录或筛选结果；内部评论与直接身份默认关闭，敏感导出需再次确认，任何筛选/产品范围漂移必须阻断旧确认。PostgreSQL 保存正文、队列/标记、审计与附件元数据；R2 保存私有图片，必须独立授权与错误/孤儿恢复。AisenCore 不接管视频、项目或 AI 数据。
-- 代码已存在 V3 SQL/RPC、标签字典、四队列 Admin UI 和受保护 Edge；此前本地 pgTAP、真实 AAL2 Chrome、零图 ZIP HTTP 与隔离 S3 用例有通过记录，但 **AisenLens 实际本地双端提交、真正私有 R2 含图端到端、压缩缩略图、完整人工 WCAG/视觉/性能、正式发布均未验收**。保留身份/跨产品/版本409/429/503 与失败补偿限制；不要将模拟对象协议当云 R2。
+- 既有 V3 四队列和标签的 pgTAP/Chrome 是历史证据。V4 前端、SQL 与受保护 Edge 已开始本地施工，删除 SQL 目前只通过事务回滚检查；迁移正式安装、完整 AAL2/Chrome、真实私有 S3 删除、Cloudflare R2、人工 WCAG/视觉/性能和上线均未验收；旧 PASS 不得冒称当前 V4 PASS。
 - 首版不建客服系统、AI 分诊、自动派单或邮件通知；图片数量 2 已定，正文/字节/TTL/留存/反刷候选参数须另获验证或决定。
 
 ## 7. 公共后端、数据库与云端部署技术

@@ -9,10 +9,11 @@ import { callRpc } from '../data/dataProvider';
 import { ProductPicker } from './ProductPicker';
 import { OperationLayout } from './OperationLayout';
 import type { OperationSafety } from './OperationDialogs';
+import { adminRadii } from '../theme';
 
-const KEY='aisencore.issuance.pending.v1';
+const KEY='aisencore.issuance.pending.single-use.v2';
 type Pending = { requestId: string; productId: string; quantity: number;
-  duration: number; maxRedemptions: number; expiresAt: string | null;
+  duration: number; expiresAt: string | null;
   note: string | null; startedAt: number; batchId?: string; };
 function readPending(): Pending | null {
   try {
@@ -20,7 +21,7 @@ function readPending(): Pending | null {
     if (!raw) return null;
     const data=JSON.parse(raw) as Pending;
     if (typeof data.requestId !== 'string' || typeof data.productId !== 'string' ||
-      typeof data.startedAt !== 'number' || typeof data.maxRedemptions !== 'number') return null;
+      typeof data.startedAt !== 'number') return null;
     return data;
   } catch { return null; }
 }
@@ -38,7 +39,6 @@ export function IssueCodes({embedded=false,onSafetyChange,onCompleted,onRequestC
   const targetProductId=scope||productId;
   const [quantity,setQuantity]=useState(1);
   const [duration,setDuration]=useState(30);
-  const [uses,setUses]=useState(1);
   const [expiry,setExpiry]=useState('');
   const [note,setNote]=useState('');
   const [plain,setPlain]=useState<string[]|null>(null); // Component-local only; never React-admin Query cache.
@@ -56,11 +56,10 @@ export function IssueCodes({embedded=false,onSafetyChange,onCompleted,onRequestC
     event.preventDefault();
     if (busy||pending||!targetProductId||!scopeConfirmed||
       !Number.isInteger(quantity)||quantity<1||quantity>1000||
-      !Number.isInteger(duration)||duration<1||duration>36500||
-      !Number.isInteger(uses)||uses<1||uses>100000) return;
+      !Number.isInteger(duration)||duration<1||duration>36500) return;
     const meta: Pending={
       requestId:crypto.randomUUID(),productId:targetProductId.trim(),quantity,duration,
-      maxRedemptions:uses,expiresAt:expiry?new Date(expiry).toISOString():null,
+      expiresAt:expiry?new Date(expiry).toISOString():null,
       note:note||null,startedAt:Date.now(),
     };
     // Only non-secret request metadata lives in sessionStorage.
@@ -73,7 +72,7 @@ export function IssueCodes({embedded=false,onSafetyChange,onCompleted,onRequestC
         idempotent_replay: boolean }>('admin_create_codes',{
         p_product_id:meta.productId,p_tier:'pro',p_quantity:meta.quantity,
         p_grant_duration_days:meta.duration,p_is_lifetime:false,
-        p_max_redemptions_per_code:meta.maxRedemptions,
+        p_max_redemptions_per_code:1,
         p_code_expires_at:meta.expiresAt,
         p_request_id:meta.requestId,p_note:meta.note,
       });
@@ -103,7 +102,7 @@ export function IssueCodes({embedded=false,onSafetyChange,onCompleted,onRequestC
         plaintext_available: boolean; idempotent_replay: boolean }>('admin_create_codes',{
         p_product_id:pending.productId,p_tier:'pro',p_quantity:pending.quantity,
         p_grant_duration_days:pending.duration,p_is_lifetime:false,
-        p_max_redemptions_per_code:pending.maxRedemptions,
+        p_max_redemptions_per_code:1,
         p_code_expires_at:pending.expiresAt,p_request_id:pending.requestId,p_note:pending.note,
       });
       if (result.plaintext_available && !result.idempotent_replay) {
@@ -192,7 +191,7 @@ export function IssueCodes({embedded=false,onSafetyChange,onCompleted,onRequestC
             {resolved==='revoked'&&<Button onClick={forgetPending} size="small">另行开始新请求</Button>}
           </Stack>
         </Alert>}
-        {scope?<Box sx={{px:2,py:1.5,border:'1px solid',borderColor:'divider',borderRadius:2,
+        {scope?<Box sx={{px:2,py:1.5,border:'1px solid',borderColor:'divider',borderRadius:adminRadii.card,
           bgcolor:'action.hover',minWidth:0}}>
           <Typography variant="caption" color="text.secondary" component="div">当前发行平台</Typography>
           <Typography variant="body1" sx={{fontWeight:700,overflowWrap:'anywhere'}}>
@@ -214,13 +213,14 @@ export function IssueCodes({embedded=false,onSafetyChange,onCompleted,onRequestC
             slotProps={{htmlInput:{min:1,max:1000}}} onChange={e=>setQuantity(Number(e.target.value))}/>
           <TextField label="每码授予 Pro 天数" required type="number" value={duration} disabled={busy||!!pending}
             slotProps={{htmlInput:{min:1,max:36500}}} onChange={e=>setDuration(Number(e.target.value))}/>
-          <TextField label="每码最大核销次数" required type="number" value={uses} disabled={busy||!!pending}
-            slotProps={{htmlInput:{min:1,max:100000}}} onChange={e=>setUses(Number(e.target.value))}/>
           <TextField label="兑换码到期日（可选）" type="datetime-local" value={expiry} disabled={busy||!!pending}
             slotProps={{inputLabel:{shrink:true}}} onChange={e=>setExpiry(e.target.value)}/>
           <TextField label="备注（可选）" value={note} disabled={busy||!!pending}
             onChange={e=>setNote(e.target.value)} sx={{gridColumn:{sm:'1 / -1'}}}/>
         </Box>
+        <Typography variant="caption" color="text.secondary">
+          每个兑换码仅限成功核销一次。本批最多发放 {quantity} 份 Pro {duration} 天权益。
+        </Typography>
         <Box sx={{display:'flex',justifyContent:embedded?'space-between':'flex-end',
           alignItems:'center',gap:1.5,flexWrap:'wrap'}}>
           {embedded&&<Button color="inherit" onClick={onRequestClose} disabled={busy}>
@@ -229,8 +229,7 @@ export function IssueCodes({embedded=false,onSafetyChange,onCompleted,onRequestC
           <Button variant="contained" type="submit" sx={{minWidth:164,width:'auto'}}
             disabled={busy||!!pending||!targetProductId||!scopeConfirmed||
               !Number.isInteger(quantity)||quantity<1||quantity>1000||
-              !Number.isInteger(duration)||duration<1||duration>36500||
-              !Number.isInteger(uses)||uses<1||uses>100000}>
+              !Number.isInteger(duration)||duration<1||duration>36500}>
             {busy?'提交中…':'确认创建兑换码'}
           </Button>
         </Box>
@@ -241,7 +240,7 @@ export function IssueCodes({embedded=false,onSafetyChange,onCompleted,onRequestC
       <Stack spacing={2}>
         <Alert severity="warning">兑换码明文只显示一次，关闭或刷新后无法恢复。请先保存。</Alert>
         <Box component="pre" sx={{whiteSpace:'pre-wrap',wordBreak:'break-all',fontFamily:'monospace',
-          bgcolor:'background.default',p:2,borderRadius:1,maxHeight:340,overflow:'auto'}}>
+          bgcolor:'background.default',p:2,borderRadius:adminRadii.small,maxHeight:340,overflow:'auto'}}>
           {plain?.join('\n')}
         </Box>
         <Stack direction="row" spacing={1} useFlexGap sx={{flexWrap:'wrap'}}>
@@ -261,7 +260,7 @@ export function IssueCodes({embedded=false,onSafetyChange,onCompleted,onRequestC
         <Stack spacing={2}>
           <Alert severity="warning">兑换码明文只显示一次，关闭或刷新后无法恢复。请先保存。</Alert>
           <Box component="pre" sx={{whiteSpace:'pre-wrap',wordBreak:'break-all',fontFamily:'monospace',
-            bgcolor:'background.default',p:2,borderRadius:1,maxHeight:340,overflow:'auto'}}>
+            bgcolor:'background.default',p:2,borderRadius:adminRadii.small,maxHeight:340,overflow:'auto'}}>
             {plain?.join('\n')}
           </Box>
           <Stack direction="row" spacing={1} useFlexGap sx={{flexWrap:'wrap'}}>
@@ -275,7 +274,7 @@ export function IssueCodes({embedded=false,onSafetyChange,onCompleted,onRequestC
       </DialogContent>
       <DialogActions><Button variant="contained" disabled={!saved} onClick={closePlain}>清除明文并关闭</Button></DialogActions>
     </Dialog>}
-    {embedded?(confirmRevoke&&<Box role="region" aria-label="撤销发行批次" sx={{mt:2,p:2,border:'1px solid',borderColor:'error.light',borderRadius:2}}>
+    {embedded?(confirmRevoke&&<Box role="region" aria-label="撤销发行批次" sx={{mt:2,p:2,border:'1px solid',borderColor:'error.light',borderRadius:adminRadii.card}}>
       <Typography variant="h6" sx={{mb:2}}>撤销已创建的整批兑换码</Typography>
       <Stack spacing={2}>
         <Alert severity="error">不可恢复原明文。撤销只影响未来核销，不撤销已经兑现的 Pro 权益。</Alert>

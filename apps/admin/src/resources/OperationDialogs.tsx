@@ -5,21 +5,25 @@ import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogCont
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { Link as RouterLink } from 'react-router-dom';
 import type { LinkProps } from 'react-router-dom';
+import { adminRadii } from '../theme';
 
 export type OperationSafety='idle'|'busy'|'pending'|'plaintext';
-type Kind='grant'|'issue'|'account'|'product';
-type OpenState={kind:Kind;userId?:string};
+type Kind='grant'|'issue'|'account'|'admin'|'product';
+type OpenState={kind:Kind;userId?:string;productId?:string};
 const paths:Record<string,Kind>={
-  '/grant-new':'grant','/issue-codes':'issue','/account-actions':'account','/products/create':'product',
+  '/grant-new':'grant','/issue-codes':'issue',
+  '/account-actions':'account','/admin-actions':'admin','/products/create':'product',
 };
 const titles:Record<Kind,string>={
-  grant:'新增 Pro 授权',issue:'发行兑换码',account:'平台账号操作',product:'新建产品',
+  grant:'新增 Pro 授权',issue:'发行兑换码',
+  account:'平台账号封禁与解封',admin:'管理员资格操作',product:'新建产品',
 };
 const OperationContext=createContext<((to:string)=>boolean)|null>(null);
 
 const Grant=lazy(()=>import('./GrantCreate').then(m=>({default:m.GrantCreate})));
 const Issue=lazy(()=>import('./IssueCodes').then(m=>({default:m.IssueCodes})));
 const Account=lazy(()=>import('./AccountActions').then(m=>({default:m.AccountActions})));
+const AdminRole=lazy(()=>import('./AdminRoleActions').then(m=>({default:m.AdminRoleActions})));
 const Product=lazy(()=>import('./ProductCreate').then(m=>({default:m.ProductCreate})));
 
 /** Preserves a real href for deep links/new tabs, intercepts only ordinary in-app clicks. */
@@ -45,7 +49,8 @@ export function OperationModalProvider({children}:{children:ReactNode}){
     const url=new URL(path,'https://aisencore.invalid');
     const kind=paths[url.pathname];
     if(!kind)return false;
-    setOpened({kind,userId:url.searchParams.get('user_id')??undefined});
+    setOpened({kind,userId:url.searchParams.get('user_id')??undefined,
+      productId:kind==='grant'?url.searchParams.get('product_id')??undefined:undefined});
     setSafety('idle');setDirty(false);setLeaveWarning(false);
     return true;
   },[]);
@@ -62,7 +67,7 @@ export function OperationModalProvider({children}:{children:ReactNode}){
     <Dialog open={!!opened} onClose={attemptClose} fullWidth
       maxWidth="sm" fullScreen={compact}
       aria-labelledby="aisencore-operation-title" scroll="paper"
-      slotProps={{paper:{sx:{borderRadius:{xs:0,sm:3.5},
+      slotProps={{paper:{sx:{borderRadius:{xs:0,sm:adminRadii.container},
         maxHeight:{xs:'100dvh',sm:'min(90dvh,900px)'},border:'1px solid #E1E7EE',
         boxShadow:'0 24px 80px rgba(24,38,58,.19)',backgroundColor:'#fff'}}}}>
       {opened&&<>
@@ -92,10 +97,13 @@ export function OperationModalProvider({children}:{children:ReactNode}){
           <Suspense fallback={<Box role="status" sx={{p:3,display:'flex',gap:2}}>
             <CircularProgress size={22}/><Typography>正在加载操作…</Typography></Box>}>
             {opened.kind==='grant'&&<Grant embedded defaultUserId={opened.userId}
+              defaultProductId={opened.productId}
               onSafetyChange={setSafety} onCompleted={forceClose}/>}
             {opened.kind==='issue'&&<IssueCodesSlot onSafetyChange={setSafety} onCompleted={forceClose}
               onRequestClose={attemptClose}/>}
             {opened.kind==='account'&&<Account embedded defaultUserId={opened.userId}
+              onSafetyChange={setSafety} onCompleted={forceClose}/>}
+            {opened.kind==='admin'&&<AdminRole embedded defaultUserId={opened.userId}
               onSafetyChange={setSafety} onCompleted={forceClose}/>}
             {opened.kind==='product'&&<Product embedded onSafetyChange={setSafety}
               onCompleted={forceClose}/>}

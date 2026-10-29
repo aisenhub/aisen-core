@@ -6,6 +6,24 @@
       "violations": [],
       "passes": 17,
       "incomplete": 1
+    },
+    {
+      "page": "user360-account-dialog",
+      "violations": [],
+      "passes": 18,
+      "incomplete": 1
+    },
+    {
+      "page": "user360-grant-dialog",
+      "violations": [],
+      "passes": 19,
+      "incomplete": 0
+    },
+    {
+      "page": "user360-grant-dialog",
+      "violations": [],
+      "passes": 19,
+      "incomplete": 0
     }
   ],
   "manualStillRequired": [

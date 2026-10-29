@@ -1,0 +1,51 @@
+{
+  "context": "temporary local AAL2 admin; production preview; read-only business queries artificially paused by CDP; no credentials/data retained",
+  "createdAt": "2026-10-28",
+  "results": [],
+  "lazyRoute": null,
+  "revocation": null,
+  "spaTags": null,
+  "identityUX": {
+    "account": {
+      "count": 1,
+      "id": "5b23d21b-2fcf-4b1a-b4ca-236e3707a37c",
+      "copy": true,
+      "duplicate": false
+    },
+    "userShow": {
+      "id": true,
+      "copy": true,
+      "grant": true,
+      "records": true
+    },
+    "missing": {
+      "noRows": true,
+      "refreshDisabled": true
+    },
+    "grant": {
+      "email": true,
+      "uuid": true,
+      "noUuidInput": true,
+      "shortcut": true
+    },
+    "gov": {
+      "verified": true,
+      "review": true,
+      "oldInput": false
+    },
+    "mobile": {
+      "userId": true,
+      "copyCount": 1,
+      "overflow": 0
+    },
+    "pass": true
+  },
+  "a11y": [],
+  "pass": true,
+  "limitations": [
+    "Synthetic local fixture; no real-user p75/p95",
+    "Only GET paused; not application request latency",
+    "No data-volume stress test",
+    "No manual screen-reader or owner signoff"
+  ]
+}

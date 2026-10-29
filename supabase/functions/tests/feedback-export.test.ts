@@ -4,6 +4,7 @@ function check(value:unknown,message:string):asserts value{
   if(!value)throw new Error(message);
 }
 const fixture:ExportFeedback={
+  contact_email:'contact-sensitive@example.com',
   id:'11111111-1111-4111-8111-111111111111',feedback_no:101,
   user_id:'22222222-2222-4222-8222-222222222222',
   product_id:'33333333-3333-4333-8333-333333333333',
@@ -42,6 +43,7 @@ Deno.test('export ZIP unzips to original image bytes, JSONL, Markdown, manifest 
     'public reply missing');
   check(!text(files,'feedback.jsonl').includes('INTERNAL-SECRET-ONLY'),
     'private note leaked');
+  check(!Object.values(files).some(bytes=>new TextDecoder().decode(bytes).includes('contact-sensitive@example.com')),'contact email leaked into default export');
   check(!text(files,'feedback.jsonl').includes(fixture.user_id),
     'identity leaked');
   check(!text(files,'feedback/FB-101/feedback.md').includes('INTERNAL-SECRET-ONLY'),
@@ -57,6 +59,7 @@ Deno.test('explicit sensitive selections include exactly opted-in metadata',asyn
   const json=text(files,'feedback.jsonl');
   check(json.includes('INTERNAL-SECRET-ONLY'),'selected internal note missing');
   check(json.includes(fixture.user_id),'selected identity missing');
+  check(json.includes('contact-sensitive@example.com'),'selected contact missing');
   check(json.includes('待重现'),'selected tags missing');
   check(json.includes('in_progress'),'selected processing state missing');
 });

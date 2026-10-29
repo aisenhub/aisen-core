@@ -1,5 +1,7 @@
 # 用户反馈 V3：轻量管理、四队列与简洁详情
 
+> **历史阶段文档**：2026-10-29 起当前 Admin 合同变更为三队列、五类别、批量移动与真实永久删除。本文关于回收站与管理员自定义标签属于旧 V3 测试事实，**不再作为新实施或验收要求**。参阅 [V4 修复与验收计划](./2026-10-29-feedback-admin-ux-bulk-delete-remediation-plan.md) 及 [现行领域合同](../../architecture/domains/user-feedback.md)。
+
 > 2026-10-26。V3 是现有 V2 基础上的增量改造，不代表云端上线授权。旧数据、旧事件与已上传的 R2 对象不得重置或丢弃。
 
 ## 目标
@@ -35,9 +37,18 @@
 | P1 | 数据库 V3、标签字典、旧接口绕行保护及 pgTAP | 已编码并通过本地数据库验证 |
 | P2 | 四个路由、同排筛选、轻量编辑器 | 已编码，仍需人工视觉验收 |
 | P3 | 反馈者账号邮箱、最近处理人、图片/正文双栏、高清原图弹窗 | 初版已编码 |
-| P4 | 真正压缩缩略图（安全生成、私有 R2 存储、授权获取） | **未完成**。当前是固定尺寸图片占位，点击后才加载原图，不能冒充压缩预览 |
-| P5 | V3 AAL2 Chrome 回归、ZIP Edge HTTP、全站导航、键盘/读屏和真实 R2 | V3 专项已建立，其余按实际执行结果验收 |
+| P4 | 真正压缩缩略图（安全生成、私有存储、授权获取） | **本地编码 + 真实 Edge/私有 S3 成功**：最长边320px JPEG≤256KiB，服务端从原始安全解码生成而非客户端提供，独立确定性 `.thumb.jpg` 私有对象；本人/管理员经原附件权限 RPC 签发，Admin 优先加载缩略图并单独授权高清原图；预览不可用时回退占位。真实 R2/人工截图读屏仍 OPEN |
+| P5 | V3 AAL2 Chrome 回归、ZIP Edge HTTP、全站导航、键盘/读屏和真实 R2 | **本地 Chrome 四队列/并发 409、Lens 真双图→Edge→S3→DB、1/2 图签名访问、AAL2 原图 ZIP/撤权/断连/503/重试均实测 PASS**；真实云 R2、读屏及全矩阵仍 OPEN |
 | P6 | 性能、人工视觉、正式上线批准 | **未开始**，不得自动发布 |
+
+### 2026-10-29 F07 私有图片专项真实联调证据
+
+- `scripts/test-f07-edge-images-local-s3.mjs` **实际退出 0**：现有本地非空业务库采用操作前后动态用户、成员、反馈、附件基线，并验证仅测试生成的 Auth 邮箱/UUID；成功时没有要求先删除已有数据。真实 Lens 8443 Chrome 发送两张 PNG，到 GoTrue JWT→Core 运行中的正式 Edge 处理逻辑→本地签名 S3 fixture→PostgreSQL 两条附件；临时 S3 的 AWS 签名**只验证签名存在而非独立密码学鉴权**，不能冒称云 R2 已验。
+- 真 GoTrue 注册与 Mailpit 邮件验证后实际发送 1/2 图；拥有者签名 GET 60 秒、本账号可取原图，其他用户 403；真实 AAL2 管理员 ZIP 同时携带两张逐字节相同原图，AAL1 被拒。缺图 503 fail-closed、权限在下载过程中撤销拒交 ZIP、客户端中断不丢原始附件。
+- 两个故障恢复边界分别通过：上游 201 而客户端丢失回执时同请求号 200 replay 且不二次写对象，换内容 409；第二张 PUT 503 时数据库不假装提交，孤立第一张通过受限引用枚举校验，修复后原请求重用已存在对象并只补第二张。测试 finally 清理本次临时对象、匿名账户、数据库行和由测试独占创建的 `.env`，前后非 QA 数据基线保持一致。
+- **后续 P4 真实实施结果**：已修改 `feedback-image.ts` 的安全解码→最长边320px→JPEG编码（≤256KiB），`feedback-submit/service.ts` 将原图与独立缩略图均写入私有存储、失败可按同号重复创建缺失对象；`feedback-image-access/service.ts` 支持 `variant=thumbnail`，重新执行原用户权限判定；Admin `Feedback.tsx` 用有界真实图片预览替代固定占位（无预览/失效签名安全回退占位，高清原图仍单独授权）。本地迁移 `20261029003000_feedback_thumbnail_reference_guard.sql` 保证孤儿引用核对将 `.thumb.jpg` 与已提交原图同源判断，不新增面向普通用户的对象列举权限。`feedback-thumbnail.test.ts` 2/2、原 Edge 测试10/10、SQL 事务回滚正反例均 PASS；重新执行真实 Lens→Edge→私有 S3 1/2 图、缩略图本人/他人 200/403、原图 ZIP/503/撤权/断连/丢回执/第二图 PUT 恢复完整测试 **EXIT 0**、QA 基线还原 PASS。**本地现有反馈2条、附件0条，故无需要补建的历史缩略图，也未运行存量迁移；其他环境必须先独立只读盘点，不应为了假设数据建立双轨兼容层。** 后续仍需 Cloudflare R2 实际外网、Admin 图片人工视觉/读屏和正式部署授权；不能以本地模拟对象存储替代云供应商验收。
+
+**2026-10-29 安全负例加强：**新增完整真实 Edge/Auth/S3 的 AAL2 管理员缩略图 GET200/撤权后无法新签发403，非法变体路径422，以及临时缩略图缺失404时原图授权GET仍200且元数据不变；重新实跑 `node scripts/test-f07-edge-images-local-s3.mjs` **EXIT0**，既有ZIP及503、断连、幂等重试和孤儿引用测试全PASS。Core与Lens fixture 改为验证开始前精确原始 Auth/反馈/成员/附件 ID 存续及本次 QA ID 清除，不因共享开发库中其他独立写入而误判；无删除原业务记录。`feedback-submit-handler.test.ts` 已补缩略图403/503和非法变体拒绝的隔离HTTP负例并 PASS。**这不是自动化读屏或云R2验收。**
 
 ## 工程路径
 
@@ -45,7 +56,7 @@
 - 管理员身份生命周期：20261026080818_feedback_v3_handler_lifecycle.sql；卸任/删除管理员不能被历史反馈的处理人外键阻断
 - 数据库回归：012_feedback_v3_lightweight.test.sql
 - Admin：Feedback.tsx、FeedbackV2.tsx、FeedbackV3Editor.tsx、useFeedbackTags.ts、FeedbackExport.tsx
-- Edge：feedback-export/index.ts
+- Edge：feedback-export/index.ts、feedback-submit/service.ts、feedback-image-access/service.ts、_shared/feedback-image.ts
 - Chrome：scripts/test-fb-v3-browser.mjs
 
 ## 核心验收

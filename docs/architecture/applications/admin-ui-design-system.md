@@ -7,13 +7,28 @@
 ## 1. 单一视觉来源与 React-admin 优先
 
 - 正式 Admin 使用 React-admin + MUI + TypeScript。优先使用官方布局、Resource、List/Datagrid、Show、Create/Edit、表单、通知、菜单和交互能力。只有存在实际功能缺口时才做最小业务组合或扩展；不另造第二套 UI、路由、缓存或表单框架。
-- 全站只有一套由 React-admin/MUI 官方 Theme 入口注入的权威视觉主题，可在 `theme.ts`（或实际项目约定的唯一主题模块）中管理 palette、typography、spacing、shape、components 与必要的亮暗模式。项目尚未选定、冻结任何具体视觉 Token。
+- 全站只有一套由 React-admin/MUI 官方 Theme 入口注入的权威视觉主题，在 `apps/admin/src/theme.ts` 中管理 palette、typography、spacing、shape、components 与语义化圆角。**2026-10-29 已确认圆角四档与胶囊/圆形例外**；其他颜色、字体和布局仍可在未来评审中调整。
 - 业务页面优先消费语义颜色、主题间距及既有变体；必要局部布局可以使用最小 `sx` 或相应官方样式机制，但不得建立并行品牌 Token 或散落与主题冲突的重复全局覆写。
 - 不从 HTML 原型、第三方模板、旧截图或此前候选方案自动推断某套视觉风格已批准。组件复用是技术与质量原则，不等于 UI 外观必须与某个原型 DOM 1:1 相同。
 
+## 1.1 Admin 圆角已批准规范（2026-10-29）
+
+`apps/admin/src/theme.ts` 导出 `adminRadii`，所有页面必须从这一模块引用，不能在 `sx` 中另写固定圆角值或使用 MUI 数字倍数。当前唯一规格：
+
+| 语义 Token | 圆角 | 使用范围 |
+|---|---:|---|
+| `adminRadii.small` | **8px** | Chip 状态、紧凑元素、图片与代码块 |
+| `adminRadii.control` | **12px** | Button、TextField、Select、表单控件、警告条 |
+| `adminRadii.card` | **16px** | Card、反馈列表/表格、正文分组卡 |
+| `adminRadii.container` | **20px** | 主工作区面板、侧栏容器、Dialog 弹窗（桌面） |
+| `adminRadii.pill` | `999px` | 有明确胶囊语义的一级/二级导航及筛选按钮，**不是第五档通用圆角** |
+| `adminRadii.circle` | `50%` | 状态点、圆形头像/图标背景，**不是第五档通用圆角** |
+
+全屏移动端对话框、顶层边对边的区域或有意连续拼接的列表行可以使用 **0px**。MUI 的 `sx={{borderRadius: 2}}` 会乘以 `theme.shape.borderRadius`，不等于 2px；必须使用 `borderRadius: adminRadii.card` 等 CSS 长度字符串。全局 `shape.borderRadius` 与通用组件覆盖均由四档语义 Token 生成；遗留 CSS 若需要使用圆角，通过全局 `--aisen-radius-*` 变量消费这些 Token，而不是定义独立 CSS 主题。校验命令：`node scripts/test-admin-radius-contract.mjs`。相关用户反馈、历史原型或已有页面局部 21/28/35/42/49px 圆角不再构成当前规范。
+
 ## 2. 设计自由度与质量底线
 
-- 信息架构、页面分区、导航形式、颜色、字体大小、控件密度、圆角、断点、弹窗样式以及列表列组合，均由当前任务、实际数据、React-admin 能力、可访问性和用户反馈决定；未经明确批准的旧候选不具有强制性。
+- 信息架构、页面分区、导航形式、颜色、字体大小、控件密度、断点、弹窗布局以及列表列组合，均由当前任务、实际数据、React-admin 能力、可访问性和用户反馈决定；其中圆角严格遵循本页 **1.1 节已批准的统一规范**，未经明确批准的旧候选不具有强制性。
 - 页面用清晰信息层级、标签与操作反馈表达任务，避免重复说明、无用装饰与噪音；但不能为追求极简省略必需的标签、单位、权限限制、危险后果、错误恢复和辅助技术名称。
 - 关键状态不得仅通过颜色传达。键盘焦点、表单标签与错误关联、Dialog 焦点管理、中文/英文/长 ID、缩放与窄屏可操作性按相关 WCAG 2.2 AA 原则和真实浏览器结果验证。
 - 保留加载、空列表、筛选无结果、权限拒绝、网络失败、冲突、写入结果未知等不同状态的清楚反馈。危险操作显示真实影响范围，不能用前端确认代替服务端鉴权。

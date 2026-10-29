@@ -71,7 +71,7 @@ Deno.test('isolated S3 protocol fixture: 1/2 images, conditional replay and erro
       'signed S3 GET must return exact original byte lengths');
     check(downloaded1.every((v,i)=>v===one[i])&&downloaded2.every((v,i)=>v===two[i]),
       'S3 GET must preserve original image bytes');
-    const sample:ExportFeedback={
+    const sample:ExportFeedback={contact_email:'fixture@example.com',
       id:prefix[0],feedback_no:50,product_id:prefix[0],user_id:prefix[1],
       content:'S3 two-image test',category:'bug',queue_state:'workbench',
       created_at:'2026-10-26T00:00:00Z',version:1,priority:'high',

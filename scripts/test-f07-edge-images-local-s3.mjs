@@ -33,6 +33,8 @@ let heldExportGet=null;
 const unique=randomUUID().replaceAll('-','').slice(0,13);
 const password='F07fixture!'+randomBytes(14).toString('hex');
 let fixture=null,edgeWorker=null,gate=null,ownedEnvFile=null;
+let baselineCounts=null;
+let originalRecordIds=null;
 const sleep=n=>new Promise(resolve=>setTimeout(resolve,n));
 function sql(text){
   const r=run('docker',['exec','supabase_db_Aisencore','psql','-X','-qAt',
@@ -41,6 +43,21 @@ function sql(text){
   return r.stdout.trim();
 }
 const qq=id=>{assert.match(id,/^[a-f0-9-]{36}$/i);return "'"+id+"'"};
+const preservedTables=['auth.users','public.user_feedback','public.product_memberships',
+  'public.feedback_attachments','public.entitlement_grants'];
+function preserveOriginalIds(){
+  originalRecordIds=Object.fromEntries(preservedTables.map(table=>
+    [table,JSON.parse(sql('BEGIN READ ONLY; SELECT COALESCE(jsonb_agg(id),'+
+      "'[]'::jsonb) FROM "+table+'; COMMIT;'))]));
+}
+function verifyOriginalIds(){
+  for(const [table,ids] of Object.entries(originalRecordIds??{})){
+    if(!ids.length)continue;
+    assert.equal(sql('SELECT count(*) FROM '+table+' WHERE id IN ('+
+      ids.map(qq).join(',')+')'),String(ids.length),
+      'existing non-QA IDs must remain in '+table);
+  }
+}
 async function req(path,method='POST',body=null,token=null,service=false){
   const headers={apikey:service?adminKey:key,
     authorization:'Bearer '+(service?adminKey:token??key)};
@@ -55,7 +72,7 @@ async function req(path,method='POST',body=null,token=null,service=false){
 function form(text,images,id=randomUUID()){
   const fd=new FormData();
   fd.set('product_key','aisenlens');fd.set('request_id',id);
-  fd.set('content',text);fd.set('category','bug');
+  fd.set('content',text);fd.set('category','bug');fd.set('contact_email','fixture@example.com');
   for(const [i,blob] of images.entries())fd.append('images',blob,'test-'+i+'.png');
   return fd;
 }
@@ -202,8 +219,10 @@ function s3Server(){
       // A one-request, loopback-only fault injection. The first image can be
       // stored, but all retries of the second image key receive 503 until the
       // test explicitly restores storage. The real Edge code is untouched.
+      // Fail the second ORIGINAL, not slot-1's derived thumbnail. Both
+      // originals and thumbnails are stored in distinct private S3 keys.
       if(secondPutFault && (secondPutFault.failedKey===path ||
-        (secondPutFault.successfulPuts>=1 && !objects.has(path)))){
+        (/\/2-[^/]+\.(?:png|jpg|webp)$/.test(path) && !objects.has(path)))){
         secondPutFault.failedKey=path;
         response.writeHead(503,{'content-type':'application/xml'});
         response.end('<Error><Code>ServiceUnavailable</Code></Error>');
@@ -228,7 +247,8 @@ function s3Server(){
       if(!objects.has(path)){response.writeHead(404,{'content-type':'application/xml'});
         response.end('<Error><Code>NoSuchKey</Code></Error>');return}
       const bytes=objects.get(path);
-      response.writeHead(200,{'content-type':'image/png','content-length':bytes.length});
+      response.writeHead(200,{'content-type':path.endsWith('.thumb.jpg')?'image/jpeg':'image/png',
+        'content-length':bytes.length});
       response.end(bytes);return;
     }
     response.writeHead(405);response.end();
@@ -274,8 +294,7 @@ async function testLensBrowserWithRealS3(){
     output.slice(-2500)+' '+errors.slice(-400));
   assert.ok(output.includes('LENS_REAL_PRIVATE_S3_IMAGES PASS'));
   assert.ok(output.includes('LENS_REAL_CORE_CLEANUP PASS'));
-  assert.equal(sql('select count(*) from auth.users'),'1');
-  assert.equal(sql('select count(*) from public.user_feedback'),'0');
+  verifyOriginalIds();
   console.log('F07_REAL_LENS_CHROME_TWO_IMAGES PASS browser -> Edge -> S3 -> DB; QA deleted');
 }
 async function startWorker(){
@@ -307,10 +326,18 @@ const listen=server=>new Promise((resolve,reject)=>{
   server.listen(3418,'0.0.0.0',()=>resolve());
 });
 try{
-  assert.equal(sql('select count(*) from auth.users'),'1','admin-only baseline required');
+  baselineCounts={
+    auth_users:Number(sql('select count(*) from auth.users')),
+    feedback:Number(sql('select count(*) from public.user_feedback')),
+    attachments:Number(sql('select count(*) from public.feedback_attachments')),
+    memberships:Number(sql('select count(*) from public.product_memberships')),
+  };
+  preserveOriginalIds();
+  assert.ok(baselineCounts.auth_users>=1,'local Auth must have an existing Admin');
   assert.equal(sql("select string_agg(product_key,',' order by product_key) from public.products"),
     'aisenhub,aisenlens');
-  assert.equal(sql('select count(*) from public.user_feedback'),'0');
+  // Pre-existing real feedback is not a reason to clear the database.
+  assert.ok(baselineCounts.feedback>=0);
   gate=tcpServer();await new Promise((resolve,reject)=>{
     gate.once('error',reject);gate.listen(3412,'127.0.0.1',resolve)});
   fixture=s3Server();await listen(fixture);
@@ -327,7 +354,7 @@ try{
   await startWorker();
   await testLensBrowserWithRealS3();
   const lensS3Objects=objects.size;
-  assert.equal(lensS3Objects,2,'Lens must write 2 private objects');
+  assert.equal(lensS3Objects,4,'Lens must write 2 originals and 2 private thumbnails');
   const owner=await registeredMailOwner(),stranger=await user('stranger');
   const images=[png(80),png(120)];
   for(const count of [1,2]){
@@ -345,7 +372,8 @@ try{
       "from public.feedback_attachments where feedback_id="+qq(reportId)+
       " order by slot").split('\n').filter(Boolean);
     assert.equal(rows.length,count,'DB attachment count');
-    assert.equal(objects.size,lensS3Objects+(count===1?1:3),'private object count');
+    assert.equal(objects.size,lensS3Objects+(count===1?2:6),
+      'each committed image must have a separate private JPEG thumbnail');
     const replay=await req('/functions/v1/feedback-submit','POST',
       form(content,blobs,requestId),owner.token);
     assert.equal(replay.status,200,'idempotent image replay');
@@ -367,6 +395,18 @@ try{
       assert.equal(download.status,200,'signed GET fixture');
       const bytesBack=Buffer.from(await download.arrayBuffer());
       assert.deepEqual(bytesBack,images[i],'signed URL image byte integrity');
+      const thumb=await req('/functions/v1/feedback-image-access','POST',
+        {attachment_id:attachmentId,variant:'thumbnail'},owner.token);
+      assert.equal(thumb.status,200,'authorized thumbnail signed GET');
+      assert.equal(thumb.data.mime_type,'image/jpeg');
+      const thumbRes=await fetch(thumb.data.url,{signal:AbortSignal.timeout(12000)});
+      assert.equal(thumbRes.status,200);
+      const preview=Buffer.from(await thumbRes.arrayBuffer());
+      assert.equal(preview[0],255);assert.equal(preview[1],216);
+      assert.ok(preview.length<=256*1024,'actual bounded JPEG thumbnail stored');
+      const strangerThumb=await req('/functions/v1/feedback-image-access','POST',
+        {attachment_id:attachmentId,variant:'thumbnail'},stranger.token);
+      assert.equal(strangerThumb.status,403,'private thumbnail authorization matches original');
     }
     console.log('F07_REAL_EDGE_PRIVATE_S3 '+count+
       ' image(s) PASS JWT -> Edge -> DB -> signed PUT/GET; owner 200 stranger 403');
@@ -378,6 +418,43 @@ try{
     ids:[secondImageReportId],options:{identity:false}},qaAdmin.token);
   assert.equal(denied.status,403,'AAL1 Admin must not export private attachments');
   const mfaToken=await adminAal2(qaAdmin.token);
+  const adminImageId=sql('select id from public.feedback_attachments where '+
+    'feedback_id='+qq(secondImageReportId)+' order by slot limit 1');
+  assert.match(adminImageId,/^[a-f0-9-]{36}$/i);
+  const adminThumb=await req('/functions/v1/feedback-image-access','POST',
+    {attachment_id:adminImageId,variant:'thumbnail'},mfaToken);
+  assert.equal(adminThumb.status,200,
+    'AAL2 administrator must be able to sign a private thumbnail');
+  assert.equal(adminThumb.data.mime_type,'image/jpeg');
+  const adminThumbGet=await fetch(adminThumb.data.url,{
+    signal:AbortSignal.timeout(12000)});
+  assert.equal(adminThumbGet.status,200);
+  console.log('F07_REAL_AAL2_ADMIN_THUMBNAIL PASS protected signature and private GET');
+  const invalidThumbVariant=await req('/functions/v1/feedback-image-access','POST',
+    {attachment_id:adminImageId,variant:'../../other-key'},mfaToken);
+  assert.equal(invalidThumbVariant.status,422,
+    'real Edge must reject image variant path injection before storage signing');
+  const adminOriginal=await req('/functions/v1/feedback-image-access','POST',
+    {attachment_id:adminImageId,variant:'original'},mfaToken);
+  assert.equal(adminOriginal.status,200);
+  const knownOriginalPath=new URL(adminOriginal.data.url).pathname;
+  const oldThumbnailPath=knownOriginalPath+'.thumb.jpg';
+  const oldThumbBytes=objects.get(oldThumbnailPath);
+  assert.ok(oldThumbBytes?.length,'test controls only an existing private thumbnail');
+  try{
+    objects.delete(oldThumbnailPath);
+    const stillAuthorized=await req('/functions/v1/feedback-image-access','POST',
+      {attachment_id:adminImageId,variant:'thumbnail'},mfaToken);
+    assert.equal(stillAuthorized.status,200,
+      'signed URLs are not proof the remote object exists');
+    assert.equal((await fetch(stillAuthorized.data.url,{signal:AbortSignal.timeout(12000)})).status,
+      404,'unavailable thumbnail must never return made-up image data');
+    assert.equal((await fetch(adminOriginal.data.url,{signal:AbortSignal.timeout(12000)})).status,
+      200,'missing derived image must not block the original user-authorized photo');
+    assert.equal(sql('select count(*) from public.feedback_attachments where id='+
+      qq(adminImageId)),'1','missing derivative cannot rewrite source attachment metadata');
+  }finally{objects.set(oldThumbnailPath,oldThumbBytes)}
+  console.log('F07_REAL_THUMBNAIL_MISSING_ORIGINAL_SAFE PASS 404 derivative, 200 original, DB unchanged');
   const exportRequest={
     scope:'selected',queue_state:'inbox',
     ids:[secondImageReportId],options:{
@@ -422,6 +499,10 @@ try{
     assert.equal(sql('update public.platform_admins set active=false where user_id='+
       qq(qaAdmin.id)+' and active=true returning active'),'f',
     'revoke precisely the synthetic QA Admin during S3 transfer');
+    const revokedThumb=await req('/functions/v1/feedback-image-access','POST',
+      {attachment_id:adminImageId,variant:'thumbnail'},mfaToken);
+    assert.equal(revokedThumb.status,403,
+      'revoked AAL2 administrator may no longer mint any new private preview URL');
     releaseGet();
     const forbiddenExport=await pendingRevokedExport;
     assert.ok([403,409].includes(forbiddenExport.status),
@@ -491,7 +572,7 @@ try{
   assert.deepEqual(shots[0][1],images[0],'Admin ZIP original image 1 bytes');
   assert.deepEqual(shots[1][1],images[1],'Admin ZIP original image 2 bytes');
   console.log('F07_REAL_EDGE_ADMIN_ZIP PASS current AAL2 allows private export, AAL1 403, images byte-identical');
-  assert.equal(s3Events.filter(x=>x.verb==='PUT').length,lensS3Objects+3,
+  assert.equal(s3Events.filter(x=>x.verb==='PUT').length,lensS3Objects+6,
     'image retries should not put second copy');
   console.log('F07_REAL_EDGE_S3_REPLAY PASS no additional writes');
 
@@ -549,14 +630,14 @@ try{
       qq(lossId)),'1','one real SQL record despite lost client response');
     assert.equal(sql('select count(*) from public.feedback_attachments where feedback_id='+
       qq(committed.data.id)),'2','both images were committed before ACK loss');
-    assert.equal(objects.size,beforeLossObjects+2,'two S3 objects were stored once');
+    assert.equal(objects.size,beforeLossObjects+4,'two originals and two thumbnails stored once');
     const putCount=s3Events.filter(x=>x.verb==='PUT').length;
     const retried=await req('/functions/v1/feedback-submit','POST',
       form(lossText,lossBlobs,lossId),owner.token);
     assert.equal(retried.status,200,'unknown-result retry resolves as replay');
     assert.equal(retried.data?.replayed,true,'replay explicitly confirmed');
     assert.equal(retried.data?.id,committed.data.id,'same real SQL feedback ID');
-    assert.equal(objects.size,beforeLossObjects+2,'retry must not create objects');
+    assert.equal(objects.size,beforeLossObjects+4,'retry must not create objects');
     assert.equal(s3Events.filter(x=>x.verb==='PUT').length,putCount,
       'retry must not attempt any additional S3 writes');
     const changed=await req('/functions/v1/feedback-submit','POST',
@@ -583,15 +664,15 @@ try{
       form(faultText,faultBlobs,faultId),owner.token);
     assert.equal(failure.status,503,
       'second image PUT failure must be reported as storage unavailable/unknown');
-    assert.equal(secondPutFault.successfulPuts,1,'only first image uploaded');
+    assert.equal(secondPutFault.successfulPuts,2,'first original and thumbnail uploaded');
     assert.ok(secondPutFault.failedKey,'second image PUT actually failed');
   }finally{secondPutFault=null}
   assert.equal(sql('select count(*) from public.user_feedback where request_id='+qq(faultId)),
     '0','storage 503 must not fabricate a committed feedback');
-  assert.equal(objects.size,beforeFaultObjects+1,
-    'partial first S3 object remains for safe reference-aware reconciliation');
+  assert.equal(objects.size,beforeFaultObjects+2,
+    'first original and thumbnail remain for safe reference-aware reconciliation');
   const firstFaultKey=[...objects.keys()].filter(k=>!priorKeys.has(k));
-  assert.equal(firstFaultKey.length,1,'one isolated uncommitted object');
+  assert.equal(firstFaultKey.length,2,'one isolated original and its derived thumbnail');
   // S3 protocol fixture Map includes /<bucket>/, whereas the real DB
   // stores bucket-relative object keys. Never send HTTP path strings to RPC.
   const objectKeys=paths=>paths.map(path=>{
@@ -616,10 +697,10 @@ try{
     '1','one real Core feedback record after retry');
   assert.equal(sql('select count(*) from public.feedback_attachments where feedback_id='+
     qq(recovered.data.id)),'2','both attachments committed after recovery');
-  assert.equal(objects.size,beforeFaultObjects+2,
-    'retry reused first deterministic object and added only missing second');
+  assert.equal(objects.size,beforeFaultObjects+4,
+    'retry reused first original+thumb and added only missing second pair');
   const finalFaultKeys=[...objects.keys()].filter(k=>!priorKeys.has(k));
-  assert.equal(finalFaultKeys.length,2,'recovered object set');
+  assert.equal(finalFaultKeys.length,4,'recovered two original+thumbnail pairs');
   const referencesAfter=await checkReferences(objectKeys(finalFaultKeys));
   assert.equal(referencesAfter.status,200);
   assert.deepEqual([...referencesAfter.data].sort(),objectKeys(finalFaultKeys).sort(),
@@ -628,14 +709,14 @@ try{
   const replayAfterFault=await req('/functions/v1/feedback-submit','POST',
     form(faultText,faultBlobs,faultId),owner.token);
   assert.equal(replayAfterFault.status,200,'confirmed exact replay after fault recovery');
-  assert.equal(objects.size,beforeFaultObjects+2,'replay must not upload again');
+  assert.equal(objects.size,beforeFaultObjects+4,'replay must not upload again');
   const mismatchedReplay=await req('/functions/v1/feedback-submit','POST',
     form(faultText+' modified',faultBlobs,faultId),owner.token);
   assert.equal(mismatchedReplay.status,409,
     'same UUID with changed immutable content must be rejected, not overwritten');
   assert.equal(sql('select count(*) from public.user_feedback where request_id='+qq(faultId)),
     '1','409 mismatch cannot create a second feedback');
-  assert.equal(objects.size,beforeFaultObjects+2,'mismatched replay must not upload');
+  assert.equal(objects.size,beforeFaultObjects+4,'mismatched replay must not upload');
   console.log('F07_REAL_EDGE_SECOND_PUT_RECOVERY PASS 503 no DB commit -> exact retry 201/200; two S3 objects');
   console.log('F07_REAL_EDGE_REQUEST_MISMATCH PASS same UUID changed content gets 409, no new objects/records');
 }finally{
@@ -646,6 +727,11 @@ try{
   const errors=[];
   if(created.length){
     const ids=created.map(qq).join(',');
+    const ownershipOk=sql('select count(*) from auth.users where id in ('+ids+
+      ") and email like 'f07-img-"+unique+"-%@example.invalid'")===String(created.length);
+    if(!ownershipOk){
+      errors.push('Abort cleanup: fixture identity ownership mismatch');
+    } else {
     for(const sqlText of [
       "DELETE FROM public.feedback_events WHERE feedback_id IN (SELECT id FROM public.user_feedback WHERE user_id IN ("+ids+"))",
       "DELETE FROM public.feedback_attachments WHERE feedback_id IN (SELECT id FROM public.user_feedback WHERE user_id IN ("+ids+"))",
@@ -657,16 +743,16 @@ try{
       const removed=await req('/auth/v1/admin/users/'+id,'DELETE',null,null,true);
       if(removed.status!==200&&removed.status!==204)errors.push('Auth cleanup '+removed.status);
     }catch(e){errors.push('Auth cleanup '+String(e.message))}
+    }
   }
   await new Promise(resolve=>fixture?fixture.close(resolve):resolve());
   if(gate)await new Promise(resolve=>gate.close(resolve));
   if(ownedEnvFile)await rm(ownedEnvFile,{force:true});
   objects.clear();
   try{
-    assert.equal(sql('select count(*) from auth.users'),'1');
-    assert.equal(sql('select count(*) from public.user_feedback'),'0');
-    assert.equal(sql('select count(*) from public.feedback_attachments'),'0');
-    assert.equal(sql('select count(*) from public.product_memberships'),'0');
+    verifyOriginalIds();
+    if(created.length)assert.equal(sql('SELECT count(*) FROM auth.users WHERE id IN ('+
+      created.map(qq).join(',')+')'),'0','all exact fixture Auth IDs removed');
     assert.equal(sql("select string_agg(product_key,',' order by product_key) from public.products"),
       'aisenhub,aisenlens');
   }catch(e){errors.push(String(e.message))}

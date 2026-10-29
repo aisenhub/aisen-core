@@ -115,10 +115,10 @@ Deno.test('F07 production submission service: real loopback HTTP with 0/1/2 imag
   };
   const imageApp=Deno.serve({hostname:'127.0.0.1',port:0,onListen:()=>{}},
     req=>issueFeedbackImageUrl(req,imagePorts));
-  async function imageAccess(id:string){
+  async function imageAccess(id:string,variant?:string){
     const resp=await fetch('http://127.0.0.1:'+imageApp.addr.port,{
       method:'POST',headers:{'content-type':'application/json'},
-      body:JSON.stringify({attachment_id:id})});
+      body:JSON.stringify({attachment_id:id,...(variant===undefined?{}:{variant})})});
     return {status:resp.status,body:await resp.json()};
   }
   function form(id:string,content:string,images:Uint8Array[],
@@ -128,6 +128,7 @@ Deno.test('F07 production submission service: real loopback HTTP with 0/1/2 imag
     fd.set('request_id',id);
     fd.set('content',content);
     fd.set('category','bug');
+    fd.set('contact_email','fixture@example.com');
     for(let n=0;n<images.length;n++)
       fd.append('images',new File([Uint8Array.from(images[n])],
         'image'+n,{type:mimetypes[n]}));
@@ -164,6 +165,19 @@ Deno.test('F07 production submission service: real loopback HTTP with 0/1/2 imag
       !('object_key' in issued.body),'image API must not expose object key');
     check((await fetch(issued.body.url)).status===200,
       'image-access signed URL must fetch authorized private object');
+    const thumbAccess=await imageAccess(imageId,'thumbnail');
+    check(thumbAccess.status===200&&thumbAccess.body.mime_type==='image/jpeg',
+      'thumbnail access must be a separately authorized private JPEG');
+    check(new URL(thumbAccess.body.url).pathname.endsWith('.thumb.jpg'),
+      'thumbnail access cannot accidentally reuse an original S3 URL');
+    check((await fetch(thumbAccess.body.url)).status===200,
+      'authorized thumbnail must exist in private S3 after original submission');
+    check(!('object_key' in thumbAccess.body),
+      'thumbnail access cannot disclose the storage object key');
+    check((await imageAccess(imageId,'admin')).status===422,
+      'unknown image variant must be rejected before RPC or S3 signing');
+    check((await imageAccess(imageId,'../thumb.jpg')).status===422,
+      'image variant cannot introduce an arbitrary object path');
     check((await imageAccess('66666666-6666-4666-8666-666666666666')).status===403,
       'other user/attachment ID must be refused');
     check((await imageAccess('not-a-uuid')).status===422,
@@ -171,9 +185,13 @@ Deno.test('F07 production submission service: real loopback HTTP with 0/1/2 imag
     imageDenied=true;
     check((await imageAccess(imageId)).status===403,
       'revoked access must deny minting any new URL');
+    check((await imageAccess(imageId,'thumbnail')).status===403,
+      'revoked access must also deny minting private thumbnail URLs');
     imageDenied=false;imageReadError='PGRST500';
     check((await imageAccess(imageId)).status===503,
       'DB outage in private image authorization must be 503');
+    check((await imageAccess(imageId,'thumbnail')).status===503,
+      'private thumbnail must fail closed during DB permission outage');
     imageReadError='';imageTransportError=true;
     check((await imageAccess(imageId)).status===503,
       'thrown private image DB failure must be 503');

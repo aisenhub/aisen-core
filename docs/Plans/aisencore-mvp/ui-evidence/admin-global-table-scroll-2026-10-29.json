@@ -1,0 +1,58 @@
+{
+  "context": "temporary local AAL2 admin; production preview; read-only business queries artificially paused by CDP; no credentials/data retained",
+  "createdAt": "2026-10-28",
+  "results": [
+    {
+      "name": "audit",
+      "scrollport": "table",
+      "windowScrollY": 0,
+      "mainScrollTop": 0,
+      "tableScrollTop": 350,
+      "fixedElements": true
+    },
+    {
+      "name": "feedback",
+      "scrollport": "table",
+      "windowScrollY": 0,
+      "mainScrollTop": 0,
+      "tableScrollTop": 350,
+      "fixedElements": true
+    },
+    {
+      "name": "products",
+      "scrollport": "table",
+      "windowScrollY": 0,
+      "mainScrollTop": 0,
+      "tableScrollTop": 350,
+      "fixedElements": true
+    },
+    {
+      "name": "redemption-batches",
+      "scrollport": "table",
+      "windowScrollY": 0,
+      "mainScrollTop": 0,
+      "tableScrollTop": 350,
+      "fixedElements": true
+    },
+    {
+      "name": "redemption-batch-detail",
+      "scrollport": "table",
+      "windowScrollY": 0,
+      "mainScrollTop": 0,
+      "tableScrollTop": 350,
+      "fixedElements": true
+    }
+  ],
+  "lazyRoute": null,
+  "revocation": null,
+  "spaTags": null,
+  "identityUX": null,
+  "a11y": [],
+  "pass": true,
+  "limitations": [
+    "Synthetic local fixture; no real-user p75/p95",
+    "Only GET paused; not application request latency",
+    "No data-volume stress test",
+    "No manual screen-reader or owner signoff"
+  ]
+}

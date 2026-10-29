@@ -100,11 +100,11 @@ try{
 
   ok(await rpc('feedback_submit_from_edge',{
     p_user_id:a.id,p_product_key:productKey,p_request_id:randomUUID(),
-    p_content:'forged',p_category:'bug',p_attachments:[]
+    p_content:'forged',p_category:'bug',p_attachments:[],p_contact_email:'fixture@example.com'
   },a.access),403,'owner cannot impersonate Edge submit');
   const requestId=randomUUID();
   const body={p_user_id:a.id,p_product_key:productKey,p_request_id:requestId,
-    p_content:'real JWT feedback test',p_category:'bug',p_attachments:[]};
+    p_content:'real JWT feedback test',p_category:'bug',p_attachments:[],p_contact_email:'fixture@example.com'};
   const created=ok(await rpc('feedback_submit_from_edge',body,null,true),
     200,'trusted Edge-equivalent RPC commit');
   feedbackId=valid(created.id);assert.equal(created.status,'received');

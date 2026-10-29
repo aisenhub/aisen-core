@@ -1,0 +1,942 @@
+{
+  "context": "Local loopback production preview, anonymous headless Chrome cold HTTP cache, independent CPU-only and network-only emulation; n=5 each",
+  "pass": true,
+  "medians": {
+    "baseline": 628,
+    "cpu4x_only": 672,
+    "network_only_150ms_1_6Mbps": 2936
+  },
+  "results": [
+    {
+      "condition": "baseline",
+      "index": 1,
+      "fcp": 96,
+      "lcp": 844,
+      "cls": 0.005555555555555556,
+      "longTasks": 1,
+      "ttfb": 4,
+      "jsRequests": 9,
+      "jsBytes": 394656,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-QOCCFnIU.js",
+          "start": 422,
+          "end": 429,
+          "transfer": 2301,
+          "duration": 7
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 282,
+          "end": 341,
+          "transfer": 55123,
+          "duration": 60
+        },
+        {
+          "asset": "App-BDslG8Y4.js",
+          "start": 281,
+          "end": 322,
+          "transfer": 33952,
+          "duration": 41
+        },
+        {
+          "asset": "Title-CxQUCxkq.js",
+          "start": 281,
+          "end": 321,
+          "transfer": 2616,
+          "duration": 40
+        },
+        {
+          "asset": "authProvider-DTKyoo27.js",
+          "start": 282,
+          "end": 320,
+          "transfer": 1311,
+          "duration": 38
+        },
+        {
+          "asset": "mui-vendor-yeSQ5nQl.js",
+          "start": 22,
+          "end": 110,
+          "transfer": 127645,
+          "duration": 88
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 22,
+          "end": 101,
+          "transfer": 102212,
+          "duration": 79
+        }
+      ]
+    },
+    {
+      "condition": "baseline",
+      "index": 2,
+      "fcp": 68,
+      "lcp": 628,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 3,
+      "jsRequests": 9,
+      "jsBytes": 394656,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-QOCCFnIU.js",
+          "start": 287,
+          "end": 362,
+          "transfer": 2301,
+          "duration": 75
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 213,
+          "end": 254,
+          "transfer": 55123,
+          "duration": 41
+        },
+        {
+          "asset": "App-BDslG8Y4.js",
+          "start": 212,
+          "end": 252,
+          "transfer": 33952,
+          "duration": 40
+        },
+        {
+          "asset": "authProvider-DTKyoo27.js",
+          "start": 213,
+          "end": 244,
+          "transfer": 1311,
+          "duration": 30
+        },
+        {
+          "asset": "Title-CxQUCxkq.js",
+          "start": 213,
+          "end": 243,
+          "transfer": 2616,
+          "duration": 31
+        },
+        {
+          "asset": "mui-vendor-yeSQ5nQl.js",
+          "start": 33,
+          "end": 126,
+          "transfer": 127645,
+          "duration": 92
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 33,
+          "end": 112,
+          "transfer": 102212,
+          "duration": 79
+        }
+      ]
+    },
+    {
+      "condition": "baseline",
+      "index": 3,
+      "fcp": 72,
+      "lcp": 660,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 4,
+      "jsRequests": 9,
+      "jsBytes": 394656,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-QOCCFnIU.js",
+          "start": 318,
+          "end": 345,
+          "transfer": 2301,
+          "duration": 26
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 211,
+          "end": 289,
+          "transfer": 55123,
+          "duration": 78
+        },
+        {
+          "asset": "App-BDslG8Y4.js",
+          "start": 211,
+          "end": 267,
+          "transfer": 33952,
+          "duration": 56
+        },
+        {
+          "asset": "authProvider-DTKyoo27.js",
+          "start": 211,
+          "end": 265,
+          "transfer": 1311,
+          "duration": 53
+        },
+        {
+          "asset": "Title-CxQUCxkq.js",
+          "start": 211,
+          "end": 264,
+          "transfer": 2616,
+          "duration": 53
+        },
+        {
+          "asset": "mui-vendor-yeSQ5nQl.js",
+          "start": 36,
+          "end": 119,
+          "transfer": 127645,
+          "duration": 83
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 36,
+          "end": 117,
+          "transfer": 102212,
+          "duration": 82
+        }
+      ]
+    },
+    {
+      "condition": "baseline",
+      "index": 4,
+      "fcp": 60,
+      "lcp": 588,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 3,
+      "jsRequests": 9,
+      "jsBytes": 394656,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-QOCCFnIU.js",
+          "start": 246,
+          "end": 300,
+          "transfer": 2301,
+          "duration": 54
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 161,
+          "end": 197,
+          "transfer": 55123,
+          "duration": 37
+        },
+        {
+          "asset": "App-BDslG8Y4.js",
+          "start": 160,
+          "end": 191,
+          "transfer": 33952,
+          "duration": 31
+        },
+        {
+          "asset": "Title-CxQUCxkq.js",
+          "start": 160,
+          "end": 180,
+          "transfer": 2616,
+          "duration": 19
+        },
+        {
+          "asset": "authProvider-DTKyoo27.js",
+          "start": 161,
+          "end": 180,
+          "transfer": 1311,
+          "duration": 19
+        },
+        {
+          "asset": "mui-vendor-yeSQ5nQl.js",
+          "start": 20,
+          "end": 121,
+          "transfer": 127645,
+          "duration": 101
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 20,
+          "end": 110,
+          "transfer": 102212,
+          "duration": 89
+        }
+      ]
+    },
+    {
+      "condition": "baseline",
+      "index": 5,
+      "fcp": 68,
+      "lcp": 596,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 2,
+      "jsRequests": 9,
+      "jsBytes": 394656,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-QOCCFnIU.js",
+          "start": 242,
+          "end": 275,
+          "transfer": 2301,
+          "duration": 33
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 139,
+          "end": 215,
+          "transfer": 55123,
+          "duration": 76
+        },
+        {
+          "asset": "App-BDslG8Y4.js",
+          "start": 138,
+          "end": 187,
+          "transfer": 33952,
+          "duration": 49
+        },
+        {
+          "asset": "authProvider-DTKyoo27.js",
+          "start": 139,
+          "end": 168,
+          "transfer": 1311,
+          "duration": 29
+        },
+        {
+          "asset": "Title-CxQUCxkq.js",
+          "start": 138,
+          "end": 166,
+          "transfer": 2616,
+          "duration": 28
+        },
+        {
+          "asset": "mui-vendor-yeSQ5nQl.js",
+          "start": 21,
+          "end": 97,
+          "transfer": 127645,
+          "duration": 76
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 21,
+          "end": 92,
+          "transfer": 102212,
+          "duration": 72
+        }
+      ]
+    },
+    {
+      "condition": "cpu4x_only",
+      "index": 1,
+      "fcp": 64,
+      "lcp": 672,
+      "cls": 0.005555555555555556,
+      "longTasks": 2,
+      "ttfb": 2,
+      "jsRequests": 9,
+      "jsBytes": 394656,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-QOCCFnIU.js",
+          "start": 273,
+          "end": 300,
+          "transfer": 2301,
+          "duration": 28
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 188,
+          "end": 228,
+          "transfer": 55123,
+          "duration": 40
+        },
+        {
+          "asset": "Title-CxQUCxkq.js",
+          "start": 188,
+          "end": 219,
+          "transfer": 2616,
+          "duration": 32
+        },
+        {
+          "asset": "authProvider-DTKyoo27.js",
+          "start": 188,
+          "end": 219,
+          "transfer": 1311,
+          "duration": 31
+        },
+        {
+          "asset": "App-BDslG8Y4.js",
+          "start": 186,
+          "end": 210,
+          "transfer": 33952,
+          "duration": 24
+        },
+        {
+          "asset": "mui-vendor-yeSQ5nQl.js",
+          "start": 16,
+          "end": 107,
+          "transfer": 127645,
+          "duration": 91
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 16,
+          "end": 86,
+          "transfer": 102212,
+          "duration": 70
+        }
+      ]
+    },
+    {
+      "condition": "cpu4x_only",
+      "index": 2,
+      "fcp": 84,
+      "lcp": 796,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 4,
+      "jsRequests": 9,
+      "jsBytes": 394656,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-QOCCFnIU.js",
+          "start": 440,
+          "end": 470,
+          "transfer": 2301,
+          "duration": 30
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 327,
+          "end": 405,
+          "transfer": 55123,
+          "duration": 79
+        },
+        {
+          "asset": "App-BDslG8Y4.js",
+          "start": 326,
+          "end": 390,
+          "transfer": 33952,
+          "duration": 64
+        },
+        {
+          "asset": "authProvider-DTKyoo27.js",
+          "start": 327,
+          "end": 390,
+          "transfer": 1311,
+          "duration": 63
+        },
+        {
+          "asset": "Title-CxQUCxkq.js",
+          "start": 326,
+          "end": 389,
+          "transfer": 2616,
+          "duration": 63
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 51,
+          "end": 221,
+          "transfer": 102212,
+          "duration": 170
+        },
+        {
+          "asset": "mui-vendor-yeSQ5nQl.js",
+          "start": 51,
+          "end": 221,
+          "transfer": 127645,
+          "duration": 171
+        }
+      ]
+    },
+    {
+      "condition": "cpu4x_only",
+      "index": 3,
+      "fcp": 164,
+      "lcp": 628,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 2,
+      "jsRequests": 9,
+      "jsBytes": 394656,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-QOCCFnIU.js",
+          "start": 286,
+          "end": 298,
+          "transfer": 2301,
+          "duration": 12
+        },
+        {
+          "asset": "App-BDslG8Y4.js",
+          "start": 205,
+          "end": 254,
+          "transfer": 33952,
+          "duration": 49
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 206,
+          "end": 254,
+          "transfer": 55123,
+          "duration": 48
+        },
+        {
+          "asset": "authProvider-DTKyoo27.js",
+          "start": 206,
+          "end": 238,
+          "transfer": 1311,
+          "duration": 31
+        },
+        {
+          "asset": "Title-CxQUCxkq.js",
+          "start": 206,
+          "end": 237,
+          "transfer": 2616,
+          "duration": 31
+        },
+        {
+          "asset": "mui-vendor-yeSQ5nQl.js",
+          "start": 27,
+          "end": 117,
+          "transfer": 127645,
+          "duration": 91
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 26,
+          "end": 92,
+          "transfer": 102212,
+          "duration": 65
+        }
+      ]
+    },
+    {
+      "condition": "cpu4x_only",
+      "index": 4,
+      "fcp": 52,
+      "lcp": 608,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 2,
+      "jsRequests": 9,
+      "jsBytes": 394656,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-QOCCFnIU.js",
+          "start": 237,
+          "end": 244,
+          "transfer": 2301,
+          "duration": 7
+        },
+        {
+          "asset": "authProvider-DTKyoo27.js",
+          "start": 162,
+          "end": 197,
+          "transfer": 1311,
+          "duration": 35
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 161,
+          "end": 188,
+          "transfer": 55123,
+          "duration": 26
+        },
+        {
+          "asset": "App-BDslG8Y4.js",
+          "start": 160,
+          "end": 185,
+          "transfer": 33952,
+          "duration": 25
+        },
+        {
+          "asset": "Title-CxQUCxkq.js",
+          "start": 161,
+          "end": 178,
+          "transfer": 2616,
+          "duration": 17
+        },
+        {
+          "asset": "mui-vendor-yeSQ5nQl.js",
+          "start": 23,
+          "end": 106,
+          "transfer": 127645,
+          "duration": 83
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 23,
+          "end": 88,
+          "transfer": 102212,
+          "duration": 65
+        }
+      ]
+    },
+    {
+      "condition": "cpu4x_only",
+      "index": 5,
+      "fcp": 52,
+      "lcp": 684,
+      "cls": 0.005555555555555556,
+      "longTasks": 2,
+      "ttfb": 2,
+      "jsRequests": 9,
+      "jsBytes": 394656,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-QOCCFnIU.js",
+          "start": 296,
+          "end": 314,
+          "transfer": 2301,
+          "duration": 17
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 214,
+          "end": 257,
+          "transfer": 55123,
+          "duration": 43
+        },
+        {
+          "asset": "App-BDslG8Y4.js",
+          "start": 213,
+          "end": 242,
+          "transfer": 33952,
+          "duration": 29
+        },
+        {
+          "asset": "Title-CxQUCxkq.js",
+          "start": 214,
+          "end": 241,
+          "transfer": 2616,
+          "duration": 27
+        },
+        {
+          "asset": "authProvider-DTKyoo27.js",
+          "start": 214,
+          "end": 241,
+          "transfer": 1311,
+          "duration": 27
+        },
+        {
+          "asset": "mui-vendor-yeSQ5nQl.js",
+          "start": 21,
+          "end": 105,
+          "transfer": 127645,
+          "duration": 84
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 21,
+          "end": 104,
+          "transfer": 102212,
+          "duration": 83
+        }
+      ]
+    },
+    {
+      "condition": "network_only_150ms_1_6Mbps",
+      "index": 1,
+      "fcp": 236,
+      "lcp": 2928,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 3,
+      "jsRequests": 9,
+      "jsBytes": 394656,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-QOCCFnIU.js",
+          "start": 2597,
+          "end": 2782,
+          "transfer": 2301,
+          "duration": 185
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 1914,
+          "end": 2577,
+          "transfer": 55123,
+          "duration": 663
+        },
+        {
+          "asset": "App-BDslG8Y4.js",
+          "start": 1913,
+          "end": 2451,
+          "transfer": 33952,
+          "duration": 538
+        },
+        {
+          "asset": "Title-CxQUCxkq.js",
+          "start": 1914,
+          "end": 2125,
+          "transfer": 2616,
+          "duration": 211
+        },
+        {
+          "asset": "authProvider-DTKyoo27.js",
+          "start": 1914,
+          "end": 2093,
+          "transfer": 1311,
+          "duration": 179
+        },
+        {
+          "asset": "mui-vendor-yeSQ5nQl.js",
+          "start": 192,
+          "end": 1887,
+          "transfer": 127645,
+          "duration": 1694
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 192,
+          "end": 1743,
+          "transfer": 102212,
+          "duration": 1551
+        }
+      ]
+    },
+    {
+      "condition": "network_only_150ms_1_6Mbps",
+      "index": 2,
+      "fcp": 236,
+      "lcp": 2932,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 2,
+      "jsRequests": 9,
+      "jsBytes": 394656,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-QOCCFnIU.js",
+          "start": 2592,
+          "end": 2780,
+          "transfer": 2301,
+          "duration": 188
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 1924,
+          "end": 2574,
+          "transfer": 55123,
+          "duration": 651
+        },
+        {
+          "asset": "App-BDslG8Y4.js",
+          "start": 1923,
+          "end": 2464,
+          "transfer": 33952,
+          "duration": 540
+        },
+        {
+          "asset": "Title-CxQUCxkq.js",
+          "start": 1924,
+          "end": 2134,
+          "transfer": 2616,
+          "duration": 211
+        },
+        {
+          "asset": "authProvider-DTKyoo27.js",
+          "start": 1924,
+          "end": 2105,
+          "transfer": 1311,
+          "duration": 181
+        },
+        {
+          "asset": "mui-vendor-yeSQ5nQl.js",
+          "start": 187,
+          "end": 1897,
+          "transfer": 127645,
+          "duration": 1710
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 187,
+          "end": 1770,
+          "transfer": 102212,
+          "duration": 1583
+        }
+      ]
+    },
+    {
+      "condition": "network_only_150ms_1_6Mbps",
+      "index": 3,
+      "fcp": 224,
+      "lcp": 2936,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 2,
+      "jsRequests": 9,
+      "jsBytes": 394656,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-QOCCFnIU.js",
+          "start": 2611,
+          "end": 2793,
+          "transfer": 2301,
+          "duration": 181
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 1912,
+          "end": 2588,
+          "transfer": 55123,
+          "duration": 676
+        },
+        {
+          "asset": "App-BDslG8Y4.js",
+          "start": 1912,
+          "end": 2463,
+          "transfer": 33952,
+          "duration": 551
+        },
+        {
+          "asset": "Title-CxQUCxkq.js",
+          "start": 1912,
+          "end": 2135,
+          "transfer": 2616,
+          "duration": 223
+        },
+        {
+          "asset": "authProvider-DTKyoo27.js",
+          "start": 1913,
+          "end": 2105,
+          "transfer": 1311,
+          "duration": 193
+        },
+        {
+          "asset": "mui-vendor-yeSQ5nQl.js",
+          "start": 189,
+          "end": 1883,
+          "transfer": 127645,
+          "duration": 1694
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 189,
+          "end": 1744,
+          "transfer": 102212,
+          "duration": 1555
+        }
+      ]
+    },
+    {
+      "condition": "network_only_150ms_1_6Mbps",
+      "index": 4,
+      "fcp": 232,
+      "lcp": 2940,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 2,
+      "jsRequests": 9,
+      "jsBytes": 394656,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-QOCCFnIU.js",
+          "start": 2612,
+          "end": 2794,
+          "transfer": 2301,
+          "duration": 183
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 1916,
+          "end": 2589,
+          "transfer": 55123,
+          "duration": 673
+        },
+        {
+          "asset": "App-BDslG8Y4.js",
+          "start": 1915,
+          "end": 2463,
+          "transfer": 33952,
+          "duration": 548
+        },
+        {
+          "asset": "Title-CxQUCxkq.js",
+          "start": 1916,
+          "end": 2136,
+          "transfer": 2616,
+          "duration": 220
+        },
+        {
+          "asset": "authProvider-DTKyoo27.js",
+          "start": 1916,
+          "end": 2107,
+          "transfer": 1311,
+          "duration": 190
+        },
+        {
+          "asset": "mui-vendor-yeSQ5nQl.js",
+          "start": 186,
+          "end": 1885,
+          "transfer": 127645,
+          "duration": 1699
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 186,
+          "end": 1760,
+          "transfer": 102212,
+          "duration": 1574
+        }
+      ]
+    },
+    {
+      "condition": "network_only_150ms_1_6Mbps",
+      "index": 5,
+      "fcp": 252,
+      "lcp": 3132,
+      "cls": 0.005555555555555556,
+      "longTasks": 0,
+      "ttfb": 3,
+      "jsRequests": 9,
+      "jsBytes": 394656,
+      "criticalAssets": [
+        {
+          "asset": "LoginPage-QOCCFnIU.js",
+          "start": 2781,
+          "end": 2968,
+          "transfer": 2301,
+          "duration": 187
+        },
+        {
+          "asset": "supabaseClient-BiBz43qm.js",
+          "start": 2086,
+          "end": 2742,
+          "transfer": 55123,
+          "duration": 656
+        },
+        {
+          "asset": "App-BDslG8Y4.js",
+          "start": 2086,
+          "end": 2648,
+          "transfer": 33952,
+          "duration": 562
+        },
+        {
+          "asset": "Title-CxQUCxkq.js",
+          "start": 2086,
+          "end": 2303,
+          "transfer": 2616,
+          "duration": 216
+        },
+        {
+          "asset": "authProvider-DTKyoo27.js",
+          "start": 2087,
+          "end": 2273,
+          "transfer": 1311,
+          "duration": 186
+        },
+        {
+          "asset": "mui-vendor-yeSQ5nQl.js",
+          "start": 200,
+          "end": 2049,
+          "transfer": 127645,
+          "duration": 1849
+        },
+        {
+          "asset": "ra-core-D89cysK8.js",
+          "start": 200,
+          "end": 1895,
+          "transfer": 102212,
+          "duration": 1695
+        }
+      ]
+    }
+  ],
+  "caveat": "Not real-user P75/P95; CDP throttling uncalibrated; desktop hardware and background load may differ; comparison with prior audit different run, not an A/B outcome."
+}

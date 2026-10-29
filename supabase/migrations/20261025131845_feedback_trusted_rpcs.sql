@@ -17,7 +17,7 @@ SET ROLE aisencore_rpc_executor;
 -- call this wrapper or private core.
 CREATE FUNCTION private.feedback_submit_core(
  p_user_id uuid, p_product_key text, p_request_id uuid,
- p_content text, p_category text, p_attachments jsonb DEFAULT '[]'::jsonb)
+ p_content text, p_category text, p_attachments jsonb, p_contact_email text)
 RETURNS jsonb LANGUAGE plpgsql VOLATILE SECURITY DEFINER SET search_path=''
 AS $$
 DECLARE
@@ -28,6 +28,8 @@ DECLARE
  v_count int;
 BEGIN
  IF p_user_id IS NULL OR p_request_id IS NULL OR
+    p_contact_email IS NULL OR octet_length(btrim(p_contact_email)) NOT BETWEEN 1 AND 254 OR
+    btrim(p_contact_email) !~ '^[A-Za-z0-9.!#$%&''*+/=?^_{|}~-]+@[A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?([.][A-Za-z0-9]([A-Za-z0-9-]*[A-Za-z0-9])?)+$' OR
     p_content IS NULL OR length(btrim(p_content)) NOT BETWEEN 1 AND 5000 OR
     p_category IS NULL OR p_category NOT IN
       ('bug','account','experience','suggestion','other') OR
@@ -48,7 +50,8 @@ BEGIN
  SELECT * INTO v_existing FROM public.user_feedback
    WHERE user_id=p_user_id AND product_id=v_product.id AND request_id=p_request_id;
  IF FOUND THEN
-   IF v_existing.content<>p_content OR v_existing.category<>p_category OR
+   IF v_existing.contact_email IS DISTINCT FROM btrim(p_contact_email) OR
+      v_existing.content<>p_content OR v_existing.category<>p_category OR
       (SELECT count(*) FROM public.feedback_attachments
         WHERE feedback_id=v_existing.id)<>jsonb_array_length(p_attachments) THEN
      RAISE EXCEPTION 'REQUEST_CONFLICT' USING ERRCODE='PT409';
@@ -69,8 +72,8 @@ BEGIN
      RAISE EXCEPTION 'INVALID_ATTACHMENT' USING ERRCODE='PT422';
    END IF;
  END LOOP;
- INSERT INTO public.user_feedback(user_id,product_id,content,category,request_id)
- VALUES(p_user_id,v_product.id,p_content,p_category,p_request_id)
+ INSERT INTO public.user_feedback(user_id,product_id,content,category,request_id,contact_email)
+ VALUES(p_user_id,v_product.id,p_content,p_category,p_request_id,btrim(p_contact_email))
  RETURNING * INTO v_created;
  FOR v_item IN SELECT value FROM jsonb_array_elements(p_attachments) LOOP
    IF (v_item->>'object_key') NOT LIKE
@@ -88,9 +91,9 @@ BEGIN
  RETURN jsonb_build_object('id',v_created.id,'feedback_no',v_created.feedback_no,
    'status',v_created.status,'created_at',v_created.created_at,'replayed',false);
 END; $$;
-REVOKE ALL ON FUNCTION private.feedback_submit_core(uuid,text,uuid,text,text,jsonb)
+REVOKE ALL ON FUNCTION private.feedback_submit_core(uuid,text,uuid,text,text,jsonb,text)
  FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION private.feedback_submit_core(uuid,text,uuid,text,text,jsonb)
+GRANT EXECUTE ON FUNCTION private.feedback_submit_core(uuid,text,uuid,text,text,jsonb,text)
  TO service_role;
 
 -- Strict user-facing DTO: never include attachment object_key, internal note,
@@ -306,13 +309,13 @@ REVOKE CREATE ON SCHEMA private FROM aisencore_rpc_executor;
 -- Public signatures: no direct client access to p_user_id or attachment keys.
 CREATE FUNCTION public.feedback_submit_from_edge(
  p_user_id uuid,p_product_key text,p_request_id uuid,p_content text,
- p_category text,p_attachments jsonb DEFAULT '[]'::jsonb)
+ p_category text,p_attachments jsonb, p_contact_email text)
 RETURNS jsonb LANGUAGE sql VOLATILE SECURITY INVOKER SET search_path=''
 AS $$ SELECT private.feedback_submit_core(
- p_user_id,p_product_key,p_request_id,p_content,p_category,p_attachments); $$;
-REVOKE ALL ON FUNCTION public.feedback_submit_from_edge(uuid,text,uuid,text,text,jsonb)
+ p_user_id,p_product_key,p_request_id,p_content,p_category,p_attachments,p_contact_email); $$;
+REVOKE ALL ON FUNCTION public.feedback_submit_from_edge(uuid,text,uuid,text,text,jsonb,text)
  FROM PUBLIC, anon, authenticated;
-GRANT EXECUTE ON FUNCTION public.feedback_submit_from_edge(uuid,text,uuid,text,text,jsonb)
+GRANT EXECUTE ON FUNCTION public.feedback_submit_from_edge(uuid,text,uuid,text,text,jsonb,text)
  TO service_role;
 GRANT USAGE ON SCHEMA private TO service_role;
 

@@ -1,6 +1,6 @@
 import { Alert, Box, Button, Card, CardContent, Container, CssBaseline, Stack, Typography } from '@mui/material';
 import { ThemeProvider } from '@mui/material/styles';
-import { theme } from './theme';
+import { theme, adminRadii } from './theme';
 
 export function SetupScreen({ problem }: { problem: string }) {
   const isDevelopment = import.meta.env.DEV;
@@ -17,7 +17,7 @@ export function SetupScreen({ problem }: { problem: string }) {
               <Typography component="div" variant="body2">
                 1. 将 <Box component="code">apps/admin/.env.example</Box> 复制为 <Box component="code">apps/admin/.env.local</Box>。
               </Typography>
-              <Box component="pre" sx={{ m: 0, p: 2, borderRadius: 1, bgcolor: 'background.default', overflowX: 'auto', fontSize: 12 }}>
+              <Box component="pre" sx={{ m: 0, p: 2, borderRadius: adminRadii.small, bgcolor: 'background.default', overflowX: 'auto', fontSize: 12 }}>
                 {'VITE_SUPABASE_URL=http://127.0.0.1:55321\nVITE_SUPABASE_PUBLISHABLE_KEY=你自己的本地PublishableKey'}
               </Box>
               <Typography variant="body2">2. 使用 <Box component="code">pnpm dlx supabase status</Box> 查看本地 Publishable Key；如未运行，请按项目 D2 指南启动对应本地 Supabase 服务。</Typography>

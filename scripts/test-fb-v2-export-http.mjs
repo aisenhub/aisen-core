@@ -65,7 +65,7 @@ try{
   assert.equal(jwt.aal,'aal2');
   const created=await api('/rest/v1/rpc/feedback_submit_from_edge',{
     p_user_id:uid,p_product_key:key,p_request_id:userRequest,
-    p_content:'ZIP HTTP localized text',p_category:'bug',p_attachments:[],
+    p_content:'ZIP HTTP localized text',p_category:'bug',p_attachments:[],p_contact_email:'fixture@example.com',
   },null,true);
   feedbackId=created.id;
   assert.equal(created.status,'received');

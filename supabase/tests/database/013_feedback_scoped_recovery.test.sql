@@ -23,6 +23,7 @@ UPDATE public.user_feedback
   SET queue_state='trashed',deleted_from='inbox',
       deleted_at=transaction_timestamp()
  WHERE id='3a000000-0000-4000-8000-000000000002';
+UPDATE public.user_feedback SET contact_email='fixture@example.com' WHERE id='3a000000-0000-4000-8000-000000000002';
 -- More than 100 recent records on Beta must never evict an Alpha entry.
 INSERT INTO public.user_feedback(user_id,product_id,request_id,content,created_at)
  SELECT '1a000000-0000-4000-8000-000000000001'::uuid,
@@ -94,12 +95,12 @@ SET LOCAL ROLE service_role;
 SELECT is((public.feedback_submit_from_edge(
  '1a000000-0000-4000-8000-000000000001','f06_alpha',
  '4a000000-0000-4000-8000-000000000002','alpha in trash','other',
- '[]'::jsonb)->>'replayed'),'true',
+ '[]'::jsonb,'fixture@example.com')->>'replayed'),'true',
  'F06 service-side exact replay survives trash and does not invent new feedback');
 SELECT throws_ok($$SELECT public.feedback_submit_from_edge(
  '1a000000-0000-4000-8000-000000000001','f06_alpha',
  '4a000000-0000-4000-8000-000000000002','altered content','other',
- '[]'::jsonb)$$,'PT409','REQUEST_CONFLICT',
+ '[]'::jsonb,'fixture@example.com')$$,'PT409','REQUEST_CONFLICT',
  'F06 conflicting retry never silently replaces a trashed original');
 RESET ROLE;
 SELECT is((SELECT count(*)::integer FROM public.user_feedback

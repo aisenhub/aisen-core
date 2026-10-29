@@ -21,6 +21,7 @@
 | 管理：Pro UNKNOWN 只读核查 | `admin_find_grant_request(p_request_id)` | 原提交 AAL2 管理员 | INVOKER 公共薄代理 + 可信私有核查 | 否 |
 | 管理：账号与管理员 | `BlockAccount` / `UnblockAccount`、`GrantAdmin` / `RevokeAdmin` | 平台管理员 | RPC | 是 |
 | 管理：用户查询 | `AdminFindUser(user_id)` 精确查；`AdminSearchUsers(email?)` 分页列出/限量搜索 | 平台管理员 | 优先受限 PostgreSQL 只读 RPC；安全/性能不成立时单次受保护 Edge 聚合 | 否 |
+| 本人反馈提交 | `POST feedback-submit`，multipart的product_key/request_id/content/category/contact_email/images | 已确认邮箱本人JWT | Edge校验 + 唯一七参可信提交RPC；详见[反馈领域](../domains/user-feedback.md#51-用户提交) | 是 |
 | 管理：列表与审计 | 成员、授权、兑换码、事件、审计列表 | 平台管理员 | Data API + 管理员 RLS | 否 |
 
 承载方式的依据见[数据库访问与可信事务](../database/database-access-and-transactions.md#2-执行机制决定)。账号注销首版为人工流程，**不提供**自助注销接口（见[平台管理员与账号生命周期](../domains/platform-admin-and-account-lifecycle.md)）。不同 SaaS 只需对接公共身份/成员/权益契约，各自业务 API 保持独立。

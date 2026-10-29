@@ -6,15 +6,15 @@
 
 ## 1. 用户结果与边界
 
-Lens设置/帮助内，已登录、邮箱已确认、非blocked本人可提交一段文字及0～2张图片；Core形成一条反馈/附件/必要事件，Admin按V3四队列处理，图片私有且ZIP结果可核对。失败保留当前输入，重试不重复收件，成功只表示收到。
+Lens头像菜单内，已登录、邮箱已确认、非blocked本人可提交一段文字及0～2张图片；Core形成一条反馈/附件/必要事件，Admin按V3四队列处理，图片私有且ZIP结果可核对。失败保留当前输入，重试不重复收件，成功只表示收到。
 
-不新增联系邮箱模型/输入、不把邮箱塞正文、不自动附项目/日志/素材/存储/Key；不做游客反馈、反馈中心/历史/进度页/追加说明/站内消息/回复。本人查询只供必要原号恢复和安全验证，不推导旧五态为处理进度。注销申请渠道未定，不借反馈假报受理。
+2026-10-29联系邮箱按[现行专项](./CORE-FEEDBACK-001-contact-email-design.md)独立存储/幂等/受限查看及导出；不把邮箱塞正文、不自动附项目/日志/素材/存储/Key；不做游客反馈、反馈中心/历史/进度页/追加说明/站内消息/回复。本人查询只供必要原号恢复和安全验证，不推导旧五态为处理进度。注销申请渠道未定，不借反馈假报受理。
 
 ## 2. 实际入口、职责与依赖
 
 | 层 | 现有位置/能力 | 本包处理 |
 | --- | --- | --- |
-| Lens | `features/feedback/FeedbackForm.tsx`、设置弹窗及其内存draft | Lens `FeedbackForm` 已移除自由联系邮箱/账号邮箱模拟输入、调用者与浏览器断言；已用官方会话将 message→content、当前产品 `aisenlens`、稳定 request_id、category=other 提交至正式 Edge，设置弹窗仅真实已确认登录会话启用；未知响应保留同 request_id/正文，不把失败当成功，切号清草稿。已实现最多2张 PNG/JPEG/WebP 选择、逐张移除/3MiB 客户端限制、0图兼容，UNKNOWN 时冻结文字与附件且保留原 request_id；真实 Chrome 使用有效两图触达 Core Edge 并因未配置本地私有存储正确收到503，重复提交仍使用同 UUID，数据未持久新增；第三张拒绝、用户显式清空与 QA 清理通过。同浏览器另验真实零图首次 Core 已提交 `201`、前端模拟网络丢失只看到 `503` 后以**完全相同 request_id**重试，Core 回 `200 replay` 且 PostgreSQL 仅一条记录，PASS。暂不自动压缩原图或上传敏感附件；真实隔离本地 S3 正向已由 Chrome 两图与 Core 1/2 图验证 PASS；真实云 R2 未授权/未验。 |
+| Lens | `features/feedback/FeedbackDialog.tsx`、`FeedbackForm.tsx`、`coreFeedback.ts` | 头像菜单独立反馈；按账号隔离稳定草稿/发送状态；真实分类及独立联系邮箱与正文/图片/UUID冻结。关闭重开、A→B→A迟到回执和UNKNOWN后再拒绝均已测；本地JWT/0与2图/真实私有S3及同号恢复通过，完整结果见Lens UI总计划 |
 | Edge提交 | `supabase/functions/feedback-submit/index.ts` | 本人JWT/确认邮箱/blocked/真实产品/限流、大小/类型/完整性验证、条件写及可信RPC |
 | 查询/签发 | `my_feedback`、`my_feedback_events`、`feedback-image-access` | 用户/产品/原号恢复作用域；安全附件ID签发，不暴露key/内部字段 |
 | DB | 最新反馈SQL、RLS、可信提交/事件及`feedback_referenced_keys` | 幂等/归属/计数与引用安全；旧写路径按单向合同清理，不保留兼容写入口 |
