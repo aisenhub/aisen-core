@@ -44,13 +44,13 @@
 
 用户主动提交所声明目标产品与兑换码调用 `redeem_code(product_key, code)`：无成员时可在同一个数据库事务中创建 `active` 与 `join` 事件，`left`/`suspended` 则不消费码。**未来支付 Webhook/补单不是用户主动使用**，只写可信授权来源，不调用 ensure，不恢复成员。精确分支只以[计费权益 §5](../domains/billing-and-entitlements.md#5-授权与产品成员状态的关系唯一权威)为准。
 
-### 3.4 跨 SaaS 反馈与当前 V3 四队列（真实 AisenLens/R2 含图未验收）
+### 3.4 跨 SaaS 反馈与当前 V4 三队列（真实云 R2 尚未验收）
 
 反馈是独立于成员加入与 Pro 检查的受限本人提交入口。已登录、邮箱确认且未 blocked 的用户使用本人 JWT、`product_key`、`request_id`、正文和最多 2 张图片请求 `feedback-submit` Edge；可信 `feedback_submit_from_edge` RPC 将本人/产品/图片元数据与反馈状态在 PostgreSQL 单事务内保存，图片经受控私有 R2 路径存储。新反馈先进入 `inbox`；读取本人 DTO 不返回 R2 key、内部审计或他人反馈，重放/异常按相同 request ID 核查，不能把 R2/DB 当成原子事务。
 
-**当前 Admin V3**：`inbox` 可预设优先级、星标、标签、私有备注后经 `admin_feedback_v3` 受保护事务进入 `workbench`；归档来自工作台、回收站软删可恢复 `deleted_from` 原阶段。旧 V2 的五态/负责人/对用户公开回复字段与历史事件仅作既有事实读取，不再成为新 Admin 可编辑流程；旧 RPC 不能绕过 V3 队列保护。Admin 列表采用 RLS/PostgREST，写入复核当前 AAL2、管理员资格、账号状态、`expected_version`、锁序与最小审计，切换产品时不复用过时操作范围。
+**当前 Admin V4**：`inbox` 可以保存优先级、星标和内部备注，并经仍名为 `admin_feedback_v3` 的受保护 RPC 进入 `workbench`，从工作台归档，归档可重新处理；不提供回收站、标签编辑、负责人指派或公开回复。`admin_mark_feedback_read`只更新收件箱read_at，不改变业务version。2026-10-29 后续迁移已**仅在本地**清退六个废弃 public 写/标签接口，真实 JWT 已验证旧入口 404 及新 V4 事务正反例；云端 NOT RUN。永久删除采用feedback-delete Edge→仅service_role可调用的prepare→原图/缩略图清理→仅service_role可调用的finish；Edge传验证JWT的actor/AAL，SQL再次核对当前管理员，普通JWT不能绕过可信完成步骤，实际执行进度见 [收尾计划](../../Plans/2026-10-29-prelaunch-closeout/README.md)。Admin RLS、AAL2、当前资格、账号状态、`expected_version` 和最小审计继续生效。
 
-`feedback-export` Edge 对所选/筛选范围重新鉴权后输出必要正文/原图和按开关选择的受限历史，内部评论和直接身份默认关闭；敏感选择重新确认且范围变化必须失效。私图读取使用 `feedback-image-access` Edge 再鉴权；上传、ZIP 和失败对账区分隔离 S3 替身与真实 R2。历史真实零图 JWT HTTP、Admin AAL2 Chrome、V3 462/462 pgTAP 有部分 PASS 记录，**但完整一两张图真实 R2、AisenLens 客户端提交/回看、人工 WCAG/视觉与生产验收仍开放**。具体状态、安全与测试以[反馈领域唯一合同](../domains/user-feedback.md)和[V3 当前专项](../../Plans/aisencore-mvp/feedback-v3-lightweight-implementation.md)为准。
+`feedback-export` Edge 对所选/筛选范围重新鉴权后输出必要正文/原图和按开关选择的受限历史，内部评论和直接身份默认关闭；敏感选择重新确认且范围变化必须失效。私图读取使用feedback-image-access Edge，只有服务角色可取得内部对象Key，SQL仍查属主/当前管理员及删除状态；上传、ZIP 和失败对账区分隔离 S3 替身与真实 R2。历史真实零图 JWT HTTP、Admin AAL2 Chrome、V3 462/462 pgTAP 有部分 PASS 记录，**真实Cloudflare R2、完整跨端异常、人工WCAG/视觉与生产验收仍开放；本期不新增客户端回看中心**。具体当前状态、安全与测试以[反馈领域唯一合同](../domains/user-feedback.md)和[V4 当前专项](../../Plans/aisencore-mvp/2026-10-29-feedback-admin-ux-bulk-delete-remediation-plan.md)为准。
 
 ## 4. 准入复核与缓存
 
@@ -72,6 +72,8 @@
 
 仅 WebApp 的 Auth、成员、资格显示/安全历史、兑换、反馈和完整分析模板云备份进入本次后续实现范围。昵称复用 Auth 用户可编辑资料，仅作显示；普通登出显式 local，不 leave 产品。切号最小接线只负责凭据锁定/会话 Key 释放、在途任务收尾或明确取消、旧响应失效，不改 AI/Provider/项目逻辑。注销渠道上线前确定，未确定不提供成功提交按钮。
 
-反馈仅已登录/邮箱确认/非 blocked 本人提交，不要求 Pro 或 active 成员，不自动 ensure；最多两图，无自由联系邮箱及客户端历史/进度/回复页面。本人 RPC 仅为必要恢复/权限测试；创建 201、重放 200，原号同参，空数组不证明未提交。F05 上游故障误判修复与 F06 产品范围/回收站最小恢复 RPC 已编码并通过局部回归；本地 SQL 迁移尚未持久应用，正式 Edge/JWT、故障注入与双端验收仍待完成，详见[反馈领域](../domains/user-feedback.md)。
+反馈仅已登录/邮箱确认/非blocked本人提交，不要求Pro或active成员，不自动ensure；最多两图，联系邮箱由已确认账号冻结提交，不提供客户端历史/进度/回复页面。本人RPC仅供必要恢复/权限测试；创建201、重放200，原号同参，空数组不证明未提交。当前41项迁移已本地安装，正式Edge/GoTrue/隔离S3及真实Lens两图、恢复与故障注入已通过；完整联合签收、真实云R2仍待完成，详见[反馈领域](../domains/user-feedback.md)。
 
-模板备份的 create/list/download/delete 权限和 20 份/待测 5 MiB/到期取回政策见[文件架构](../database/product-data-and-files.md)。兑换保持两参、同码恢复；新增的有效永久 Pro 拒兑保护见[计费规则](../domains/billing-and-entitlements.md)，对应 SQL 迁移已编码并在本地回滚事务通过 pgTAP；尚未持久应用迁移，真实 JWT/HTTP、并发和双端联调仍未验收。
+模板备份的create/list/download/delete权限和20份/待测5 MiB/到期取回政策见[文件架构](../database/product-data-and-files.md)。兑换保持两参、同码恢复；有效永久Pro拒兑保护见[计费规则](../domains/billing-and-entitlements.md)，SQL已本地安装，真实JWT/HTTP、两并发7天和Lens局部联调通过；完整阶段验收及云端部署尚未完成。
+
+**2026-11-02恢复DTO**：正常本人反馈status统一received；删除中不出现在列表，按本人/产品/原request_id精确查询只返回recovery_only存在证明，事件和新图片签名拒绝。直授首响/重放均含当前effective_ends_at；详见[修复记录](../../Plans/2026-11-02-backend-audit-remediation.md)。

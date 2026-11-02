@@ -154,6 +154,8 @@ function cleanSql() {
   const queries=[
     'DELETE FROM public.admin_audit_log WHERE actor_user_id IN ('+ids+')',
     'DELETE FROM public.redemptions WHERE user_id IN ('+ids+')',
+    'DELETE FROM public.pro_credit_entries WHERE user_id IN ('+ids+')',
+    'DELETE FROM public.pro_credit_accounts WHERE user_id IN ('+ids+')',
     'DELETE FROM public.entitlement_grants WHERE user_id IN ('+ids+')',
     'DELETE FROM public.redemption_codes WHERE created_by IN ('+ids+')',
     'DELETE FROM public.redemption_code_batches WHERE created_by IN ('+ids+')',
@@ -177,6 +179,12 @@ async function main() {
   check(await request('/api/v1/messages',{mail:true}),200,'Mailpit health');
   check(await request('/rest/v1/'),200,'PostgREST health');
   console.log('D2-M1 PASS: GoTrue/Kong/PostgREST/Mailpit healthy');
+
+  for(const weak of ['short1','onlyletters']){
+    const rejected=await request('/auth/v1/signup',{method:'POST',body:{email,password:weak}});
+    assert.equal(rejected.status,422,'password length and character policy must be enforced by Auth');
+  }
+  console.log('AUTH_PASSWORD_POLICY PASS short and letters-only credentials refused');
 
   const signedUp=await request('/auth/v1/signup',{method:'POST',body:{email,password}});
   assert.ok([200,201].includes(signedUp.status),'real signup');
@@ -296,7 +304,7 @@ async function main() {
   const lifetimeGrant=check(await rpc('admin_grant_entitlement',{
     p_target_user_id:userId,p_product_id:createdProductId,p_tier:'pro',
     p_mode:'explicit_window',p_duration_days:null,
-    p_starts_at:new Date(Date.now()-10000).toISOString(),p_ends_at:null,
+    p_starts_at:null,p_ends_at:null,
     p_is_lifetime:true,p_reason:'D2 R-16 lifetime protection',
     p_request_id:'d2-r16-grant-'+runId},a2.access_token),200,'R-16 Admin lifetime grant');
   assert.ok(lifetimeGrant.grant_id,'current lifetime Grant created');

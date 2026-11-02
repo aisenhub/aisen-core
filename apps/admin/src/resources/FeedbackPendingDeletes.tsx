@@ -4,11 +4,8 @@ import {Alert,Button,Dialog,DialogActions,DialogContent,DialogTitle,Stack,Typogr
 import {callRpc} from '../data/dataProvider';
 import {supabase} from '../supabaseClient';
 
-type Pending={id:string;feedback_no:number;product_id:string;pending:boolean;version:number};
+type Pending={id:string;feedback_no:number;product_id:string};
 
-// A deletion that lost its R2/DB response is not a recycle bin. These are
-// pending cleanup jobs and pre-existing trash records that require explicit
-// administrator action, not recoverable/active feedback.
 export function FeedbackPendingDeletes({reloadKey=0}:{reloadKey?:number}){
   const [product]=useStore<string>('aisencore.current.product','');
   const [rows,setRows]=useState<Pending[]>([]);
@@ -29,7 +26,7 @@ export function FeedbackPendingDeletes({reloadKey=0}:{reloadKey?:number}){
     setBusy(row.id);setError('');
     try{
       const result=await supabase.functions.invoke<{deleted:boolean}>('feedback-delete',{
-        body:{feedback_id:row.id,expected_version:row.pending?null:row.version,
+        body:{feedback_id:row.id,expected_version:null,
           product_id:product||null},
       });
       if(result.error||result.data?.deleted!==true)throw new Error('未确认完全删除');
@@ -61,7 +58,7 @@ export function FeedbackPendingDeletes({reloadKey=0}:{reloadKey?:number}){
       {rows.map(row=><Stack key={row.id} direction="row" useFlexGap
         sx={{gap:1,alignItems:'center',flexWrap:'wrap'}}>
         <Typography variant="body2" sx={{flex:1,minWidth:140}}>
-          反馈 #{row.feedback_no} · {row.pending?'清理未完成':'历史待删除'}
+          反馈 #{row.feedback_no} · 清理未完成
         </Typography>
         <Button size="small" color="error" disabled={!!busy}
           onClick={()=>setTarget(row)}>{busy===row.id?'正在清理…':'永久删除'}</Button>

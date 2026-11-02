@@ -3,8 +3,8 @@ import { supabase } from '../supabaseClient';
 import { invalidateAdminAccess } from '../auth/authProvider';
 
 const columns: Record<string, { table: string; id: string; fields: string }> = {
-  feedback: { table: 'admin_feedback_summaries', id: 'id', fields: 'id,feedback_no,product_id,user_id,content,category,status,priority,assigned_to,version,created_at,updated_at,resolved_at,closed_at,attachment_count,queue_state,read_at,triaged_at,is_starred,tags,archived_at,deleted_at,deleted_from,last_handled_by' },
-  'feedback-events': { table: 'feedback_events', id: 'id', fields: 'id,feedback_id,actor_user_id,event_type,visibility,from_status,to_status,message,created_at' },
+  feedback: { table: 'admin_feedback_summaries', id: 'id', fields: 'id,feedback_no,product_id,user_id,content,category,priority,version,created_at,updated_at,attachment_count,queue_state,read_at,triaged_at,is_starred,archived_at,last_handled_by' },
+  'feedback-events': { table: 'feedback_events', id: 'id', fields: 'id,feedback_id,actor_user_id,event_type,visibility,message,created_at' },
   'feedback-attachments': { table: 'feedback_attachments', id: 'id', fields: 'id,feedback_id,slot,mime_type,size_bytes,created_at' },
   products: { table: 'products', id: 'id', fields: 'id,product_key,name,description,status,created_at,updated_at' },
   memberships: { table: 'product_memberships', id: 'id', fields: 'id,user_id,product_id,status,pre_suspend_status,joined_at,updated_at' },
@@ -112,8 +112,6 @@ async function listRecords(resource: string, opts: {
   const field = (opts.sort?.field ?? 'id') === 'id' ? s.id : (opts.sort?.field ?? 'id');
   if (!allowed.includes(field)) throw new Error('不支持的排序字段');
   let query = supabase.from(s.table).select(s.fields, { count: 'exact' });
-  if(resource==='feedback'&&opts.filter?.active_only===true)
-    query=query.neq('queue_state','trashed');
   for (const [key, value] of filterRows(resource, opts.filter ?? {})) {
     query = query.eq(key === 'id' ? s.id : key, value as string);
   }

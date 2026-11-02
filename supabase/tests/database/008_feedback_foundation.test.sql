@@ -35,10 +35,10 @@ SELECT ok(NOT has_table_privilege('authenticated','public.user_feedback','INSERT
 SELECT ok(NOT has_table_privilege('authenticated','public.feedback_attachments','INSERT'),'no client attachment INSERT');
 SELECT ok(NOT has_table_privilege('authenticated','public.feedback_events','INSERT'),'no client event INSERT');
 SELECT ok(NOT has_table_privilege('anon','public.user_feedback','SELECT'),'anonymous cannot read feedback');
-SELECT ok(has_table_privilege('authenticated','public.user_feedback','SELECT'),'admin RLS-backed SELECT available');
-SELECT ok(has_table_privilege('authenticated','public.feedback_attachments','SELECT'),'admin RLS-backed attachment SELECT');
-SELECT ok(has_table_privilege('authenticated','public.feedback_events','SELECT'),'admin RLS-backed event SELECT');
-SELECT ok((SELECT queue_state='inbox' AND status IS NULL AND priority IS NULL
+SELECT ok(has_column_privilege('authenticated','public.user_feedback','id','SELECT'),'admin RLS-backed SELECT available');
+SELECT ok(has_column_privilege('authenticated','public.feedback_attachments','id','SELECT'),'admin RLS-backed attachment SELECT');
+SELECT ok(has_column_privilege('authenticated','public.feedback_events','id','SELECT'),'admin RLS-backed event SELECT');
+SELECT ok((SELECT queue_state='inbox' AND priority IS NULL
  FROM public.user_feedback WHERE id='37000000-0000-4000-8000-000000000001'),
  'new feedback stays untriaged in inbox, without default priority/status');
 SELECT throws_ok($$INSERT INTO public.feedback_attachments(feedback_id,slot,object_key,mime_type,size_bytes)
@@ -49,7 +49,7 @@ SELECT throws_ok($$INSERT INTO public.feedback_attachments(feedback_id,slot,obje
   VALUES ('37000000-0000-4000-8000-000000000001',1,'feedback/first/svg.svg','image/svg+xml',10)$$,'23514');
 SELECT throws_ok($$INSERT INTO public.user_feedback(user_id,product_id,content,request_id)
   VALUES ('17000000-0000-4000-8000-000000000002','27000000-0000-4000-8000-000000000001','   ','47000000-0000-4000-8000-000000000002')$$,'23514');
-SELECT throws_ok($$INSERT INTO public.user_feedback(user_id,product_id,content,status,request_id)
+SELECT throws_ok($$INSERT INTO public.user_feedback(user_id,product_id,content,queue_state,request_id)
   VALUES ('17000000-0000-4000-8000-000000000002','27000000-0000-4000-8000-000000000001','valid','triaged','47000000-0000-4000-8000-000000000002')$$,'23514');
 SELECT throws_ok($$INSERT INTO public.user_feedback(user_id,product_id,content,priority,request_id)
   VALUES ('17000000-0000-4000-8000-000000000002','27000000-0000-4000-8000-000000000001','valid','critical','47000000-0000-4000-8000-000000000002')$$,'23514');

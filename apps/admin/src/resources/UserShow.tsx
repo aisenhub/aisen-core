@@ -84,7 +84,7 @@ function UserOverview() {
   },{enabled:!!uid});
   const feedback=useGetList('feedback',{
     pagination:{page:1,perPage:5},sort:{field:'created_at',order:'DESC'},
-    filter:{...scopeFilter,active_only:true},
+    filter:scopeFilter,
   },{enabled:!!uid,refetchOnWindowFocus:false});
   const accountAudit=useGetList('audit-logs',{
     pagination:{page:1,perPage:5},sort:{field:'created_at',order:'DESC'},filter:{target_id:uid},
@@ -272,7 +272,7 @@ function UserOverview() {
                 <Typography sx={{fontWeight:700,fontSize:13}}>反馈 #{String(item.feedback_no??'—')}</Typography>
                 <Typography variant="caption" color="text.secondary">
                   {item.queue_state==='workbench'?'处理工作台':item.queue_state==='archived'?'已归档':
-                    item.queue_state==='trashed'?'回收站':'收件箱'}
+                    '收件箱'}
                 </Typography>
                 <Typography variant="body2" sx={{overflowWrap:'anywhere'}}>{String(item.content??'').slice(0,120)}</Typography>
                 <Typography variant="caption" color="text.secondary">{formatAdminInstant(item.created_at)}</Typography>

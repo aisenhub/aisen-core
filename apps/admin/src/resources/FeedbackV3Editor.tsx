@@ -65,7 +65,6 @@ export function FeedbackV3Editor({record,backTo}:{record:FeedbackV2Record;backTo
       await callRpc('admin_feedback_v3',{
         p_feedback_id:record.id,p_expected_version:record.version,p_action:action,
         p_priority:action==='save'||action==='triage'?priority:null,
-        p_tags:null,
         p_is_starred:action==='save'||action==='triage'?star:null,
         p_internal_note:(action==='save'||action==='triage')?(note.trim()||null):null,
       });

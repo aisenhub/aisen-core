@@ -96,7 +96,7 @@ LoginPage、AuthActionPage、WorkspaceDetails、UserShow、GrantCreate、IssueCo
 
 **PERF-04｜P2，静态风险：管理员TTL的并发在途请求。** [authProvider.ts:4–34、40–70](../../../apps/admin/src/auth/authProvider.ts) 已有8秒TTL、会话AAL2及admin_check_access，未显式用同身份pending Promise合并checkAuth/getPermissions/canAccess的同时调用。可能重叠，不是已测风暴。AAL2冷进和TTL过期时观察每组RPC、并发；如确有重复则仅在身份相同且有效的窗口合并，401/403/撤权/登出及时失效；不得关闭后端权限复核。中等成本。
 
-**PERF-05｜P2，静态风险：反馈标签字典独立Effect RPC。** [useFeedbackTags.ts:6–16](../../../apps/admin/src/resources/useFeedbackTags.ts) 每次挂载与productId变化调用admin_feedback_tags，仅用alive避免卸载更新，未复用现有查询缓存/取消；[FeedbackV2.tsx:89–110](../../../apps/admin/src/resources/FeedbackV2.tsx) 四队列与[Feedback.tsx:137–157](../../../apps/admin/src/resources/Feedback.tsx) 详情使用。需要在合法会话下往返5次、切产品、比较真实请求数，再决定用已有QueryClient按产品/身份受限去重，不建第二套持久缓存。低中成本。
+**PERF-05｜已被当前V4合同取代。** 旧标签字典调用与Hook已于2026-11-02删除，当前三队列不提供自定义标签，不再需要标签缓存优化。见[后端修复计划](../2026-11-02-backend-audit-remediation.md)。
 
 **PERF-06｜P2，静态风险：单外层Suspense可能影响切页外壳。** [App.tsx:21–59、276–301](../../../apps/admin/src/App.tsx) lazy页包在整个Admin外的Suspense；框架自身也可能有边界，因此**没有证据断言顶栏会消失**。录合法AAL2每路由冷/热进入时AppBar/sidebar是否被替换、导航到业务可操作终点、焦点与错误态，证实闪动才下移fallback边界。低中成本。
 

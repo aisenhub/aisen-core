@@ -6,9 +6,9 @@ AisenCore（Aisen 公共核心服务）为多个彼此独立的 SaaS 产品统�
 
 ## 开发分为三个交付阶段
 
-项目所有者已于 **2026-10-27 宣布第一阶段基本结束**，当前处于**第一阶段未签收事项核对与第二阶段 AisenLens 本地端联调准备期**。使用隔离 Supabase 和合成测试数据，必须完成 Admin **所有模块的业务操作、表格、流程、异常状态、全站无障碍和高标准八维视觉验收**，并优先完成前端性能、路由/依赖拆包和代码质量；达到可交付标准、经项目所有者签收后才能进入下一阶段。已通过的局部测试不等于第一阶段签收。
+项目所有者已于2026-10-27独立授权**Core×Lens第二阶段本地联合开发**；第一阶段未签收事项并行核对，不因第二阶段启动自动通过。Admin全模块业务操作、异常状态、全站无障碍、视觉与性能仍需正式验收，现有局部测试不等于第一阶段签收。
 
-**第二阶段**才与 AisenLens 本地开发环境联调，改用 AisenLens 客户端**真实操作产生的本地业务数据**而非合成 demo 作为验收依据，**同步完善 AisenCore 后端及 AisenLens 前端**，测试跨模块/端的 Auth、成员、Pro、兑换、备份等通信及故障恢复；第二阶段全部通过后进入部署测试。
+**第二阶段**与AisenLens本地开发环境联合开发，以客户端真实操作产生的本地业务数据验证双端通信，同步完善Core后端与Lens前端。当前Auth、成员、Pro、兑换、双图反馈及隔离私有S3已有分项通过证据；模板备份按所有者决定顺延，完整联合验收仍开放。第二阶段全部通过后进入部署测试。
 
 **第三阶段**才配置和部署 Admin、Supabase 和 AisenLens 的线上环境，在真实部署端测试所有功能、跨服务通信、性能、安全、邮件、私有存储与备份恢复。部署、推送与正式上线仍须项目所有者**单独明确授权**。
 
@@ -76,9 +76,9 @@ AisenCore（Aisen 公共核心服务）为多个彼此独立的 SaaS 产品统�
 
    只想浏览无需账号的交互原型，请使用上面的离线 HTML；正式后台始终需要真实 Supabase Auth/TOTP。
 
-**本地完整 UI 场景数据（已实测）**：在以上账号和数据库就绪后，于仓库根目录执行 `pnpm run seed:admin-demo`。它只访问本机 AisenCore Supabase，添加 4 个合成产品、24 个 `.test` 用户以及成员、Pro、发码批次、码安全摘要、核销和审计样本；可以重复运行，不会清空已有人为创建的数据，也不对接真实 SaaS。页面刷新后即可体验完整列表。本地 fixture 详细使用说明见 [Admin 演示数据与浏览器验收](./docs/development/testing/admin-demo-data.md)；截图与当前视觉工作参见 [D3 改造计划](./docs/Plans/aisencore-mvp/d3-admin-experience-upgrade.md)。
+**上线测试前本地基线（2026-11-02）**：只保留AisenLens产品和原管理员身份/MFA/会话，旧业务及测试数据已按所有者授权清空。不要在当前联合开发库重新执行demo seed；测试通过真实客户端操作或独立事务夹具产生数据。`python scripts/check-local-admin-qa-cleanliness.py`验证空业务基线；清理脚本默认回滚，apply需仓库外已验证备份。当前41项迁移已安装；[审查及修复结果](./docs/reviews/2026-11-02-aisencore-backend-supabase-audit.md)与[详细实施计划](./docs/Plans/2026-11-02-backend-audit-remediation.md)记录本地验证，云R2/SMTP、人工签收及上线授权仍为独立门禁。
 
-常用验证：`pnpm typecheck`、`pnpm lint`、`pnpm build`。**浏览其他管理板块**：使用左侧导航进入「用户与成员」「Pro 权益」「兑换码批次」「安全码管理」「核销记录」「成员事件」「账号查找」「平台管理员」「账号限制」「管理审计」。如果顶部产品范围选择 `aisenlens` 而当前产品没有演示成员，页面将显示专属空态；点击 **「切换至全平台查看数据」** 或顶部选择 Atlas、Orbit、Harbor 可看到合成测试记录。所有板块已接入正式 MUI 页面与数据查询，具体已验证范围仍以 D3 Chrome 回归记录为准。
+常用验证：`pnpm typecheck`、`pnpm lint`、`pnpm build`。当前空业务列表是清理后的预期状态，不依靠Atlas/Orbit/Harbor演示产品填充。已验证与仍未验证范围以唯一TODO和本轮审查为准。
 
 完成体验后，可执行 `pnpm dlx supabase stop --project-id Aisencore` 关闭本地服务，数据卷默认保留（请勿误用 `db reset`，那会清空本地数据库）。
 

@@ -32,22 +32,30 @@ def main() -> None:
     query = """BEGIN TRANSACTION READ ONLY;
     SELECT json_build_object(
       'auth_users', (SELECT count(*) FROM auth.users),
+      'auth_audits', (SELECT count(*) FROM auth.audit_log_entries),
+      'mfa_challenges', (SELECT count(*) FROM auth.mfa_challenges),
       'real_admins', (SELECT count(*) FROM auth.users WHERE email='admin@aisencore.test'),
       'active_admins', (SELECT count(*) FROM public.platform_admins WHERE active),
       'qa_admin_users', (SELECT count(*) FROM auth.users WHERE email LIKE 'admin-uiqa-%@aisencore.test'),
       'qa_ordinary_users', (SELECT count(*) FROM auth.users WHERE email LIKE 'ordinary-uiqa-%@aisencore.test'),
       'active_real_products', (SELECT count(*) FROM public.products
-         WHERE product_key IN ('aisenhub','aisenlens') AND status='active'),
+         WHERE product_key='aisenlens' AND status='active'),
       'products_total', (SELECT count(*) FROM public.products),
       'qa_browser_products', (SELECT count(*) FROM public.products WHERE product_key LIKE 'qa_browser_%'),
       'memberships', (SELECT count(*) FROM public.product_memberships),
       'grants', (SELECT count(*) FROM public.entitlement_grants),
+      'credit_accounts', (SELECT count(*) FROM public.pro_credit_accounts),
+      'credit_entries', (SELECT count(*) FROM public.pro_credit_entries),
       'code_batches', (SELECT count(*) FROM public.redemption_code_batches),
       'codes', (SELECT count(*) FROM public.redemption_codes),
       'redemptions', (SELECT count(*) FROM public.redemptions),
       'admin_audits', (SELECT count(*) FROM public.admin_audit_log),
       'feedback', (SELECT count(*) FROM public.user_feedback),
-      'attachments', (SELECT count(*) FROM public.feedback_attachments)
+      'attachments', (SELECT count(*) FROM public.feedback_attachments),
+      'feedback_events', (SELECT count(*) FROM public.feedback_events),
+      'membership_events', (SELECT count(*) FROM public.membership_events),
+      'restrictions', (SELECT count(*) FROM public.platform_account_restrictions),
+      'rate_limits', (SELECT count(*) FROM public.redemption_rate_limits)
     );
     ROLLBACK;"""
     output = docker(
@@ -60,18 +68,21 @@ def main() -> None:
         data["auth_users"] == 1
         and data["real_admins"] == 1
         and data["active_admins"] == 1
-        and data["active_real_products"] == 2
-        and data["products_total"] == 2
+        and data["active_real_products"] == 1
+        and data["products_total"] == 1
         and all(data[key] == 0 for key in (
             "qa_admin_users", "qa_ordinary_users", "qa_browser_products",
             "memberships", "grants", "code_batches", "codes",
             "redemptions", "admin_audits", "feedback", "attachments",
+            "credit_accounts", "credit_entries", "feedback_events",
+            "membership_events", "restrictions", "rate_limits",
+            "auth_audits", "mfa_challenges",
         ))
     )
     print(json.dumps({"database": "local-only", "clean_for_e2e": clean, "counts": data},
                      sort_keys=True, indent=2))
     print("LOCAL_ADMIN_QA_BASELINE_PASS" if clean
-          else "LOCAL_ADMIN_QA_BASELINE_DIRTY: see docs/Plans/aisenlens-aisencore-local-integration/2026-10-27-admin-uiqa-timeout-and-recovery.md")
+          else "LOCAL_ADMIN_QA_BASELINE_DIRTY: see docs/reviews/2026-11-02-aisencore-backend-supabase-audit.md")
     if not clean:
         raise SystemExit(1)
 

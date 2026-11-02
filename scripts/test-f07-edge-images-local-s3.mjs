@@ -27,7 +27,8 @@ assert.equal(port.status,0);assert.match(port.stdout,/:55322\b/);
 const key=cfg.PUBLISHABLE_KEY||cfg.ANON_KEY,adminKey=cfg.SERVICE_ROLE_KEY;
 assert.ok(key&&adminKey);
 const created=[],objects=new Map(),s3Events=[];
-let secondImageReportId=null;
+let secondImageReportId=null,oneImageReportId=null;
+let deleteFault=null;
 let secondPutFault=null;
 let heldExportGet=null;
 const unique=randomUUID().replaceAll('-','').slice(0,13);
@@ -235,6 +236,16 @@ function s3Server(){
       if(secondPutFault)secondPutFault.successfulPuts++;
       response.writeHead(200,{etag:'"f07-fixture"'});response.end();return;
     }
+    if(request.method==='DELETE'){
+      s3Events.push({verb:'DELETE',path});
+      if(deleteFault?.path===path){
+        deleteFault.attempts++;
+        response.writeHead(503,{'content-type':'application/xml'});
+        response.end('<Error><Code>ServiceUnavailable</Code></Error>');return;
+      }
+      objects.delete(path); // S3 DeleteObject succeeds even when key was already absent.
+      response.writeHead(204);response.end();return;
+    }
     if(request.method==='GET'){
       s3Events.push({verb:'GET',path,signed:!!url.searchParams.get('X-Amz-Signature')});
       // Only the isolated local fixture may pause an in-flight export.
@@ -299,9 +310,9 @@ async function testLensBrowserWithRealS3(){
 }
 async function startWorker(){
   edgeWorker=spawn(win?'cmd.exe':'pnpm',win?
-    ['/d','/s','/c','pnpm dlx supabase functions serve feedback-submit feedback-image-access feedback-export']:
+    ['/d','/s','/c','pnpm dlx supabase functions serve feedback-submit feedback-image-access feedback-export feedback-delete']:
     ['dlx','supabase','functions','serve','feedback-submit','feedback-image-access',
-      'feedback-export'],{cwd:root,stdio:['ignore','pipe','pipe']});
+      'feedback-export','feedback-delete'],{cwd:root,stdio:['ignore','pipe','pipe']});
   let logs='';
   edgeWorker.stderr.on('data',data=>{logs=(logs+String(data)).slice(-12000);edgeDiagnostic=logs});
   // The local functions serve worker may answer one 401 while the Edge
@@ -335,7 +346,7 @@ try{
   preserveOriginalIds();
   assert.ok(baselineCounts.auth_users>=1,'local Auth must have an existing Admin');
   assert.equal(sql("select string_agg(product_key,',' order by product_key) from public.products"),
-    'aisenhub,aisenlens');
+    'aisenlens');
   // Pre-existing real feedback is not a reason to clear the database.
   assert.ok(baselineCounts.feedback>=0);
   gate=tcpServer();await new Promise((resolve,reject)=>{
@@ -367,6 +378,7 @@ try{
       JSON.stringify(createdResult.data).slice(0,260));
     assert.ok(createdResult.data?.id);
     const reportId=createdResult.data.id;
+    if(count===1)oneImageReportId=reportId;
     if(count===2)secondImageReportId=reportId;
     const rows=sql("select slot||':'||mime_type||':'||size_bytes||':'||id "+
       "from public.feedback_attachments where feedback_id="+qq(reportId)+
@@ -458,8 +470,8 @@ try{
   const exportRequest={
     scope:'selected',queue_state:'inbox',
     ids:[secondImageReportId],options:{
-      user_comments:false,public_replies:false,internal_notes:false,
-      history:false,tags:false,status:false,identity:false,
+      internal_notes:false,
+      history:false,status:false,identity:false,
     }};
   const missingObjectKey=sql('select object_key from public.feedback_attachments where '+
     'feedback_id='+qq(secondImageReportId)+' order by slot limit 1');
@@ -481,6 +493,25 @@ try{
       qq(secondImageReportId)),'2','failed export must not mutate source attachments');
   }finally{objects.set(missingObjectPath,originalImage)}
   console.log('F07_REAL_EDGE_ZIP_MISSING_IMAGE PASS 503 fail-closed; source SQL and S3 restored');
+  {
+    let enteredRead,releaseRead;
+    const awaitingRead=new Promise(resolve=>{enteredRead=resolve});
+    const resumeRead=new Promise(resolve=>{releaseRead=resolve});
+    heldExportGet={path:missingObjectPath,entered:enteredRead,resume:resumeRead};
+    const duringRead=req('/functions/v1/feedback-export','POST',exportRequest,mfaToken);
+    try{
+      assert.equal(await Promise.race([awaitingRead.then(()=>true),sleep(16000).then(()=>false)]),true);
+      const version=Number(sql('select version from public.user_feedback where id='+qq(secondImageReportId)));
+      const marked=await req('/rest/v1/rpc/admin_mark_feedback_read','POST',{
+        p_feedback_id:secondImageReportId,p_expected_version:version,
+      },mfaToken);
+      assert.equal(marked.status,200);
+      assert.equal(marked.data.version,version);
+      releaseRead();
+      assert.equal((await duringRead).status,200,'first read must not invalidate an in-flight ZIP');
+      console.log('AUDIT_REAL_READ_DURING_ZIP PASS unchanged business version and valid snapshot');
+    }finally{releaseRead();heldExportGet=null;void duringRead.catch(()=>undefined)}
+  }
   // The initial AAL2 check is not enough: revoke this synthetic Admin while
   // a real private S3 GET is blocked, then ensure the subsequent source/audit
   // recheck prevents shipping any ZIP. The sole original Admin is untouched.
@@ -719,6 +750,190 @@ try{
   assert.equal(objects.size,beforeFaultObjects+4,'mismatched replay must not upload');
   console.log('F07_REAL_EDGE_SECOND_PUT_RECOVERY PASS 503 no DB commit -> exact retry 201/200; two S3 objects');
   console.log('F07_REAL_EDGE_REQUEST_MISMATCH PASS same UUID changed content gets 409, no new objects/records');
+  // V4: real AAL2 JWT -> feedback-delete Edge -> isolated S3 DELETE -> DB commit.
+  // Every target below belongs to the synthetic owner made by this same test.
+  const v4Version=id=>Number(sql('select version from public.user_feedback where id='+qq(id)));
+  const v4Keys=id=>sql('select object_key from public.feedback_attachments where feedback_id='+
+    qq(id)+' order by slot').split('\n').filter(Boolean);
+  const v4Paths=keys=>keys.flatMap(k=>[
+    '/f07-feedback-private/'+k+'.thumb.jpg','/f07-feedback-private/'+k]);
+  const v4Delete=(id,version,token=mfaToken,scope=null)=>
+    req('/functions/v1/feedback-delete','POST',{
+      feedback_id:id,expected_version:version,product_id:scope},token);
+  const v4NoImage=await req('/rest/v1/rpc/feedback_submit_from_edge','POST',{
+    p_user_id:owner.id,p_product_key:'aisenlens',p_request_id:randomUUID(),
+    p_content:'V4 isolated zero-image delete '+unique,p_category:'bug',
+    p_contact_email:'fixture@example.com',p_attachments:[],
+  },null,true);
+  assert.equal(v4NoImage.status,200,'trusted QA zero-image fixture must be committed');
+  const zeroId=v4NoImage.data.id;qq(zeroId);
+  const zeroVersion=v4Version(zeroId);
+  assert.equal((await v4Delete(zeroId,zeroVersion,owner.token)).status,403,
+    'AAL1 owner cannot permanently delete');
+  assert.equal((await v4Delete(zeroId,zeroVersion,qaAdmin.token)).status,403,
+    'AAL1 administrator cannot permanently delete');
+  assert.equal((await v4Delete(zeroId,zeroVersion+1)).status,409,'stale version rejected');
+  assert.equal((await v4Delete(zeroId,zeroVersion,mfaToken,randomUUID())).status,409,
+    'wrong product scope rejected');
+  const deletedZero=await v4Delete(zeroId,zeroVersion);
+  assert.equal(deletedZero.status,200,'zero-image Edge permanent delete '+JSON.stringify(deletedZero.data));
+  assert.equal(deletedZero.data?.deleted,true);
+  assert.equal(sql('select count(*) from public.user_feedback where id='+qq(zeroId)),
+    '0','zero-image feedback deleted');
+  assert.equal(sql("select count(*) from public.admin_audit_log where target_id="+qq(zeroId)+
+    " and action='feedback.permanent_delete'"),'1','content-free audit of zero-image deletion');
+  assert.equal((await v4Delete(zeroId,zeroVersion)).status,409,'second delete cannot succeed again');
+  console.log('V4_REAL_EDGE_DELETE_ZERO PASS JWT AAL2, no original data, content-free audit, AAL1/owner/409/product checks');
+
+  const oneId=oneImageReportId;qq(oneId);
+  const oneVersion=v4Version(oneId),onePaths=v4Paths(v4Keys(oneId));
+  assert.equal(onePaths.length,2);
+  for(const path of onePaths)assert.ok(objects.has(path),'QA object exists before deletion');
+  // S3 DeleteObject is idempotent; a missing thumbnail must not block removal.
+  objects.delete(onePaths[0]);
+  const deletedOne=await v4Delete(oneId,oneVersion);
+  assert.equal(deletedOne.status,200,'one image and missing thumbnail delete '+JSON.stringify(deletedOne.data));
+  assert.equal(sql('select count(*) from public.feedback_attachments where feedback_id='+qq(oneId)),
+    '0','one-image attachment metadata removed');
+  assert.ok(onePaths.every(path=>!objects.has(path)),'one original and thumbnail removed');
+  console.log('V4_REAL_EDGE_DELETE_ONE PASS original removed, missing thumbnail 404-compatible, SQL metadata deleted');
+
+  const twoId=secondImageReportId;qq(twoId);
+  const twoVersion=v4Version(twoId),twoPaths=v4Paths(v4Keys(twoId));
+  assert.equal(twoPaths.length,4);
+  for(const path of twoPaths)assert.ok(objects.has(path),'two-image object exists before delete');
+  deleteFault={path:twoPaths[2],attempts:0};
+  let failedTwo;
+  try{
+    failedTwo=await v4Delete(twoId,twoVersion);
+    assert.equal(failedTwo.status,503,'second thumbnail 503 must leave pending deletion');
+    assert.equal(failedTwo.data?.message,'STORAGE_DELETE_INCOMPLETE_RETRY_REQUIRED');
+    assert.ok(deleteFault.attempts>=1,'fixture actually injected DELETE 503');
+    assert.equal(sql('select count(*) from public.user_feedback where id='+qq(twoId)+
+      ' and deletion_token is not null'),'1','failed delete intent persisted');
+    assert.equal(sql('select count(*) from public.feedback_attachments where feedback_id='+qq(twoId)),
+      '2','failed delete cannot remove attachment references prematurely');
+    assert.ok(!objects.has(twoPaths[0])&&!objects.has(twoPaths[1]),
+      'first thumbnail and original were already removed');
+    assert.ok(objects.has(twoPaths[2])&&objects.has(twoPaths[3]),
+      'second thumbnail and original retained until retry');
+    const pending=await req('/rest/v1/rpc/admin_feedback_pending_deletes','POST',
+      {p_product_id:null},mfaToken);
+    assert.equal(pending.status,200);
+    assert.ok(pending.data.some(row=>row.id===twoId&&row.pending),
+      'pending deletion visible to same authorized admin');
+    const requestId=sql('select request_id from public.user_feedback where id='+qq(twoId));
+    const recovery=await req('/rest/v1/rpc/my_feedback','POST',{
+      p_product_key:'aisenlens',p_request_id:requestId,
+    },owner.token);
+    assert.equal(recovery.status,200);
+    assert.equal(recovery.data[0].recovery_only,true);
+    assert.equal('content' in recovery.data[0],false);
+    const events=await req('/rest/v1/rpc/my_feedback_events','POST',{p_feedback_id:twoId},owner.token);
+    assert.equal(events.status,403);
+    const attachmentId=sql('select id from public.feedback_attachments where feedback_id='+qq(twoId)+' order by slot limit 1');
+    const pendingImage=await req('/functions/v1/feedback-image-access','POST',
+      {attachment_id:attachmentId},owner.token);
+    assert.equal(pendingImage.status,403);
+    const bypass=await req('/rest/v1/rpc/admin_finish_feedback_delete','POST',{
+      p_actor_id:qaAdmin.id,p_actor_aal:'aal2',p_feedback_id:twoId,
+      p_token:randomUUID(),p_product_id:null,
+    },mfaToken);
+    assert.equal(bypass.status,403,'admin JWT cannot impersonate a trusted storage completion');
+    console.log('AUDIT_REAL_PENDING_ISOLATION PASS recovery proof, events/image denied, direct completion denied');
+    console.log('V4_REAL_EDGE_DELETE_503_PENDING PASS partial object failure retains durable intent and metadata');
+  }finally{deleteFault=null}
+  const retriedTwo=await v4Delete(twoId,twoVersion);
+  assert.equal(retriedTwo.status,200,'same-version deletion retries to completion '+JSON.stringify(retriedTwo.data));
+  assert.equal(sql('select count(*) from public.user_feedback where id='+qq(twoId)),
+    '0','two-image feedback no longer exists');
+  assert.equal(sql('select count(*) from public.feedback_attachments where feedback_id='+qq(twoId)),
+    '0','two-image metadata removed');
+  assert.ok(twoPaths.every(path=>!objects.has(path)),'all four private keys removed');
+  console.log('V4_REAL_EDGE_DELETE_TWO_RETRY PASS all four private objects + SQL removed after injected 503');
+
+  // In-flight eligibility is checked again server-side after losing admin role.
+  const revokedFixture=await req('/rest/v1/rpc/feedback_submit_from_edge','POST',{
+    p_user_id:owner.id,p_product_key:'aisenlens',p_request_id:randomUUID(),
+    p_content:'V4 revoked admin QA '+unique,p_category:'bug',
+    p_contact_email:'fixture@example.com',p_attachments:[],
+  },null,true);
+  assert.equal(revokedFixture.status,200);
+  const revokedId=revokedFixture.data.id,revokedVersion=v4Version(revokedId);
+  try{
+    assert.equal(sql('update public.platform_admins set active=false where user_id='+
+      qq(qaAdmin.id)+' returning active'),'f');
+    assert.equal((await v4Delete(revokedId,revokedVersion)).status,403,
+      'revoked AAL2 admin cannot delete');
+    assert.equal(sql('select count(*) from public.user_feedback where id='+qq(revokedId)),
+      '1','feedback retained during admin revocation');
+  }finally{
+    assert.equal(sql('update public.platform_admins set active=true where user_id='+
+      qq(qaAdmin.id)+' returning active'),'t');
+  }
+  assert.equal((await v4Delete(revokedId,revokedVersion)).status,200,
+    'restored temporary admin completes isolated QA deletion');
+  console.log('V4_REAL_EDGE_DELETE_ADMIN_REVOKED PASS 403 on revoked AAL2; approved retry after restored QA role');
+
+  // V4 success ACK can be lost after the authorized Edge has committed DB deletion.
+  // The client must not infer failure; refresh by ID/pending status before retrying.
+  const ackSeed=await req('/rest/v1/rpc/feedback_submit_from_edge','POST',{
+    p_user_id:owner.id,p_product_key:'aisenlens',p_request_id:randomUUID(),
+    p_content:'V4 delete response lost '+unique,p_category:'bug',
+    p_contact_email:'fixture@example.com',p_attachments:[],
+  },null,true);
+  assert.equal(ackSeed.status,200);
+  const ackId=ackSeed.data.id,ackVersion=v4Version(ackId);
+  let resolveAck,rejectAck;
+  const upstreamAck=new Promise((resolve,reject)=>{resolveAck=resolve;rejectAck=reject});
+  const deleteAckDrop=httpServer(async(incoming,outgoing)=>{
+    try{
+      assert.equal(incoming.method,'POST');
+      const parts=[];for await(const part of incoming)parts.push(part);
+      const response=await fetch(cfg.API_URL+'/functions/v1/feedback-delete',{
+        method:'POST',
+        headers:{apikey:key,authorization:'Bearer '+mfaToken,
+          'content-type':'application/json'},
+        body:Buffer.concat(parts),signal:AbortSignal.timeout(30000),
+      });
+      resolveAck({status:response.status,data:await response.json()});
+      outgoing.destroy(); // Simulate client transport loss only AFTER 200 is committed.
+    }catch(error){rejectAck(error);outgoing.destroy()}
+  });
+  try{
+    await new Promise((resolve,reject)=>{
+      deleteAckDrop.once('error',reject);
+      deleteAckDrop.listen(0,'127.0.0.1',resolve);
+    });
+    const endpoint='http://127.0.0.1:'+deleteAckDrop.address().port;
+    await assert.rejects(
+      fetch(endpoint+'/drop-delete-success',{
+        method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({feedback_id:ackId,expected_version:ackVersion,
+          product_id:null}),signal:AbortSignal.timeout(40000),
+      }),
+      err=>err instanceof TypeError,
+      'delete consumer must observe UNKNOWN transport rather than a success ACK');
+    const committed=await upstreamAck;
+    assert.equal(committed.status,200,'authorized upstream delete actually committed');
+    assert.equal(committed.data?.deleted,true);
+    assert.equal(sql('select count(*) from public.user_feedback where id='+qq(ackId)),
+      '0','post-UNKNOWN trusted DB re-read proves no feedback remains');
+    const pending=await req('/rest/v1/rpc/admin_feedback_pending_deletes','POST',
+      {p_product_id:null},mfaToken);
+    assert.equal(pending.status,200);
+    assert.ok(!pending.data.some(x=>x.id===ackId),
+      'post-UNKNOWN pending tasks cannot fabricate an unfinished delete');
+    assert.equal((await v4Delete(ackId,ackVersion)).status,409,
+      'duplicate delete does not repeat a committed deletion');
+    assert.equal(sql('select count(*) from public.admin_audit_log where target_id='+
+      qq(ackId)+" and action='feedback.permanent_delete'"),
+      '1','one minimal deletion audit despite lost response and repeated attempt');
+    console.log('V4_REAL_EDGE_DELETE_ACK_LOST PASS upstream200 dropped; client UNKNOWN; recheck removed; retry409; single audit');
+  }finally{
+    await new Promise(resolve=>deleteAckDrop.close(resolve));
+    void upstreamAck.catch(()=>undefined);
+  }
 }finally{
   if(edgeWorker?.pid){
     if(win)run('taskkill',['/PID',String(edgeWorker.pid),'/T','/F'],{timeout:11000});
@@ -754,8 +969,8 @@ try{
     if(created.length)assert.equal(sql('SELECT count(*) FROM auth.users WHERE id IN ('+
       created.map(qq).join(',')+')'),'0','all exact fixture Auth IDs removed');
     assert.equal(sql("select string_agg(product_key,',' order by product_key) from public.products"),
-      'aisenhub,aisenlens');
+      'aisenlens');
   }catch(e){errors.push(String(e.message))}
   if(errors.length)throw Error('F07 fixture cleanup FAILED '+errors.join('; '));
-  console.log('F07_REAL_EDGE_S3_CLEANUP PASS administrator and 2 platforms unchanged, zero QA residue');
+  console.log('F07_REAL_EDGE_S3_CLEANUP PASS administrator and AisenLens unchanged, zero QA residue');
 }

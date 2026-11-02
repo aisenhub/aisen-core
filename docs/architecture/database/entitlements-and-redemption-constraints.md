@@ -1,8 +1,8 @@
 # Pro 授权与兑换码数据约束
 
-> 状态：现行 Pro 授权/兑换码的逻辑约束与事务不变量。基础六表、Pro/兑换码/核销/限流五表与受保护 SQL RPC 已在隔离库由四份迁移从零重建；**239/239 pgTAP（SQL 模拟 JWT/MFA）** 和真实双连接 `LCK-01`～`07` **7/7 PASS**，真实 JWT/HTTP/TOTP 尚未验收。永久兑换码发行因权限未确认而拒绝，SQL 中 `1000/批` 仅是资源保险阈值，并非已批准运营数量上限。长期业务语义以[计费与权益](../domains/billing-and-entitlements.md)为准。
+> 状态（2026-11-02修复）：本地41项迁移，完整SQL543/543、Supabase数据库Lint通过；真实JWT权益、并发入账、永久冻结/恢复通过。详细分层证据见[修复计划](../../Plans/2026-11-02-backend-audit-remediation.md)，正式云端/人工准出以TODO为准。
 
-**R-16 实施状态（2026-10-27）**：同产品当前有效永久 Pro 拒兑其他码已写入 `20261027144000_redeem_lifetime_guard.sql`，复用 L7 授权锁和现有兑换返回合同；005 pgTAP 新增 16 项，修复前 9 项失败，迁移在回滚事务中运行后 93/93 PASS。已有本地库未持久应用迁移；真实 JWT/HTTP、竞争测试和后续 Lens 实际联调仍未验证。业务权威见[计费规则](../domains/billing-and-entitlements.md)。
+**当前有效永久保护**：R-16 及后续信用账本迁移已在本地安装；当前人工/兑换均在授权锁内拒绝对有效永久重复入账。005 的 93 项在本轮回滚测试全部通过，其他环境仍需独立核对，不自动迁移远端。
 
 ## 1. 逻辑表与最小字段
 
@@ -23,9 +23,9 @@
 | `revoked_at/revoked_by/revoke_reason` | 可信撤销记录，不删除原授权 |
 | 受控幂等元数据 | 同 actor、同 request_id 首次规范字段与可信算出的时段须可回读比较 |
 
-`UNIQUE(source_type,source_ref)` 与受保护来源域构造保证重试不重复发放。`tier=pro` 不是用户表里的 `is_pro`；没有历史功能版本或 `plans.features/limits`，未来的产品功能发布不改历史 Grant。当前有效 Pro 仅按 `user_id,product_id,tier`、`starts_at<=trusted_now`、未撤销且 `ends_at IS NULL OR ends_at>trusted_now` 聚合；有任意有效 Pro 才显示 Pro。最后一个失效自然显示 Free（表示无 Pro），**不删除历史、不生成 Free Grant/降级行**。账号 blocked、产品暂停和成员 left/suspended 仍独立拒绝受保护在线操作。
+`UNIQUE(source_type,source_ref)` 保证同一来源不重复入账。Grant 保存独立来源/天数/历史日期和撤销事实；有限 Pro 的当前状态由信用账本计算，有效永久单独判断。单笔 ends_at 不等于综合到期，不能作为有限余额的判权来源。不建 users.is_pro、Free Grant 或功能套餐版本。blocked、产品暂停、成员 left/suspended 仍独立拒绝在线准入。
 
-**Pro 时间预设**：30/365 天或永久只作为发行/直授请求参数，**不新建三份 Pro 功能套餐、`plan_id` 或 `pro_v2` 功能版本**。按同用户同产品 Pro 为周期授权计算最长未撤销未来结束日，保持原 L7 锁及首次规范时段存证；永久身份不自然到期、仍可撤销。
+**信用账本**：pro_credit_accounts 以 (user_id,product_id) 保存结算时点；pro_credit_entries 逐笔绑定 Grant/用户/产品，并强制入账=消费+撤销+剩余。一天 86400 秒，FIFO 消费；撤销仅取消未消费余额。永久覆盖冻结有限余额，撤销永久后继续消费。L1/L7 保护结算、入账和撤销，写路径锁后取可信时间，读摘要无副作用。业务额度仍归 SaaS。
 
 ### 1.2 `redemption_codes`：自有码发放 Pro 资格
 
@@ -34,7 +34,7 @@
 | `id`、`code_hash` | PRIMARY KEY；哈希唯一，SHA-256 规范化高熵码，明文不落库/日志 |
 | `product_id`、`tier` | 产品非空；MVP tier 固定 'pro'；不指向业务 `plan_id` |
 | `grant_duration_days` | 正整数天数；首发运营默认 30/365 天。永久发行必须另行明确授权和显式语义，绝不把省略天数误判为永久 |
-| `max_redemptions` / `redeemed_count` | 正整数与 `0 <= redeemed_count <= max_redemptions` |
+| `max_redemptions` / `redeemed_count` | 当前固定 max=1，count 只能为 0/1 |
 | `expires_at` | 兑换码本身到期时间，与 Pro 授权结束时间分开 |
 | `batch_id/batch_ordinal` | 可信批次和顺序、actor scoped request_id、唯一约束 |
 | `revoked_at/revoked_by`、`created_by/created_at` | 可信发行和撤销事实 |
@@ -55,7 +55,7 @@
 | `grant_id` | NOT NULL，引用 `entitlement_grants.id` |
 | `created_at` | 可信端生成 |
 
-**核心不变量**：`UNIQUE(code_id, user_id)` 与 `UNIQUE(grant_id)`；`redemptions.user_id` 需引用 Auth，且兑换记录的码、用户、grant 三者归属必须在可信事务里一致。数据库以 `UNIQUE(source_type,source_ref)` 再次防重复。
+**核心不变量**：UNIQUE(code_id)和UNIQUE(grant_id)保证每码全局一次；来源键再防重复。码/批次产品、核销/码产品、核销/Grant用户产品由复合外键强制一致。20261102095028移除被替代的单列外键和三项兑换冗余索引，新增全局/产品批次排序索引。
 
 ### 1.5 `redemption_rate_limits`（MVP 最小抗枚举状态）
 
@@ -74,15 +74,15 @@
 1. **`redeem_code(product_key, code)`**：按现行 L0～L8 安全锁序、声明产品 + left/suspended 先拒绝、本人限流、查码/核销/Grant 原子事务；校验 `redemption_codes.product_id` 同产品且 `tier=pro`，Grant 源为 redeem_code，授予期限读取首次码发行的可信时长。不可再以旧 `plan_id` 判权；重复兑换、撤销、未知及失败计数语义维持原有约束。
 2. **`admin_create_codes(product, tier, duration_days, config, quantity, request_id)`**：只允许 `tier=pro` 且启用产品；明确正天数/合法时段，不接受 Free 或业务功能列表。与原 M3 相同的 actor-scoped request_id、强类型配置规范、NULL 安全比较、旧请求 UNKNOWN 查询、哈希保存与首响明文独占规则继续适用；同产品码不得跨平台兑现。
 3. **`admin_revoke_code(code_id, reason)`**：只设置 `revoked_at`，不影响已有授权；写审计。
-4. **`admin_grant_entitlement(user, product, tier, mode, duration_days?, starts_at?, ends_at?, reason, request_id)`（DEC-05）**：只允许指定产品 `tier=pro`，原 `duration` 正天数可信顺延或 `explicit_window` 完整起止（显式 NULL 才永久）、同 actor request_id 幂等语义和 L7 并发锁保持；不写会员布尔字段，Grant 与审计原子写入。
+4. **`admin_grant_entitlement`**：当前只允许产品 active、目标非 blocked 且已为 active 成员；duration 正天数或明确永久。保留的 starts_at/ends_at 入参必须为 NULL，不接受预约窗口；同 actor request_id 完整校验，不自动入会。Grant、信用和审计原子写入，首响与重放均返回当前effective_ends_at，不重写历史Grant。
 5. **`admin_revoke_grant(grant_id, reason)`**：设置撤销字段并写审计；重复撤销不重复写入。
 6. **仅会员资格管理命令**：不实现 `admin_upsert_plan`、`admin_update_product_free_capabilities`、功能版本克隆/指针切换；Pro 发行时长经发码/直授参数指定。管理员只能在受控写接口中修改码或 Grant 的明确生命周期事实，不能编辑 SaaS 功能策略。
 
-**续期时间事实**：正天数新 Grant 的 `starts_at` 应从 `max(trusted_now, 当前同用户同产品未撤销周期 Grant 最远 ends_at)` 确定，`ends_at = starts_at + duration`；不得以 `starts_at=now` 同时使用远期锚点扩展 `ends_at` 制造重叠区间。首次计算的真实时段须被幂等重试复用；永久有效期另行处理，不当作无穷数值相加。撤销 CHECK 中要求撤销时间、操作者、非空理由同时具备，`CHECK` 必须显式拒绝 NULL/UNKNOWN 绕过。
+**入账与综合到期**：新有限 Grant 记录首次写入时点和该笔面值日期；当前综合到期由结算后余额计算，不能用历史 Grant 窗口排队来替代账本。重放不重复入账；撤销保留来源事实且只消除该笔未消费余额。撤销 CHECK 必须显式拒绝 NULL/UNKNOWN 绕过。
 
-**并发要点**：多人同码依靠行锁 + CHECK 防超量；同一人同码依靠 `UNIQUE(code_id,user_id)` 与来源幂等键；所有影响同一用户+产品的 Pro 周期续期的可信操作先采用一致的事务级锁顺序（如以用户/套餐派生的 advisory transaction lock），再检查未来未撤销的最长到期时间，避免并发读旧值造成重叠。尽量把授权时段计算与写入放在同一 RPC 中。
+**并发要点**：多人同码依靠行锁、单次 CHECK 与 UNIQUE(code_id) 防超兑；所有同用户/产品信用写入按既定 L1/L7 顺序互斥，锁后结算最新余额，避免丢失或重复入账。保留全局管理 L0 与鉴权复核，不将反馈行锁当作撤权协调的替代。
 
-**产品配额与计量不是 Core 实体**：AisenLens 备份 `ready+reserved` 容量仍由其专用可信元数据/R2 事务预留和核验；AI 自带 API Key、导出次数和存储额度都不进入公共会员数据库。本轮不设计跨 SaaS 扣减/余额表。
+**产品配额与计量不是 Core 实体**：Pro 信用只记录产品资格时长，不是 SaaS 资源余额。AisenLens 备份 ready+reserved、AI Key、导出次数和容量归其专属可信端，不进入公共计量账本。
 
 ### 2.1 管理写入幂等与可读取字段（DEC-05 已批准）
 
@@ -110,9 +110,9 @@
 - 授权与兑换记录属于必要的计费事实，账号注销时的保留/去标识化随注销政策确定，不使用 `ON DELETE CASCADE` 自动清除。
 - 期限快捷预设变化不修改历史 Pro 码或 Grant；产品暂停不自动删除已有授权。
 
-## 5. 待实施前确定
+## 5. 公开前待完成
 
-可信 RPC 的强类型幂等回读与跨表归属校验、可信时间计算、兑换码生成字符集（熵不低于 128 bit）、发行数量上限、限流清理、未来渠道订单是否同库、真实 RLS/GRANT 和 pgTAP/并发测试。**产品功能/额度 JSON 规则及 plans 表不再是 Core DDL 工作项**。
+现行可信RPC、强类型幂等和高熵码已实现；关联约束、冗余索引/变量/volatility和004旧夹具已修；剩余真实并发/性能/完整权限门禁见TODO。正式发行上限、永久码政策、限流保留和外部渠道随上线范围确定；详细发现见本轮审查，不恢复已取消的公共功能/额度JSON或plans表。
 
 ## 相关架构
 

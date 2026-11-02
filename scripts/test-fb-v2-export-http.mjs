@@ -19,7 +19,7 @@ const prefix=randomUUID().slice(0,10),userEmail='fb-zip-'+prefix+'@example.inval
 const password='FBv2Zip!'+randomBytes(10).toString('hex');
 const productId=randomUUID(),userRequest=randomUUID();
 const key='fb_zip_'+prefix.replaceAll('-','');
-let uid=null,feedbackId=null,edge=null;
+let uid=null,feedbackId=null,edge=null,edgeLogs='';
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function sql(query){
   const x=runner('docker',['exec','supabase_db_Aisencore','psql','-X','-qAt',
@@ -69,14 +69,16 @@ try{
   },null,true);
   feedbackId=created.id;
   assert.equal(created.status,'received');
-  const triaged=await api('/rest/v1/rpc/admin_screen_feedback',{
+  const triaged=await api('/rest/v1/rpc/admin_feedback_v3',{
     p_feedback_id:feedbackId,p_expected_version:1,p_action:'triage',p_priority:'high',
   },upgraded.access_token);
   assert.equal(triaged.queue_state,'workbench');
 
   edge=spawn(win?'cmd.exe':'pnpm',win?
     ['/d','/s','/c','pnpm dlx supabase functions serve feedback-export']:
-    ['dlx','supabase','functions','serve','feedback-export'],{stdio:'ignore'});
+    ['dlx','supabase','functions','serve','feedback-export'],{stdio:['ignore','pipe','pipe']});
+  edge.stdout.on('data',data=>{edgeLogs=(edgeLogs+String(data)).slice(-4000)});
+  edge.stderr.on('data',data=>{edgeLogs=(edgeLogs+String(data)).slice(-4000)});
   const url=cfg.API_URL+'/functions/v1/feedback-export';
   let ready=false;
   for(let attempt=0;attempt<85;attempt++){
@@ -93,7 +95,7 @@ try{
       authorization:'Bearer '+token,'content-type':'application/json'},
       body:JSON.stringify({scope:'selected',queue_state:'workbench',
         ids:[feedbackId],options:{internal_notes:false,identity:false,
-          user_comments:true,public_replies:true,history:true,status:true,tags:true}}),
+          history:true,status:true}}),
       signal:AbortSignal.timeout(25000)});
   }
   const denied=await request(sign.access_token);
@@ -131,7 +133,7 @@ try{
     signal:AbortSignal.timeout(25000)});
   const filteredBytes=Buffer.from(await filtered.arrayBuffer());
   assert.equal(filtered.status,200,'filtered scoped ZIP HTTP '+filtered.status+' '+
-    filteredBytes.toString('utf8').slice(0,160));
+    filteredBytes.toString('utf8').slice(0,160)+' '+edgeLogs);
   assert.equal(filteredBytes.subarray(0,2).toString(),'PK');
   console.log('FB_V2_EXPORT_FILTERED_REAL_HTTP PASS scoped product filter ZIP');
   // A signed JWT must not preserve ZIP privileges after current Admin access
@@ -145,7 +147,7 @@ try{
   const revoked=await request(upgraded.access_token);
   const revokedMessage=await revoked.text();
   assert.equal(revoked.status,403,'revoked AAL2 Admin must not export: HTTP '+
-    revoked.status+' '+revokedMessage.slice(0,180));
+    revoked.status+' '+revokedMessage.slice(0,180)+' '+edgeLogs);
   console.log('FB_V2_EXPORT_REVOKED PASS current admin revocation denies existing JWT');
   assert.equal(sql("SELECT count(*) FROM public.admin_audit_log WHERE target_type='feedback_export' AND actor_user_id='"+uid+"'"),
     '2','both selected and filtered ZIP exports have minimal audit');

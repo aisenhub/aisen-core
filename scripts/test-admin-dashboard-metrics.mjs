@@ -6,7 +6,7 @@ const get=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const page=get('apps/admin/src/Dashboard.tsx');
 const provider=get('apps/admin/src/data/dataProvider.ts');
 const initialSql=get('supabase/migrations/20261029190000_admin_dashboard_metrics.sql');
-const sql=get('supabase/migrations/20261029191000_admin_dashboard_new_pro_month.sql');
+const sql=get('supabase/migrations/20261102095028_backend_audit_remediation.sql');
 for(const card of ["title:'用户'","title:'订阅'","title:'反馈'"])
   assert.ok(page.includes(card),'missing card '+card);
 assert.equal((page.match(/title:'(?:用户|订阅|反馈)'/g)??[]).length,3);
@@ -34,8 +34,6 @@ assert.match(provider,/Number\.isSafeInteger/);
 assert.match(sql,/PERFORM private\.require_admin\(\)/);
 assert.match(sql,/FROM auth\.users u/);
 assert.match(sql,/count\(DISTINCT m\.user_id\)/);
-assert.match(sql,/private\.pro_credit_summary/);
-assert.match(sql,/FROM public\.admin_feedback_summaries f/);
 assert.match(sql,/queue_state IN \('inbox','workbench'\)/);
 assert.match(sql,/queue_state='inbox'/);
 assert.match(sql,/Asia\/Shanghai/);

@@ -31,12 +31,13 @@ assert.match(spawnSync('docker',['port','supabase_db_Aisencore','5432/tcp'],
 const port=3396,base='http://127.0.0.1:'+port,profile=mkdtempSync(join(tmpdir(),'aisencore-uiqa-'));
 const chromePath=win?'C:/Program Files/Google/Chrome/Application/chrome.exe':'google-chrome';
 const email='admin-uiqa-'+randomUUID().slice(0,12)+'@aisencore.test';
-const password='LocalUiQa!'+randomBytes(15).toString('base64url');
+const password='LocalUiQa!8'+randomBytes(15).toString('base64url');
 const qaProductKey='qa_browser_'+randomBytes(6).toString('hex');
 let qaProductId=null,qaOrdUserId=null,qaFeedbackId=null,qaFeedbackRequestId=null;
+const qaBulkFeedbackRows=[];
 const qaCleanupFailures=[];
 const qaSecretDownloadPaths=[];
-let uid=null,site=null,chrome=null,ws=null,qaFixtureStarted=false;
+let uid=null,site=null,chrome=null,ws=null,qaFixtureStarted=false,feedbackDeleteWorker=null;
 let preQaCounts=null;
 let preQaRecordIds=null;
 let injectedFault=null,mfaBrowserRequests=0,interceptionFailure=null;
@@ -44,7 +45,7 @@ const exclusiveGuard=createServer();
 // A previous 320s external kill prevented finally cleanup. Every short QA
 // phase must exit voluntarily with enough time to clean temporary Auth, grants,
 // products, secrets and Chrome profiles before the runner's hard deadline.
-const qaSoftDeadline = Date.now() + 180_000;
+const qaSoftDeadline = Date.now() + (qaPhase==='operations-feedback'?600_000:300_000);
 let qaInCleanup = false;
 const sleep=ms=>{
   if(!qaInCleanup && uid && Date.now()+ms >= qaSoftDeadline)
@@ -159,7 +160,7 @@ try {
   // memberships, Grants and feedback; snapshot their counts before any writes.
   const baseline=sql("SELECT "+
     "(SELECT count(*) FROM auth.users)||'|'||"+
-    "(SELECT count(*) FROM public.products WHERE product_key IN ('aisenhub','aisenlens') AND status='active')||'|'||"+
+    "(SELECT count(*) FROM public.products WHERE product_key='aisenlens' AND status='active')||'|'||"+
     "(SELECT count(*) FROM public.products)||'|'||"+
     "(SELECT count(*) FROM public.platform_admins WHERE active)||'|'||"+
     "(SELECT count(*) FROM public.product_memberships)||'|'||"+
@@ -169,8 +170,8 @@ try {
     "(SELECT count(*) FROM public.admin_audit_log)");
   preQaCounts=baseline.split('|').map(Number);
   assert.equal(preQaCounts.length,9);
-  assert.equal(preQaCounts[1],2,'both authorized Core products must be active');
-  assert.ok(preQaCounts[2]>=2&&preQaCounts[3]>=1,'unexpected local product/Admin baseline');
+  assert.equal(preQaCounts[1],1,'the AisenLens integration must be active');
+  assert.ok(preQaCounts[2]>=1&&preQaCounts[3]>=1,'unexpected local product/Admin baseline');
   preQaRecordIds=snapshotRecordIds();
   assert.equal(sql("SELECT count(*) FROM auth.users WHERE email LIKE 'admin-uiqa-%@aisencore.test'"),'0',
     'Prior temporary QA Admin remains; refuse to touch any database rows');
@@ -227,10 +228,14 @@ try {
     if(payload.method==='Fetch.requestPaused'){
       const req=payload.params;
       const faultRpc=injectedFault?.rpc??'admin_create_codes';
-      const targeted=injectedFault?.readTable?
-        req.request?.url?.includes('/rest/v1/'+injectedFault.readTable)&&req.request?.method==='GET':
-        req.request?.url?.includes('/rest/v1/rpc/'+faultRpc)&&req.request?.method==='POST';
-      const fault=targeted && injectedFault &&
+      const targeted=injectedFault?.edgeFunction?
+        req.request?.url?.includes('/functions/v1/'+injectedFault.edgeFunction)&&req.request?.method==='POST':
+        injectedFault?.readTable?
+          req.request?.url?.includes('/rest/v1/'+injectedFault.readTable)&&req.request?.method==='GET':
+          req.request?.url?.includes('/rest/v1/rpc/'+faultRpc)&&req.request?.method==='POST';
+      const skip=targeted&&injectedFault?.skip>0;
+      if(skip)injectedFault.skip--;
+      const fault=!skip&&targeted && injectedFault &&
         (injectedFault.remaining>0||!injectedFault.used) ? injectedFault : null;
       if(fault){
         fault.used=true;
@@ -1329,7 +1334,7 @@ try {
 
   // X03/X15/X16: ordinary QA identity, AAL1 denial and guarded account workflows.
   const qaOrdEmail='ordinary-uiqa-'+randomUUID().slice(0,12)+'@aisencore.test';
-  const qaOrdPassword='OrdinaryUiQa!'+randomBytes(13).toString('base64url');
+  const qaOrdPassword='OrdinaryUiQa!8'+randomBytes(13).toString('base64url');
   const qaPerson=await api('/auth/v1/admin/users','POST',
     {email:qaOrdEmail,password:qaOrdPassword,email_confirm:true},null,true);
   qaOrdUserId=qaPerson.id;
@@ -1693,6 +1698,30 @@ try {
       throw Error('Feedback queue transition missing '+queue+' '+version);
     };
     await queuePage('/feedback','收件箱');
+    // Regression: the real query-string/decode-uri-component patch must survive
+    // each React-admin/MUI Select change and a URL round-trip in Chrome.
+    for(const [index,label,key,value] of [
+      [0,'优先级','priority','high'],[1,'星标','star','true'],[2,'反馈类别','category','bug']
+    ]){
+      const opened=await evaluate("(()=>{const el=[...document.querySelectorAll('section[aria-label=\\\"筛选反馈\\\"] [role=combobox]')]["+index+"];if(el)el.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,button:0}));return !!el})()");
+      assert.equal(opened,true,'feedback filter dropdown opens: '+label);
+      await sleep(160);
+      const selected=await evaluate("(()=>{const opt=[...document.querySelectorAll('[role=option]')].find(x=>x.getAttribute('data-value')==="+JSON.stringify(value)+");opt?.click();return !!opt})()");
+      assert.equal(selected,true,'feedback filter option selects: '+label+'='+value);
+      let applied=false;
+      for(let n=0;n<45;n++){
+        const hash=await evaluate('location.hash');
+        if(new URLSearchParams(hash.split('?')[1]||'').get(key)===value){applied=true;break}
+        await sleep(120);
+      }
+      assert.equal(applied,true,label+' URL parameters updated');
+      await visible('重置');
+      await click('重置');
+      await visible(feedbackText);
+      const reset=await evaluate("!new URLSearchParams(location.hash.split('?')[1]||'').has("+JSON.stringify(key)+")");
+      assert.equal(reset,true,label+' reset clears filter URL');
+      console.log('W1_REAL_ADMIN_CHROME_FEEDBACK_FILTER PASS '+label+'='+value+' URL update/reset no error boundary');
+    }
     // Explicitly labeled bulk-selection replacement must still be usable:
     // one owned QA feedback, one selected ZIP preview, then cancel/reset.
     const checkedQa=await evaluate(`(()=>{
@@ -1703,7 +1732,7 @@ try {
       return !!input;
     })()`);
     assert.equal(checkedQa,true,'QA feedback row should expose an accessible labeled checkbox');
-    await visible('已选择 1 条');
+    await visible('已选 1 条');
     assert.equal(await evaluate(`(()=>{
       const b=[...document.querySelectorAll('button')].find(
         b=>b.textContent?.trim()==='导出选中项 ZIP'&&!b.disabled);
@@ -1763,6 +1792,242 @@ try {
     // The full feedback V4 edge-case workflow is covered by its own test suite;
     // this branch still verifies the live QA feedback, selection and User360 link.
     console.log('D3_FEEDBACK_USER360_AND_SELECTED_EXPORT_PREVIEW PASS');
+
+    // V4 browser bulk: use only fresh zero-image, owned QA feedback.
+    let edgeLogs='';
+    feedbackDeleteWorker=spawn(win?'cmd.exe':'pnpm',
+      win?['/d','/s','/c','pnpm dlx supabase functions serve feedback-delete']:
+        ['dlx','supabase','functions','serve','feedback-delete'],
+      {cwd:root,stdio:['ignore','pipe','pipe']});
+    feedbackDeleteWorker.stderr.on('data',x=>{edgeLogs=(edgeLogs+String(x)).slice(-1200)});
+    let readySamples=0;
+    for(let n=0;n<75;n++){
+      try{
+        const r=await fetch(cfg.API_URL+'/functions/v1/feedback-delete',{
+          method:'POST',headers:{apikey:cfg.PUBLISHABLE_KEY,'content-type':'application/json'},
+          body:'{}',signal:AbortSignal.timeout(2000)});
+        readySamples=r.status===401?readySamples+1:0;
+        if(readySamples>=3)break;
+      }catch{readySamples=0}
+      await sleep(300);
+    }
+    assert.ok(readySamples>=3,'local V4 Edge must be ready '+edgeLogs);
+    for(const [index,token] of [
+      'qa-v4-bulk-a-'+randomBytes(5).toString('hex'),
+      'qa-v4-bulk-b-'+randomBytes(5).toString('hex')
+    ].entries()){
+      const id=randomUUID(),request=randomUUID();
+      const textValue='Real Admin V4 bulk owned '+token;
+      sql("INSERT INTO public.user_feedback(id,user_id,product_id,request_id,content,category,contact_email,created_at) VALUES ("+
+        "'"+id+"','"+uid+"','"+qaProductId+"','"+request+"','"+textValue+
+        "','bug','fixture@example.invalid',transaction_timestamp()+interval '"+(index+1)+" seconds')");
+      qaBulkFeedbackRows.push({id,request,textValue});
+    }
+    await send('Page.navigate',{url:base+'/#/feedback'});
+    for(const row of qaBulkFeedbackRows)await visible(row.textValue);
+    for(const row of qaBulkFeedbackRows){
+      const selected=await evaluate("(()=>{const tr=[...document.querySelectorAll('tbody tr')].find(r=>r.textContent?.includes("+JSON.stringify(row.textValue)+"));const cb=tr?.querySelector('input[type=checkbox][aria-label^=\\\"选择反馈 #\\\"]');if(cb&&!cb.checked)cb.click();return !!cb&&cb.checked})()");
+      assert.equal(selected,true,'owned QA bulk row must be selected');
+    }
+    await visible('已选 2 条');
+    await click('批量永久删除');
+    await visible('永久删除反馈？');
+    await evaluate("(()=>{const b=[...document.querySelectorAll('[role=dialog] button')].find(x=>x.textContent?.trim()==='取消');b?.click()})()");
+    const ids=qaBulkFeedbackRows.map(x=>"'"+x.id+"'").join(',');
+    assert.equal(sql('SELECT count(*) FROM public.user_feedback WHERE id IN ('+ids+')'),'2',
+      'cancelled confirmation preserves QA feedback');
+    await click('批量永久删除');
+    await visible('永久删除反馈？');
+    assert.equal(await evaluate("(()=>{const b=[...document.querySelectorAll('[role=dialog] button')].find(x=>x.textContent?.trim()==='确认'&&!x.disabled);b?.click();return !!b})()"),true,'batch confirm enabled');
+    let committed=false;
+    for(let n=0;n<75;n++){
+      if(sql('SELECT count(*) FROM public.user_feedback WHERE id IN ('+ids+')')==='0'){
+        committed=true;break;
+      }
+      await sleep(150);
+    }
+    if(!committed){
+      console.log('BULK_DELETE_DIAGNOSTIC',JSON.stringify({
+        notices:await evaluate("[...document.querySelectorAll('[role=alert],[role=status],[role=dialog]')].map(element=>element.textContent).join(' | ')"),
+        rows:sql('SELECT json_agg(json_build_object(\'id\',id,\'version\',version,\'pending\',deletion_started_at IS NOT NULL)) FROM public.user_feedback WHERE id IN ('+ids+')'),
+        edgeLogs,
+      }));
+    }
+    assert.equal(committed,true,'two QA rows deleted through Admin and real Edge');
+    for(const row of qaBulkFeedbackRows){
+      assert.equal(sql("SELECT count(*) FROM public.admin_audit_log WHERE target_id='"+
+        row.id+"' AND action='feedback.permanent_delete'"),'1',
+        'one minimal audit per QA deletion');
+    }
+    console.log('W3_REAL_ADMIN_CHROME_BULK_DELETE_2 PASS cancel preserves two; confirm deletes both and audits once');
+
+    // Partial result: first owned item completes, second Edge POST gets a
+    // controlled 503 before reaching Edge. Never retry until UI reconciles.
+    const partialRows=[];
+    for(const i of [0,1]){
+      const id=randomUUID(),request=randomUUID();
+      const textValue='Real Admin V4 partial owned '+randomBytes(5).toString('hex');
+      sql("INSERT INTO public.user_feedback(id,user_id,product_id,request_id,content,category) VALUES ('"+
+        id+"','"+uid+"','"+qaProductId+"','"+request+"','"+textValue+"','bug')");
+      const row={id,request,textValue};
+      qaBulkFeedbackRows.push(row);
+      partialRows.push(row);
+    }
+    // Force React-admin list refetch: a same-route navigation may preserve
+    // a cached list made before these disposable QA rows were inserted.
+    await send('Page.navigate',{url:base+'/#/feedback'});
+    await send('Page.reload',{ignoreCache:true});
+    for(const row of partialRows)await visible(row.textValue);
+    const selectRow=async row=>await evaluate("(()=>{const tr=[...document.querySelectorAll('tbody tr')].find(x=>x.textContent?.includes("+JSON.stringify(row.textValue)+"));const cb=tr?.querySelector('input[type=checkbox][aria-label^=\\\"选择反馈 #\\\"]');if(cb&&!cb.checked)cb.click();return !!cb&&cb.checked})()");
+    for(const row of partialRows)assert.equal(await selectRow(row),true,'QA partial row can be selected');
+    await visible('已选 2 条');
+    await click('批量永久删除');
+    await visible('永久删除反馈？');
+    // A changed route/filter cannot authorize a stale confirmation.
+    await send('Page.navigate',{url:base+'/#/feedback?priority=urgent'});
+    let scopeInvalid=false;
+    for(let n=0;n<35;n++){
+      scopeInvalid=await evaluate("(()=>{const b=[...document.querySelectorAll('[role=dialog] button')].find(x=>x.textContent?.trim()==='确认');return !b||b.disabled})()");
+      if(scopeInvalid)break;
+      await sleep(110);
+    }
+    assert.equal(scopeInvalid,true,'stale confirmation must disappear or disable when query scope changes');
+    const partialIds=partialRows.map(x=>"'"+x.id+"'").join(',');
+    assert.equal(sql('SELECT count(*) FROM public.user_feedback WHERE id IN ('+partialIds+')'),'2',
+      'filter route drift cannot delete old selection');
+    console.log('W3_REAL_ADMIN_CHROME_CONFIRM_SCOPE_DRIFT PASS stale modal disabled/closed; both QA rows retained');
+    // Force React-admin list refetch: a same-route navigation may preserve
+    // a cached list made before these disposable QA rows were inserted.
+    await send('Page.navigate',{url:base+'/#/feedback'});
+    await send('Page.reload',{ignoreCache:true});
+    for(const row of partialRows)await visible(row.textValue);
+    for(const row of partialRows)assert.equal(await selectRow(row),true,'QA row reselect after filter drift');
+    await visible('已选 2 条');
+    await send('Fetch.enable',{patterns:[{urlPattern:'*://127.0.0.1:55321/functions/v1/feedback-delete*',requestStage:'Request'}]});
+    injectedFault={edgeFunction:'feedback-delete',status:503,used:false,skip:1};
+    try{
+      await click('批量永久删除');
+      await visible('永久删除反馈？');
+      assert.equal(await evaluate("(()=>{const b=[...document.querySelectorAll('[role=dialog] button')].find(x=>x.textContent?.trim()==='确认'&&!x.disabled);b?.click();return !!b})()"),true);
+      await visible('已完成 1 条');
+      assert.equal(injectedFault.used,true,'second Edge DELETE was intercepted as local 503');
+      assert.equal(injectedFault.skip,0,'first Edge DELETE reached the real service');
+      assert.equal(sql('SELECT count(*) FROM public.user_feedback WHERE id IN ('+partialIds+')'),'1',
+        'one QA record remains after injected 503; no accidental second deletion');
+    }finally{
+      await send('Fetch.disable');
+      injectedFault=null;
+    }
+    console.log('W3_REAL_ADMIN_CHROME_BULK_PARTIAL_503 PASS one completed; one retained for manual recheck');
+    await send('Page.navigate',{url:base+'/#/feedback'});
+    await send('Page.reload',{ignoreCache:true});
+    const survivor=partialRows.find(row=>sql("SELECT count(*) FROM public.user_feedback WHERE id='"+row.id+"'")==='1');
+    assert.ok(survivor,'only one QA record is available for explicit reconciliation');
+    await visible(survivor.textValue);
+    assert.equal(await selectRow(survivor),true);
+    await click('批量永久删除');
+    await visible('永久删除反馈？');
+    assert.equal(await evaluate("(()=>{const b=[...document.querySelectorAll('[role=dialog] button')].find(x=>x.textContent?.trim()==='确认'&&!x.disabled);b?.click();return !!b})()"),true);
+    let complete=false;
+    for(let n=0;n<70;n++){
+      if(sql('SELECT count(*) FROM public.user_feedback WHERE id IN ('+partialIds+')')==='0'){
+        complete=true;break;
+      }
+      await sleep(120);
+    }
+    assert.ok(complete,'verified surviving QA row deleted only after new explicit confirmation');
+    for(const row of partialRows){
+      assert.equal(sql("SELECT count(*) FROM public.admin_audit_log WHERE target_id='"+row.id+
+        "' AND action='feedback.permanent_delete'"),'1',
+        'exactly one durable no-content audit per QA row even after partial failure');
+    }
+    console.log('W3_REAL_ADMIN_CHROME_PARTIAL_RECOVERY PASS next manual confirmation deletes surviving QA row; two audits');
+
+    // Real per-row menu: the single-delete confirmation must protect an
+    // independently-owned QA row. Cancel must be a strict no-op.
+    const single={id:randomUUID(),request:randomUUID(),
+      textValue:'Real Admin V4 single owned '+randomBytes(5).toString('hex')};
+    sql("INSERT INTO public.user_feedback(id,user_id,product_id,request_id,content,category,created_at) VALUES ('"+
+      single.id+"','"+uid+"','"+qaProductId+"','"+single.request+"','"+single.textValue+
+      "','bug',transaction_timestamp()+interval '25 seconds')");
+    qaBulkFeedbackRows.push(single);
+    await send('Page.navigate',{url:base+'/#/feedback'});
+    await send('Page.reload',{ignoreCache:true});
+    await visible(single.textValue);
+    const openSingleMenu=async()=>await evaluate("(()=>{const tr=[...document.querySelectorAll('tbody tr')].find(x=>x.textContent?.includes("+
+      JSON.stringify(single.textValue)+"));const b=tr?.querySelector('button[aria-label*=\"更多操作\"]');b?.click();return !!b})()");
+    const chooseSingleDelete=async()=>await evaluate("(()=>{const m=[...document.querySelectorAll('[role=menuitem]')].find(x=>x.textContent?.trim()==='永久删除');m?.click();return !!m})()");
+    assert.equal(await openSingleMenu(),true,'owned single row has independent actions');
+    await visible('查看详情');
+    assert.equal(await chooseSingleDelete(),true,'single-delete menu action exists');
+    await visible('永久删除反馈？');
+    assert.equal(await evaluate("(()=>{const b=[...document.querySelectorAll('[role=dialog] button')].find(x=>x.textContent?.trim()==='取消');b?.click();return !!b})()"),true);
+    assert.equal(sql("SELECT count(*) FROM public.user_feedback WHERE id='"+single.id+"'"),'1',
+      'single cancel never removes feedback');
+    assert.equal(sql("SELECT count(*) FROM public.admin_audit_log WHERE target_id='"+single.id+
+      "' AND action='feedback.permanent_delete'"),'0','single cancel writes no delete audit');
+    await sleep(250);
+    assert.equal(await openSingleMenu(),true);
+    await visible('查看详情');
+    assert.equal(await chooseSingleDelete(),true);
+    await visible('永久删除反馈？');
+    assert.equal(await evaluate("(()=>{const b=[...document.querySelectorAll('[role=dialog] button')].find(x=>x.textContent?.trim()==='确认'&&!x.disabled);b?.click();return !!b})()"),true);
+    let singleCommitted=false;
+    for(let n=0;n<75;n++){
+      if(sql("SELECT count(*) FROM public.user_feedback WHERE id='"+single.id+"'")==='0'){
+        singleCommitted=true;break;
+      }
+      await sleep(150);
+    }
+    assert.ok(singleCommitted,'single Admin menu invokes true Edge deletion');
+    assert.equal(sql("SELECT count(*) FROM public.admin_audit_log WHERE target_id='"+single.id+
+      "' AND action='feedback.permanent_delete'"),'1',
+      'single delete has exactly one minimal audit');
+    console.log('W3_REAL_ADMIN_CHROME_SINGLE_DELETE PASS cancel no-op, explicit confirm true Edge deletion and unique audit');
+
+    // 21 newly-owned, zero-image inbox records ensure page 1 shows 20 only.
+    // A page-local bulk delete must not accidentally spill to record 21.
+    const pageRows=[];
+    for(let i=0;i<21;i++){
+      const item={id:randomUUID(),request:randomUUID(),
+        textValue:'Real Admin V4 twenty owned '+i+' '+randomBytes(4).toString('hex')};
+      sql("INSERT INTO public.user_feedback(id,user_id,product_id,request_id,content,category,created_at) VALUES ('"+
+        item.id+"','"+uid+"','"+qaProductId+"','"+item.request+"','"+item.textValue+
+        "','bug',transaction_timestamp()+interval '"+(70+i)+" seconds')");
+      pageRows.push(item);
+      qaBulkFeedbackRows.push(item);
+    }
+    const twentyIds=pageRows.slice(1).map(x=>"'"+x.id+"'").join(',');
+    await send('Page.navigate',{url:base+'/#/feedback'});
+    await send('Page.reload',{ignoreCache:true});
+    await visible(pageRows[20].textValue);
+    await visible('全选本页 · 20 条');
+    const pageAudit=JSON.parse(await evaluate("JSON.stringify((()=>({qa:[...document.querySelectorAll('tbody tr')].filter(r=>r.textContent?.includes('Real Admin V4 twenty owned')).length,oldestVisible:document.body.innerText.includes("+
+      JSON.stringify(pageRows[0].textValue)+"),rows:document.querySelectorAll('tbody tr').length}))())"));
+    assert.equal(pageAudit.rows,20,'real Admin page size exactly 20');
+    assert.equal(pageAudit.qa,20,'all visible rows are this isolated QA fixture');
+    assert.equal(pageAudit.oldestVisible,false,'21st QA record must be on next page');
+    assert.equal(await evaluate("(()=>{const b=document.querySelector('input[aria-label=\"全选当前页反馈\"]');if(b&&!b.checked)b.click();return !!b&&b.checked})()"),true);
+    await visible('已选 20 条');
+    await click('批量永久删除');
+    await visible('确认彻底删除选中的 20 条');
+    assert.equal(await evaluate("(()=>{const b=[...document.querySelectorAll('[role=dialog] button')].find(x=>x.textContent?.trim()==='确认'&&!x.disabled);b?.click();return !!b})()"),true);
+    let twentyCommitted=false;
+    for(let n=0;n<150;n++){
+      if(sql('SELECT count(*) FROM public.user_feedback WHERE id IN ('+twentyIds+')')==='0'){
+        twentyCommitted=true;break;
+      }
+      await sleep(180);
+    }
+    assert.equal(twentyCommitted,true,'all and only 20 selected QA rows committed through Edge');
+    assert.equal(sql("SELECT count(*) FROM public.user_feedback WHERE id='"+pageRows[0].id+"'"),'1',
+      '21st off-page record remains untouched');
+    assert.equal(sql("SELECT count(*) FROM public.admin_audit_log WHERE target_id='"+pageRows[0].id+
+      "' AND action='feedback.permanent_delete'"),'0','off-page record has no delete audit');
+    assert.equal(sql("SELECT count(*) FROM public.admin_audit_log WHERE target_id IN ("+twentyIds+
+      ") AND action='feedback.permanent_delete'"),'20',
+      'each of twenty selected records produces one minimal deletion audit');
+    console.log('W3_REAL_ADMIN_CHROME_BULK_20_BOUNDARY PASS 20 selected deleted, 21st retained, exactly 20 audits');
   }
 
   console.log('ADMIN_OPERATIONS_SLICE PASS '+qaPhase+' protected business checks');
@@ -1772,6 +2037,11 @@ try {
   qaInCleanup = true; // Cleanup must never be refused by the QA soft deadline.
   try{exclusiveGuard.close();}catch{}
   try{ws?.close();}catch{}
+  if(feedbackDeleteWorker?.pid){
+    if(win)spawnSync('taskkill',['/PID',String(feedbackDeleteWorker.pid),'/T','/F'],
+      {encoding:'utf8',timeout:10000});
+    else feedbackDeleteWorker.kill('SIGTERM');
+  }
   if(win){
     if(chrome?.pid)spawnSync('taskkill',['/PID',String(chrome.pid),'/T','/F'],{encoding:'utf8',timeout:10000});
     if(site?.pid)spawnSync('taskkill',['/PID',String(site.pid),'/T','/F'],{encoding:'utf8',timeout:10000});
@@ -1788,6 +2058,19 @@ try {
     }catch(error){qaCleanupFailures.push('QA actor audits');console.error('QA audit cleanup needs review: '+error.message);}
   }
 
+  // Cleanup only exact owned QA records; deleted rows need no DB mutation.
+  for(const row of qaBulkFeedbackRows){
+    try{
+      const owner=sql("SELECT user_id::text||'|'||product_id::text||'|'||request_id::text FROM public.user_feedback WHERE id='"+row.id+"'");
+      if(!owner){console.log('QA_V4_BULK_ALREADY_DELETED PASS');continue}
+      assert.equal(owner,uid+'|'+qaProductId+'|'+row.request,
+        'bulk fixture ownership invariant');
+      sql("DELETE FROM public.feedback_events WHERE feedback_id='"+row.id+"'");
+      sql("DELETE FROM public.user_feedback WHERE id='"+row.id+"' AND user_id='"+uid+
+        "' AND product_id='"+qaProductId+"' AND request_id='"+row.request+"'");
+      console.log('QA_V4_BULK_CLEANUP PASS');
+    }catch(e){qaCleanupFailures.push('QA bulk feedback');console.error('QA bulk cleanup: '+e.message)}
+  }
   if(qaFeedbackId&&uid&&qaProductId&&qaFeedbackRequestId){
     try{
       const owner=sql("SELECT user_id::text||'|'||product_id::text||'|'||request_id::text FROM public.user_feedback WHERE id='"+qaFeedbackId+"'");

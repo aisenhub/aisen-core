@@ -4,7 +4,7 @@
 
 ## 1. 可信入口与权限隔离（F01）
 
-- 客户端/独立 SaaS 使用经过 Supabase 验证的本人 JWT；public 下暴露的业务 RPC 为 **SECURITY INVOKER** 薄包装层，不接收可伪造的 actor、管理员标志或高权限服务密钥。
+- 客户端/独立SaaS使用经过Supabase验证的本人JWT；public业务RPC为SECURITY INVOKER薄包装层，客户端入口不接收可伪造的actor/管理员标志。反馈存储协议的服务角色专用RPC接收可信Edge从已验证身份提取的actor/AAL，普通JWT无EXECUTE；SQL再次校验当前资格/封禁及对象归属，不能将参数当成授权凭证。
 - 有状态业务操作交给 **非 exposed schema 的 private SECURITY DEFINER 内核**；内核应具受控、最小权限的 NOLOGIN owner、固定空 search_path、全限定的表/函数名；禁止可被输入操纵的 SQL 对象名和动态 SQL。
 - public invoker 包装器要调用 private 内核，authenticated 通常须具备受控的 private schema USAGE 和**精确内核签名**的 EXECUTE。**非 exposed 不意味着内核绝不可能被直接 SQL 调用**：每个内核必须再次验证 auth.uid()、可信 JWT、目标用户/产品/属主与操作资格；管理写入同时验证当前 aal2、platform_admins.active 和非 blocked。
 - 创建/更新函数的同一版本化迁移必须收紧 PUBLIC 默认 EXECUTE、anon/authenticated 的函数授权、schema 权限、表 GRANT/RLS、默认权限、函数 owner 与搜索路径；对客户端禁止受保护表直接 DML。管理 RLS 的 private.is_platform_admin() 只返回当前会话是否合格，不提供查询任意他人资格的接口。
@@ -23,7 +23,7 @@
 | **L4** | 保留锁序编号，本期无公共套餐行可锁定 | 不取得任何已删除 plans/功能版本的锁；所有实际写入口继续遵循现行剩余层级 |
 | **L5** | 已存在成员行的更新锁；无成员时先只读判定 | left/suspended 不隐式恢复；兑换成功才首次创建成员 |
 | **L6** | 兑换码行更新锁；从 hash 初步查到 ID 不是授权结果 | 锁内重验码及归属；历史本人已兑与当前有效性遵循 API 优先级 |
-| **L7** | 同用户+同产品 Pro 续期 advisory lock | 续期按最新未撤销的同产品 Pro 周期授权最远到期日串行计算；永久授权不可当作无限周期顺延 |
+| **L7** | 同用户+同产品 Pro 信用 advisory lock | 串行结算/入账/撤销及永久冻结与恢复；不以历史 Grant 最远 ends_at 代替当前余额 |
 | **L8** | 受保护变更与审计的同事务最终写入及唯一约束 | 成员、grant、redemption、次数与审计一致；不再倒序补锁 |
 
 主要操作锁子集：ensure/rejoin/leave 使用 L1 和适用 L3/L5；redeem 使用 L1/L2/L3/L5/L6/L7/L8；admin_create_codes 使用 L0/L3/L8；admin_grant_entitlement 使用 L0/L1/L3/L7/L8；admin_block/revoke_admin 使用 L0、适用 L1、L8。撤码/撤授/成员封禁等只取得必要锁。严格禁止已取高层锁后回取低层锁；已删除的公共套餐和能力配置不进入任何锁路径。

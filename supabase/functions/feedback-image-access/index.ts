@@ -6,7 +6,11 @@ import {issueFeedbackImageUrl} from './service.ts';
 const handle=withSupabase({auth:'user'},(req,ctx)=>
   issueFeedbackImageUrl(req,{
     getAccess:async(attachmentId)=>{
-      const {data,error}=await ctx.supabase.rpc('feedback_image_access',{
+      const bearer=req.headers.get('authorization')?.replace(/^Bearer /i,'')??'';
+      const assurance=await ctx.supabase.auth.mfa.getAuthenticatorAssuranceLevel(bearer);
+      if(assurance.error)return {data:null,error:{code:'AUTH_UNAVAILABLE'}};
+      const {data,error}=await ctx.supabaseAdmin.rpc('feedback_image_access',{
+        p_actor_id:ctx.userClaims?.id,p_actor_aal:assurance.data.currentLevel,
         p_attachment_id:attachmentId,
       });
       return {data,error};
