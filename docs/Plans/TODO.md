@@ -14,6 +14,8 @@
 
 ## A. 第一阶段遗留缺口（已授权联合开发，仍须并行修验）
 
+- [ ] **PRODUCT-JOIN-20261102｜实现/专项PASS，整仓准出待复验**：当前产品确认后自动关联Free已落地，真实邮件/8443/权益/完整F07、SQL543/543及中英/链接通过，保留left/suspended/blocked与跨账号/产品边界。最后verify:web被Lens并行AI文件useAIShotCameraWorkbench.ts:436缺fields类型错误阻塞；待其所属施工修复后复跑，不修改AI来掩盖本专项结果。详细红绿/当前用户数据保全见[计划](./2026-11-02-confirmed-product-membership.md)。
+
 - [ ] **LOCAL-EDGE-502｜P2｜本地函数运行时偶发上游502**：独立零图ZIP实测筛选/撤权请求各一次502，完整套件随后连续两次EXIT0，Admin批量删除再次EXIT0；原HTTP断言和进程日志诊断保留，根因未稳定复现。需在后续本地/目标部署环境核对函数启动/重载与网关日志，不以增加产品重试掩盖。审查确认缺陷及004夹具本地修复已完成，实际证据见[修复计划](./2026-11-02-backend-audit-remediation.md)。
 
 

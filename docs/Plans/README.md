@@ -1,5 +1,7 @@
 # AisenCore｜当前执行计划索引
 
+**当前产品关联修复**：[邮箱确认后自动关联详细计划](./2026-11-02-confirmed-product-membership.md)，同步Core/Lens单一合同及真实邮件/Free/兑换/隔离回归。
+
 **2026-11-02后端修复施工**：[B0～B5详细计划](./2026-11-02-backend-audit-remediation.md)按复核报告逐项红测试、正向迁移、调用链清理和实测；所有者已授权本地修复，云端操作仍需另批。
 
 **2026-11-02后端复核与本地修复**：[审查结果§9](../reviews/2026-11-02-aisencore-backend-supabase-audit.md)覆盖修复前快照；41项迁移已安装，SQL543/543、Deno20/20与真实JWT/隔离S3/Admin回归通过。仅保留AisenLens和管理员，历史两产品/demo/业务行数不再作为当前基线。云端/人工及未稳定复现的本地运行时问题按唯一TODO继续跟踪。

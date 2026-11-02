@@ -11,7 +11,7 @@
 | 产品目录 | `ListAvailableProducts` | 匿名/已登录 | Data API 读取 `active` 产品公开字段 | 否 |
 | 本人概览 | `GetMyProducts`（`get_my_products`） | 已登录用户 | RPC | 否 |
 | 会员/准入认证 | `CheckAccess(product_key)`（`check_access`，无 capability 参数） | 本人 JWT / 转发本人 JWT 的 SaaS 可信后端 | RPC | 否 |
-| 本人成员 | `EnsureMembership(product_key)` | 首次合法业务接入 | RPC | 仅无记录时创建 |
+| 本人成员 | `EnsureMembership(product_key)` | 邮箱确认后当前产品登录/会话接入 | RPC | 仅无记录时创建Free成员 |
 | 本人成员 | `LeaveProduct` / `RejoinProduct` | 本人明确操作 | RPC | 是 |
 | 兑换 | `RedeemCode(product_key, code)` | 已登录用户 | RPC | 是 |
 | 本人权益查询 | 本人授权/兑换记录 | 已登录用户 | Data API + RLS | 否 |
@@ -53,7 +53,7 @@
 
 ## 3. 候选请求与响应语义
 
-- **`EnsureMembership(product_key)`**：返回 `membership_status=active` 与布尔 `created`；已 `left/suspended` 禁止隐式恢复。只在首次真正需登录的合法产品业务中调用，而非注册、登录、支付回调、产品展示或只读查询。
+- **`EnsureMembership(product_key)`**：返回membership_status=active与布尔created；已left/suspended禁止隐式恢复。邮箱确认后当前产品的登录/会话接入调用，未确认注册、匿名展示、独立状态查询或支付回调不调用。无Grant的active成员为Free，不写Grant/信用/核销；只读RPC自身不创建成员。
 - **`GetMyProducts()`**：返回本人可见产品的 `product_key/product_status/membership_status`、`tier=free|pro`、`pro_active`、`current_period_ends_at`、`effective_ends_at`、`is_lifetime` 等可信资格摘要；无 Pro Grant 派生 Free，不创建 Free Plan/Grant，不泄露其他产品数据。
 - **`CheckAccess(product_key)`**（唯一目标签名，**无 capability 参数**）：
   - 返回公共准入 `allowed`、稳定 `reason`、`product_status`、`membership_status`、`tier=free|pro`、`pro_active`、可信 `evaluated_at` 和可用 Pro 期限摘要（`current_period_ends_at`、`effective_ends_at`、`is_lifetime`）。Free 只代表没有当前有效 Pro，并不代表 blocked/left/suspended 可以访问。
@@ -84,7 +84,7 @@
 | `ADMIN_REQUIRED` | 403 | 非管理员或未完成 MFA | 阻断管理界面 |
 | `ACCOUNT_RESTRICTED` | 403（`CheckAccess` 为 200 + reason） | 平台账号被限制 | 不尝试加入或兑换 |
 | `PRODUCT_UNAVAILABLE` | 403/404（`CheckAccess` 为 200 + reason） | 产品不存在、未开放或暂停 | 不尝试隐式加入 |
-| `MEMBERSHIP_REQUIRED` | 403（`CheckAccess` 为 200 + reason） | 尚未加入 | 由合法首次业务触发 ensure |
+| `MEMBERSHIP_REQUIRED` | 403（`CheckAccess` 为 200 + reason） | 尚未关联 | 确认后的当前产品会话触发ensure；关联故障允许刷新重试 |
 | `MEMBERSHIP_LEFT` | 403（`CheckAccess` 为 200 + reason） | 已主动退出 | 提示用户明确 rejoin |
 | `MEMBERSHIP_SUSPENDED` | 403（`CheckAccess` 为 200 + reason） | 产品成员被限制 | 禁止客户端解封 |
 | `ENTITLEMENT_REQUIRED` | 403（`CheckAccess` 为 200 + reason） | 缺少所需权益 | 保留正常 Free 能力 |
@@ -121,8 +121,8 @@
 
 | 序号 | 用例 | 必须满足的结果 |
 | --- | --- | --- |
-| I-01 | 普通用户注册/登录后只查看产品 | 无跨产品自动成员创建 |
-| I-02 | 云端合法首次业务接入 | 后端以用户 JWT 调用 ensure，原子创建唯一 `active` |
+| I-01 | 未确认注册/匿名浏览；确认后接入当前产品 | 确认前无成员；确认后仅当前产品active且Free，无跨产品创建 |
+| I-02 | 已确认账号首次登录/恢复产品会话 | 本人JWT调用ensure，原子创建唯一active和一次join；无Pro入账 |
 | I-03 | 本地匿名 Free | 无登录、无成员、无公共联网依赖 |
 | I-04 | 本地首次 Pro 或私有备份 | 本人 JWT 直调 ensure；后续按在线权益复核 |
 | I-05 | 两设备同时首次加入 | 只有一条当前成员和一次 `join` 事件 |
