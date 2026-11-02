@@ -1,5 +1,7 @@
 # 第二阶段A详细计划｜环境、身份、成员、昵称与生命周期
 
+> **2026-11-02合同更新**：邮箱确认后以及已确认登录/会话恢复幂等关联当前产品Free，兑换只授Pro；下方2026-10-27/28的无成员实测是旧合同历史。现行施工与验收以[自动关联计划](../2026-11-02-confirmed-product-membership.md)为准。
+
 > **状态：本地真实注册/确认/恢复、登录登出主路径 PASS；全生命周期负例 PARTIAL。** 对应TODO LENS-01～03，审查F01/F03及决定7/8/9。必须先取得[第一阶段准出](./01-stage1-core-readiness.md)，本包通过后进入[资格与兑换](./03-stage2-entitlements-and-redemption.md)。总范围见[总计划](./00-integration-master-plan.md)。
 
 **2026-10-27 可复测切片**：Lens `features/auth/coreAuth.ts` 新建唯一 `@supabase/supabase-js@2.76.1` 共享浏览器 client（仅配置公开 `VITE_AISENCORE_URL`/`VITE_AISENCORE_PUBLISHABLE_KEY` 时启用、自动刷新、session 独立 storageKey）；真实 `AuthPage`/设置 AuthForm 接上登录/注册/邮件/恢复操作，配置缺失时 Free 及本机项目仍可用。设置展示真实会话邮箱/昵称，local 登出先锁 `aiCredentialVault` 内存密钥，再调用 `signOut({scope:'local'})`，不删除已加密仓库或项目。Core `supabase/config.toml` 新增仅 localhost/127.0.0.1:8443 的 confirm/reset 白名单，**配置尚未重启验证实际应用**。Lens 浏览器 QA `tests/features/workflow/core-account-feedback.browser.test.js` 使用真实临时确认账号、正常 `/login`→GoTrue→设置→Edge 零图→PostgreSQL 和 local logout，含用户名/产品归属、反馈不产生 membership、临时身份/反馈清理断言 **1/1 PASS**；WebApp TypeScript PASS。邮件确认/密码重置真实邮件链接、跨标签、多用户切换旧任务与 MFA 等仍 NOT RUN；不把当前切片记完整 A 包验收。
@@ -39,14 +41,14 @@
 | A-01 环境与回调 | 指定Lens回调未被允许、旧origin/无效邮件不能完成流程 | Core `supabase/config.toml`精确增补本地URL，保留Admin site_url；应用运行版本验证配置加载 | 实际邮件/回调、错误/过期分支、浏览器OPTIONS与Auth调用证据 |
 | A-02 官方会话接入 | 正常AuthPage/设置表单当前无回调，不能登录；无env时Free应仍可进入 | Lens `features/auth/`集中一份官方SDK/client与会话订阅；公开env示例、必要路由/设置接线 | 无假会话、无重复client/刷新、未配置状态不顶层抛错阻塞Free |
 | A-03 认证全流程 | 注册确认前不能当已登录，过期/失效/recovery混普通session等真实负例 | 复用AuthForm/AuthPage/authRoutes，接注册/确认/登录/忘记/重置/刷新，重发由用户明确触发 | 普通会话与PASSWORD_RECOVERY区分，成功/失败只按真实Auth结果显示 |
-| A-04 成员准入 | 仅登录/查询/反馈不应产生join；left/suspended不能ensure恢复 | 当前产品参数在最小适配中固定，合法首次产品操作才ensure；leave/rejoin为明确用户动作 | 当前成员关系及事件与UI一致，同用户产品唯一且合法重试不重复事件 |
+| A-04 成员准入 | 未确认不join；确认后当前产品接入自动Free；left/suspended不能ensure恢复 | 固定当前产品，确认/登录/会话恢复ensure；查询本身无副作用，leave/rejoin明确操作 | 同用户产品唯一、join一次、无Grant；服务故障可重试，不串产品/账号 |
 | A-05 资料 | 旧昵称保存/邮箱修改没有真实结果；切号不能沿用前一账号draft | Auth用户可编辑资料保存可选昵称，邮箱变更用官方认证，更新显示；不新建profiles表 | 稳定user_id不变，昵称只显示，恶意metadata不能获得Pro/Admin |
 | A-06 登出/切号 | 全局登出会影响其他应用；旧请求/私图/云清单可串号 | 显式local登出，失效本账号请求/缓存；复用现有保险库lock、会话Key释放和任务收尾/取消入口 | 两应用独立会话、两标签旧响应保护、Key释放与加密密文/项目保留 |
 | A-07 正常入口回归 | 工作台打开账号可能丢位置/草稿，认证落地或无配置阻塞Free | 仅必要App/WorkspaceSettingsDialog组合、已有组件状态和中英错误文案 | 项目库/工作台/独立认证页均真实可用，键盘/窄屏无阻断 |
 
 A-02所需新文件只有实际职责成立时建立，不按每个按钮建service。普通查询不重复getUser/强制刷新；登录状态不等于当前产品allowed或Pro。邮箱和昵称不是资源owner主键。
 
-**成员取证分层**：本包用真实用户JWT独立验证成员RPC与调用时机，不新增仅为测试的加入按钮。实际首次业务加入由B的合法兑换或D的用户主动云操作产生，交对应工作包和综合验收记录；反馈不建成员的实际页面负例由C验证。A的Auth准出不依赖尚未接好的兑换/反馈/备份UI。
+**成员取证分层**：本包真实注册/邮件确认/登录与会话恢复验证首次Free关联，不新增加入按钮；B验证后续兑换只升级Pro，C验证反馈不重复join，D依赖既有成员和Pro准入。A的认证关联不依赖兑换/备份UI。
 
 ## 4. 生命周期的明确边界
 
@@ -60,7 +62,7 @@ A-02所需新文件只有实际职责成立时建立，不按每个按钮建serv
 
 | 用例 | 行为与服务端/本机断言 |
 | --- | --- |
-| A-T01 注册/邮件确认 | Lens真实提交→Auth待确认→Mailpit链接→确认后会话；注册/登录不自动建成员 |
+| A-T01 注册/邮件确认 | Lens真实提交→待确认无成员→Mailpit确认→当前Lens成员active/Free，其他产品和Grant为0；重开不重复join |
 | A-T02 过期/错误/重放链接 | 错误可恢复、不假成功、不错误进入reset；固定受控返回路径，无开放重定向 |
 | A-T03 恢复密码 | 正常session不冒充恢复凭据，真实恢复后新密码有效/旧密码失效，界面状态与Auth一致 |
 | A-T03B 异浏览器邮件 | 浏览器配置A发起注册/找回，独立且无原会话/存储的配置B打开Mailpit确认/恢复链接；确认及改密成功，记录B会话与A重新登录/继续行为，不复制token；失效/重放仍正确拒绝 |

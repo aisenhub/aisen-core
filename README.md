@@ -78,6 +78,8 @@ AisenCore（Aisen 公共核心服务）为多个彼此独立的 SaaS 产品统�
 
 **上线测试前本地基线（2026-11-02）**：只保留AisenLens产品和原管理员身份/MFA/会话，旧业务及测试数据已按所有者授权清空。不要在当前联合开发库重新执行demo seed；测试通过真实客户端操作或独立事务夹具产生数据。`python scripts/check-local-admin-qa-cleanliness.py`验证空业务基线；清理脚本默认回滚，apply需仓库外已验证备份。当前41项迁移已安装；[审查及修复结果](./docs/reviews/2026-11-02-aisencore-backend-supabase-audit.md)与[详细实施计划](./docs/Plans/2026-11-02-backend-audit-remediation.md)记录本地验证，云R2/SMTP、人工签收及上线授权仍为独立门禁。
 
+**后续真实注册与当前产品接入**：所有者已开始Lens真实注册，邮箱确认/已确认登录/会话恢复会幂等关联当前产品为Free，兑换用于升级Pro；详细规则与验收见[自动关联计划](./docs/Plans/2026-11-02-confirmed-product-membership.md)。上段空业务计数是清理时快照，不要求日常开发维持为空；保护现有真实账号/成员，不为通过旧清洁检查再次清库。
+
 常用验证：`pnpm typecheck`、`pnpm lint`、`pnpm build`。当前空业务列表是清理后的预期状态，不依靠Atlas/Orbit/Harbor演示产品填充。已验证与仍未验证范围以唯一TODO和本轮审查为准。
 
 完成体验后，可执行 `pnpm dlx supabase stop --project-id Aisencore` 关闭本地服务，数据卷默认保留（请勿误用 `db reset`，那会清空本地数据库）。
