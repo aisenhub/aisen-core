@@ -57,7 +57,7 @@
 - 数据库回归：012_feedback_v3_lightweight.test.sql
 - Admin：Feedback.tsx、FeedbackV2.tsx、FeedbackV3Editor.tsx、useFeedbackTags.ts、FeedbackExport.tsx
 - Edge：feedback-export/index.ts、feedback-submit/service.ts、feedback-image-access/service.ts、_shared/feedback-image.ts
-- Chrome：scripts/test-fb-v3-browser.mjs
+- 现行Chrome：`node scripts/test-admin-operations-other.mjs operations-feedback`；旧四队列脚本已由V4测试替代，历史截图保留。
 
 ## 核心验收
 
@@ -103,4 +103,4 @@
 
 ### 恢复施工顺序
 
-先检查 GitHub main 和此文档的版本、拉取最新代码；核实 Supabase/Edge/R2 环境与权限；执行本地 Admin 构建/Lint、pgTAP、`scripts/test-fb-v3-browser.mjs` 与 ZIP HTTP 基准；然后实施缩略图和含图链路，最后执行全站/人工/性能验收。任何不满足的门槛保持 OPEN，禁止以本地已通过代替线上签收。
+先检查 GitHub main 和此文档的版本、拉取最新代码；核实 Supabase/Edge/R2 环境与权限；执行本地 Admin 构建/Lint、pgTAP、`node scripts/test-admin-operations-other.mjs operations-feedback` 与 ZIP HTTP 基准；然后实施缩略图和含图链路，最后执行全站/人工/性能验收。任何不满足的门槛保持 OPEN，禁止以本地已通过代替线上签收。

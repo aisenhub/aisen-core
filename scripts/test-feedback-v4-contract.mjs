@@ -44,7 +44,7 @@ assert.doesNotMatch(editor,/标签筛选|添加内部标签|移入回收站/);
 assert.doesNotMatch(app, /feedback\/trash/);
 assert.match(show,/selectedProduct/);
 assert.match(show,/所属产品/);
-assert.match(exportEdge,/\['product_id','feedback_no','category','status','priority','is_starred'\]/);
+assert.match(exportEdge,/\['product_id','feedback_no','category','priority','is_starred'\]/);
 assert.match(list,/label="反馈编号"/);
 assert.match(exportUi,/feedbackNoFilter/);
 assert.doesNotMatch(exportEdge,/query\.overlaps\('tags'/);

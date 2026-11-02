@@ -1,6 +1,6 @@
 # CORE-FEEDBACK-001｜反馈联系邮箱
 
-2026-10-29 用户授权本地双仓实施；**字段、Edge、可信RPC、Admin详情/复制及ZIP隐私已实现**。现行合同唯一维护于[需求](../../spec/requirements.md#用户反馈-v3四队列轻量处理--私有图片--可选内容-zip)与[反馈领域](../../architecture/domains/user-feedback.md)，Lens施工及完整矩阵见其 `docs/plans/2026-10-28_user-acceptance-ui-review/IMPLEMENTATION_PLAN.md`。本项不表示第一阶段签收或线上部署。
+2026-10-29 用户授权本地双仓实施；**字段、Edge、可信RPC、Admin详情/复制及ZIP隐私已实现**。现行合同唯一维护于[需求](../../spec/requirements.md#用户反馈-v4三队列五分类批量移动与永久删除--私有图片--zip)与[反馈领域](../../architecture/domains/user-feedback.md)，Lens施工及完整矩阵见其 `docs/plans/2026-10-28_user-acceptance-ui-review/IMPLEMENTATION_PLAN.md`。本项不表示第一阶段签收或线上部署。
 
 ## 审查结论与决定
 

@@ -59,7 +59,7 @@
 | 数据库 | `supabase/tests/database/004_*.sql`、`005_*.sql`、`009_*.sql`、`012_*.sql`及现有并发脚本 | 用已核验CLI/隔离实例运行相关测试；安全行为改变时运行全套受影响SQL |
 | Auth/HTTP | `scripts/test-d2-auth-api-mfa.mjs`、`test-admin-auth-inflight-race.mjs`、`test-admin-login-isolation.mjs`、`test-feedback-auth-http.py` | 先读真实身份创建/清理约定，不能直指未知库 |
 | Edge | `supabase/functions/tests/feedback-upload.test.ts`、`feedback-r2-protocol.test.ts`、`feedback-export.test.ts` | 按测试实际需求授Deno最小权限，缓存按工具独立目录；补Edge handler故障/鉴权用例 |
-| 浏览器 | `test-d3-authenticated-pages.mjs`、`test-fb-v3-browser.mjs`、既有性能/秘密扫描 | 固定服务/账号/构建、与重负载测试错开；既有截图不代替本轮结果 |
+| 浏览器 | `test-d3-authenticated-pages.mjs`、既有性能/秘密扫描 | 固定服务/账号/构建、与重负载测试错开；既有截图不代替本轮结果 |
 
 新R-16、故障分类和引用安全场景应扩现有合适测试；确无载体才新增最小测试文件。不能仅因源文件名仍含v2就删除有效安全/ZIP测试，删除依据是现行行为与调用事实。
 

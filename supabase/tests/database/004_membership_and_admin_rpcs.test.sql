@@ -27,6 +27,11 @@ VALUES
   '22000000-0000-4000-8000-000000000001','admin','m2-grant-future','duration',30,
   transaction_timestamp()+interval '5 days',transaction_timestamp()+interval '35 days');
 
+INSERT INTO public.pro_credit_accounts(user_id,product_id,settled_at)
+ VALUES ('12000000-0000-4000-8000-000000000001','22000000-0000-4000-8000-000000000001',transaction_timestamp());
+INSERT INTO public.pro_credit_entries(grant_id,user_id,product_id,credited_seconds,consumed_seconds,remaining_seconds)
+ VALUES ('42000000-0000-4000-8000-000000000001','12000000-0000-4000-8000-000000000001',
+ '22000000-0000-4000-8000-000000000001',30*86400,86400,29*86400);
 SELECT plan(70);
 -- Public wrapper signatures and execution barriers, including direct private calls.
 SELECT has_function('public','check_access',ARRAY['text'],'one-parameter check_access exists');

@@ -22,7 +22,7 @@ assert.match(mapping.stdout,/:55322\b/);
 const pub=cfg.PUBLISHABLE_KEY||cfg.ANON_KEY;
 assert.ok(pub&&cfg.SERVICE_ROLE_KEY);
 const prefix=randomUUID().replaceAll('-','').slice(0,12);
-const pass='LocalFb!'+randomBytes(16).toString('hex');
+const pass='LocalFb!8'+randomBytes(16).toString('hex');
 const ids=[],productId=randomUUID(),productKey='fb_http_'+prefix;
 let feedbackId=null,adminId=null;
 const valid=x=>{assert.match(x,/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i);return x};
@@ -119,53 +119,55 @@ try{
   assert.ok(!JSON.stringify(owner).includes('object_key'));
   ok(await rpc('my_feedback_events',{p_feedback_id:feedbackId},
     b.access),403,'cannot read stranger public events');
-  ok(await rpc('reply_to_feedback',{p_feedback_id:feedbackId,
-    p_message:'attack',p_expected_version:1},b.access),403,'stranger cannot reply');
-  ok(await rpc('admin_update_feedback',{p_feedback_id:feedbackId,
-    p_expected_version:1,p_status:'in_progress'},a.access),403,'owner cannot admin');
-  ok(await rpc('admin_update_feedback',{p_feedback_id:feedbackId,
-    p_expected_version:1,p_status:'in_progress'},admin.access),403,'admin AAL1 refused');
-  const pre=ok(await rpc('feedback_submit_preflight',
-    {p_product_key:productKey},a.access),200,'owner preflight');
-  assert.equal(pre.allowed,true);
-  const listPre=ok(await http('/rest/v1/admin_feedback_summaries?select=id&limit=5',
-    undefined,a.access,false,'GET'),200,'RLS owner on Admin view');
-  assert.equal(listPre.length,0);
-  const listAdmin=ok(await http('/rest/v1/admin_feedback_summaries?select=id&limit=5',
-    undefined,a2,false,'GET'),200,'AAL2 Admin view');
-  assert.equal(listAdmin.filter(x=>x.id===feedbackId).length,1);
-  ok(await rpc('admin_update_feedback',{
-    p_feedback_id:feedbackId,p_expected_version:1,p_status:'in_progress'
-  },a2),409,'untriaged inbox cannot be processed');
-  assert.equal(ok(await rpc('admin_screen_feedback',{
-    p_feedback_id:feedbackId,p_expected_version:1,p_action:'triage',p_priority:'high'
-  },a2),200,'AAL2 admin triages').version,2);
-  assert.equal(ok(await rpc('admin_update_feedback',{
-    p_feedback_id:feedbackId,p_expected_version:2,p_status:'in_progress'
-  },a2),200,'Admin accepts feedback').version,3);
-  ok(await rpc('admin_update_feedback',{
-    p_feedback_id:feedbackId,p_expected_version:1,p_status:'resolved',
-    p_public_reply:'stale'
-  },a2),409,'stale version refused');
-  assert.equal(ok(await rpc('admin_assign_feedback',{
-    p_feedback_id:feedbackId,p_expected_version:3,p_assigned_to:adminId
-  },a2),200,'Admin assigns').version,4);
-  ok(await rpc('admin_assign_feedback',{
-    p_feedback_id:feedbackId,p_expected_version:4,p_assigned_to:b.id
-  },a2),422,'ordinary user not eligible as assignee');
-  assert.equal(ok(await rpc('admin_update_feedback',{
-    p_feedback_id:feedbackId,p_expected_version:4,p_status:'waiting_user',
-    p_public_reply:'Please add reproduction steps'
-  },a2),200,'Admin asks for details').version,5);
-  const appended=ok(await rpc('reply_to_feedback',{
-    p_feedback_id:feedbackId,p_expected_version:5,p_message:'Here are steps'
-  },a.access),200,'owner appends reply');
-  assert.equal(appended.status,'in_progress');
+  // V4 only: removed legacy write endpoints must not resolve, even for AAL2 admins.
+  for(const [name,payload] of [
+    ['reply_to_feedback',{p_feedback_id:feedbackId,p_expected_version:1,p_message:'obsolete'}],
+    ['admin_update_feedback',{p_feedback_id:feedbackId,p_expected_version:1,p_status:'in_progress'}],
+    ['admin_assign_feedback',{p_feedback_id:feedbackId,p_expected_version:1,p_assigned_to:adminId}],
+    ['admin_screen_feedback',{p_feedback_id:feedbackId,p_expected_version:1,p_action:'trash'}],
+    ['admin_attention_feedback',{p_feedback_id:feedbackId,p_expected_version:1,p_tags:['obsolete']}],
+    ['admin_feedback_tags',{p_product_id:productId}],
+  ]) {
+    for(const [role,token] of [['owner',a.access],['admin-aal2',a2]]) {
+      const response=await rpc(name,payload,token);
+      assert.equal(response.status,404,name+' must be absent for '+role+
+        ': '+JSON.stringify(response.data).slice(0,140));
+    }
+  }
+  ok(await rpc('admin_mark_feedback_read',{p_feedback_id:feedbackId,p_expected_version:1},
+    a.access),403,'ordinary user cannot mark read');
+  ok(await rpc('admin_mark_feedback_read',{p_feedback_id:feedbackId,p_expected_version:1},
+    admin.access),403,'AAL1 cannot mark read');
+  assert.equal(ok(await rpc('admin_mark_feedback_read',{
+    p_feedback_id:feedbackId,p_expected_version:1},a2),200,'AAL2 marks read').version,1);
+  ok(await rpc('admin_mark_feedback_read',{p_feedback_id:feedbackId,p_expected_version:1},
+    a2),200,'read is idempotent');
+  for(const action of ['trash','restore']) {
+    const payload={p_feedback_id:feedbackId,p_expected_version:1,
+      p_action:action};
+    const res=await rpc('admin_feedback_v3',payload,a2);
+    assert.equal(res.status,422,'obsolete action/tags '+action+' denied');
+  }
+  ok(await rpc('admin_feedback_v3',{p_feedback_id:feedbackId,p_expected_version:1,
+    p_action:'save',p_priority:'high'},a.access),403,'ordinary cannot save');
+  ok(await rpc('admin_feedback_v3',{p_feedback_id:feedbackId,p_expected_version:1,
+    p_action:'save',p_priority:'high'},admin.access),403,'AAL1 cannot save');
+  assert.equal(ok(await rpc('admin_feedback_v3',{p_feedback_id:feedbackId,
+    p_expected_version:1,p_action:'save',p_priority:'high',
+    p_is_starred:true,p_internal_note:'private QA note'},a2),200,'V4 inbox saves').version,2);
+  ok(await rpc('admin_feedback_v3',{p_feedback_id:feedbackId,p_expected_version:1,
+    p_action:'triage'},a2),409,'V4 stale CAS refused');
+  assert.equal(ok(await rpc('admin_feedback_v3',{p_feedback_id:feedbackId,
+    p_expected_version:2,p_action:'triage'},a2),200,'V4 triage').queue_state,'workbench');
+  assert.equal(ok(await rpc('admin_feedback_v3',{p_feedback_id:feedbackId,
+    p_expected_version:3,p_action:'archive'},a2),200,'V4 archive').queue_state,'archived');
+  assert.equal(ok(await rpc('admin_feedback_v3',{p_feedback_id:feedbackId,
+    p_expected_version:4,p_action:'reopen'},a2),200,'V4 reopen').queue_state,'workbench');
   const events=ok(await rpc('my_feedback_events',{p_feedback_id:feedbackId},
     a.access),200,'owner visible history');
-  assert.equal(events.filter(e=>e.event_type==='user_reply').length,1);
-  assert.ok(events.every(e=>!['internal_note','assigned'].includes(e.event_type)));
-  console.log('FB_REAL_HTTP PASS signed GoTrue AAL1/AAL2, RLS, Edge-only metadata boundary, owner isolation, CAS, assignment, status and reply');
+  assert.ok(!events.some(e=>['internal_note','user_reply','public_reply','assigned']
+    .includes(e.event_type)),'V4 owner event projection excludes internal/obsolete writing');
+  console.log('FB_REAL_HTTP_V4 PASS real JWT AAL1/AAL2, removed RPC 404, V4 CAS, priorities, lifecycle, owner isolation');
 }finally{
   // Every cleanup predicate is anchored to the freshly created product/users.
   // Do not touch existing demo rows, user data, or durable admins.

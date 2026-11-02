@@ -22,6 +22,7 @@ const emailA='pro-credit-http-admin-'+tag+'@aisencore.test';
 const emailU='pro-credit-http-user-'+tag+'@aisencore.test';
 const pass='ProLocal!'+randomBytes(16).toString('hex');
 const created=[];
+const otherProductId=randomUUID(),otherProductKey='credit_qa_'+tag.replaceAll('-','');
 let adminId=null,targetId=null,done=false,cleanupOk=true;
 const scaleMode=process.argv.includes('--http-scale');
 const scaleSamples=[];
@@ -117,6 +118,8 @@ try{
   const repeat=await rpc('admin_grant_entitlement',firstReq);
   assert.equal(repeat.idempotent_replay,true);
   assert.equal(repeat.grant_id,first.grant_id);
+  assert.deepEqual(Object.keys(repeat).sort(),Object.keys(first).sort());
+  assert.ok(Math.abs(Date.parse(repeat.effective_ends_at)-Date.parse(first.effective_ends_at))<1000);
   await request('/rest/v1/rpc/admin_grant_entitlement',{
     token:aal2.access_token,body:{...firstReq,p_duration_days:7},expect:409,
   });
@@ -155,7 +158,9 @@ try{
     token:loginA.access_token,body:{p_target_user_id:targetId},expect:403,
   });
   console.log('HTTP_USER_CENTRE_COMPOSITE_SUMMARY_AAL2 PASS');
-  const hubId=sql("SELECT id FROM public.products WHERE product_key='aisenhub' AND status='active'");
+  sql('INSERT INTO public.products(id,product_key,name,status) VALUES ('+q(otherProductId)+
+    ",'"+otherProductKey+"','Disposable cross-product credit QA','active')");
+  const hubId=otherProductId;
   assert.match(hubId,/^[0-9a-f-]{36}$/i);
   const other=await rpc('admin_get_pro_entitlement',
     {p_target_user_id:targetId,p_product_id:hubId});
@@ -165,7 +170,7 @@ try{
     token:aal2.access_token,body:duration(targetId,hubId,30,randomUUID()),
     expect:409,
   });
-  const wrongAccess=await rpc('check_access',{p_product_key:'aisenhub'},
+  const wrongAccess=await rpc('check_access',{p_product_key:otherProductKey},
     userLogin.access_token);
   assert.equal(wrongAccess.allowed,false);
   assert.equal(wrongAccess.reason,'MEMBERSHIP_REQUIRED');
@@ -323,6 +328,7 @@ try{
         'DELETE FROM public.product_memberships WHERE user_id='+q(targetId)+';',
         'DELETE FROM public.redemption_rate_limits WHERE user_id='+q(targetId)+';',
         'DELETE FROM public.platform_admins WHERE user_id='+q(adminId)+';',
+        'DELETE FROM public.products WHERE id='+q(otherProductId)+';',
         'COMMIT;',
       ].join('\n');
       // 10k test Grants entail FK enforcement and may take longer than the

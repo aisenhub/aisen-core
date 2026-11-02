@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""F07/R-16 isolated-in-transaction local pgTAP regression.
+"""F07/R-16 and V4-retired-RPC isolated-in-transaction local pgTAP regression.
 
 Uses ONLY the known AisenCore local database container on port 55322.
 After the joint-dev local migration, each fixture runs in its own transaction
@@ -11,14 +11,27 @@ from __future__ import annotations
 from pathlib import Path
 import re
 import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parent.parent
 CONTAINER = "supabase_db_Aisencore"
 CASES = (
+    ("001_core_foundation.test.sql", 25),
+    ("002_membership_rls.test.sql", 10),
+    ("003_entitlements_and_redemption_schema.test.sql", 57),
+    ("004_membership_and_admin_rpcs.test.sql", 70),
     ("005_redemption_and_grant_rpcs.test.sql", 93),
+    ("006_admin_user_lookup.test.sql", 47),
+    ("007_admin_grant_request_lookup.test.sql", 19),
+    ("008_feedback_foundation.test.sql", 32),
+    ("009_feedback_rpcs.test.sql", 59),
+    ("010_feedback_v2_inbox.test.sql", 30),
+    ("011_feedback_v2_export.test.sql", 8),
+    ("012_feedback_v3_lightweight.test.sql", 28),
     ("013_feedback_scoped_recovery.test.sql", 24),
-    ("009_feedback_rpcs.test.sql", 60),
-    ("010_feedback_v2_inbox.test.sql", 32),
+    ("014_feedback_contact.test.sql", 15),
+    ("015_backend_audit.test.sql", 18),
+    ("016_dashboard_and_integrity.test.sql", 8),
 )
 
 
@@ -52,12 +65,16 @@ def check_existing_contract() -> None:
 
 
 def main() -> None:
+    if sys.argv[1:] not in ([], ['--feedback-only']):
+        raise RuntimeError('Only --feedback-only or the full suite is supported')
+    cases = (tuple(case for case in CASES if 'feedback' in case[0])
+             if sys.argv[1:] else CASES)
     port = run("port", CONTAINER, "5432/tcp", timeout=20)
     if port.returncode != 0 or not re.search(r":55322\b", port.stdout):
         raise RuntimeError("Unsafe container/port mapping, expected :55322")
     check_existing_contract()
     total = 0
-    for fixture, expected in CASES:
+    for fixture, expected in cases:
         fixture_sql = (ROOT / "supabase/tests/database" / fixture).read_text("utf-8")
         if not fixture_sql.rstrip().endswith("ROLLBACK;"):
             raise RuntimeError(f"Fixture lacks guaranteed final ROLLBACK: {fixture}")
@@ -75,7 +92,7 @@ def main() -> None:
             raise RuntimeError(f"pgTAP failure: {fixture}")
         check_existing_contract()
         total += len(oks)
-    print(f"PASS {total}/{sum(case[1] for case in CASES)}; "
+    print(f"PASS {total}/{sum(case[1] for case in cases)}; "
           "all fixture transactions rolled back; installed migrations untouched")
 
 

@@ -19,7 +19,10 @@ INSERT INTO public.products(id,product_key,name,status) VALUES
  ('23000000-0000-4000-8000-000000000001','m3_alpha','M3 Alpha','active'),
  ('23000000-0000-4000-8000-000000000002','m3_beta','M3 Beta','active');
 INSERT INTO public.product_memberships(user_id,product_id,status)
-VALUES ('13000000-0000-4000-8000-000000000004','23000000-0000-4000-8000-000000000001','left');
+VALUES
+ ('13000000-0000-4000-8000-000000000004','23000000-0000-4000-8000-000000000001','left'),
+ ('13000000-0000-4000-8000-000000000003','23000000-0000-4000-8000-000000000002','active'),
+ ('13000000-0000-4000-8000-000000000006','23000000-0000-4000-8000-000000000001','active');
 
 SELECT plan(93);
 SELECT has_function('public','redeem_code',ARRAY['text','text'],'two-argument redemption only');
@@ -134,9 +137,9 @@ SELECT is((public.redeem_code('m3_alpha','BADCODE11')->>'code'),'RATE_LIMITED','
 SELECT ok((public.redeem_code('m3_alpha','BADCODE12')->>'retry_after_seconds')::integer>0,'rate limit returns positive wait');
 RESET ROLE;
 SELECT is((SELECT pg_catalog.array_length(failed_at,1) FROM public.redemption_rate_limits WHERE user_id='13000000-0000-4000-8000-000000000003'),10,'exact 10 attempts retained');
-SELECT is((SELECT count(*)::integer FROM public.product_memberships WHERE user_id='13000000-0000-4000-8000-000000000003'),0,'failed attempts never join user');
+SELECT is((SELECT count(*)::integer FROM public.product_memberships WHERE user_id='13000000-0000-4000-8000-000000000003' AND product_id='23000000-0000-4000-8000-000000000001'),0,'failed attempts never join declared alpha product');
 
--- Admin duration grant starts at the latest finite unrevoked expiry.
+-- Each new Grant credits fresh duration immediately; the authoritative Pro total includes all credits.
 SELECT set_config('request.jwt.claim.sub','13000000-0000-4000-8000-000000000001',true);
 SELECT set_config('request.jwt.claims','{"aal":"aal2"}',true);
 SET LOCAL ROLE authenticated;
@@ -155,9 +158,9 @@ SELECT throws_ok($$SELECT public.admin_grant_entitlement(
   '13000000-0000-4000-8000-000000000002','23000000-0000-4000-8000-000000000001',
   'pro','duration',365,NULL,NULL,false,'renewal','grant-a')$$,'PT409');
 SELECT is(
-  (SELECT starts_at FROM public.entitlement_grants WHERE id=(current_setting('m3.direct_grant')::jsonb->>'grant_id')::uuid),
-  (SELECT ends_at FROM public.entitlement_grants WHERE id=(current_setting('m3.first_redemption')::jsonb->>'grant_id')::uuid),
-  'duration renewal starts exactly at future end, no overlap');
+  (SELECT starts_at<=clock_timestamp() AND ends_at=starts_at+interval '30 days'
+     FROM public.entitlement_grants WHERE id=(current_setting('m3.direct_grant')::jsonb->>'grant_id')::uuid),
+  true,'new 30-day duration grant credits immediately and preserves face-value interval');
 SELECT ok(
   (SELECT ends_at-starts_at=interval '30 days' FROM public.entitlement_grants
     WHERE id=(current_setting('m3.direct_grant')::jsonb->>'grant_id')::uuid),
@@ -173,8 +176,8 @@ SELECT throws_ok($$SELECT public.admin_grant_entitlement(
   'free','duration',30,NULL,NULL,false,'bad','grant-invalid3')$$,'PT422');
 SELECT is((public.admin_grant_entitlement(
   '13000000-0000-4000-8000-000000000003','23000000-0000-4000-8000-000000000002',
-  'pro','explicit_window',NULL,transaction_timestamp(),NULL,true,'permanent','grant-lifetime')->>'idempotent_replay'),'false','explicit lifetime grant allowed');
-SELECT is((SELECT count(*)::integer FROM public.product_memberships WHERE user_id='13000000-0000-4000-8000-000000000003'),0,'admin direct grant does not autojoin');
+  'pro','explicit_window',NULL,NULL,NULL,true,'permanent','grant-lifetime')->>'idempotent_replay'),'false','explicit lifetime grant allowed');
+SELECT is((SELECT count(*)::integer FROM public.product_memberships WHERE user_id='13000000-0000-4000-8000-000000000003'),1,'admin grant requires existing active member');
 
 -- Revoking a used code cannot revoke historical Grant. Full batch revoke
 -- removes only future redemption ability, never already successful grants.
@@ -185,14 +188,14 @@ SELECT is((public.admin_revoke_code((SELECT id FROM public.redemption_codes WHER
 DO $$
 BEGIN
   PERFORM set_config('m3.second_batch',public.admin_create_codes(
-    '23000000-0000-4000-8000-000000000002','pro',2,365,false,1,
+    '23000000-0000-4000-8000-000000000002','pro',1,365,false,1,
     NULL,'beta-issued','beta')::text,true);
 END;
 $$;
 SELECT is((SELECT count(*)::integer FROM public.redemption_codes
-  WHERE batch_id=(current_setting('m3.second_batch')::jsonb->>'batch_id')::uuid),2,'second batch has two codes');
+  WHERE batch_id=(current_setting('m3.second_batch')::jsonb->>'batch_id')::uuid),1,'single-code batch contains one code');
 SELECT is((public.admin_revoke_batch(
-  (current_setting('m3.second_batch')::jsonb->>'batch_id')::uuid,'withdraw')->>'revoked_codes'),'2','batch revoke affects both');
+  (current_setting('m3.second_batch')::jsonb->>'batch_id')::uuid,'withdraw')->>'revoked_codes'),'1','batch revoke invalidates one unredeemed code');
 SELECT is((public.admin_revoke_batch(
   (current_setting('m3.second_batch')::jsonb->>'batch_id')::uuid,'again')->>'changed'),'false','batch revoke idempotent');
 SELECT is((public.admin_revoke_grant(
@@ -242,11 +245,20 @@ DO $$
 BEGIN
   PERFORM public.admin_grant_entitlement(
     '13000000-0000-4000-8000-000000000006','23000000-0000-4000-8000-000000000001',
-    'pro','explicit_window',NULL,transaction_timestamp()-interval '1 day',NULL,true,
+    'pro','explicit_window',NULL,NULL,NULL,true,
     'R-16 active lifetime','r16-active');
   PERFORM set_config('m3.r16_batch',public.admin_create_codes(
-    '23000000-0000-4000-8000-000000000001','pro',1,30,false,10,
+    '23000000-0000-4000-8000-000000000001','pro',1,30,false,1,
     NULL,'r16-duration',NULL)::text,true);
+  PERFORM set_config('m3.r16_batch_revoked',public.admin_create_codes(
+    '23000000-0000-4000-8000-000000000001','pro',1,30,false,1,
+    NULL,'r16-revoked',NULL)::text,true);
+  PERFORM set_config('m3.r16_batch_other',public.admin_create_codes(
+    '23000000-0000-4000-8000-000000000001','pro',1,30,false,1,
+    NULL,'r16-other',NULL)::text,true);
+  PERFORM set_config('m3.r16_batch_finite',public.admin_create_codes(
+    '23000000-0000-4000-8000-000000000001','pro',1,30,false,1,
+    NULL,'r16-finite',NULL)::text,true);
 END;
 $$;
 RESET ROLE;
@@ -267,12 +279,12 @@ INSERT INTO public.redemption_code_batches(id,product_id,tier,created_by,request
   quantity,is_lifetime,max_redemptions_per_code)
 VALUES('33000000-0000-4000-8000-000000000016',
   '23000000-0000-4000-8000-000000000001','pro',
-  '13000000-0000-4000-8000-000000000001','r16-lifetime',1,true,2);
+  '13000000-0000-4000-8000-000000000001','r16-lifetime',1,true,1);
 INSERT INTO public.redemption_codes(batch_id,batch_ordinal,code_hash,code_prefix,
   product_id,tier,is_lifetime,max_redemptions,created_by)
 VALUES('33000000-0000-4000-8000-000000000016',1,
   pg_catalog.encode(extensions.digest('M3LIFETIMESYNTHETIC','sha256'),'hex'),'M3LIFET',
-  '23000000-0000-4000-8000-000000000001','pro',true,2,
+  '23000000-0000-4000-8000-000000000001','pro',true,1,
   '13000000-0000-4000-8000-000000000001');
 
 SELECT set_config('request.jwt.claim.sub','13000000-0000-4000-8000-000000000006',true);
@@ -287,7 +299,7 @@ SELECT is((public.redeem_code('m3_alpha','not-a-code')->>'code'),
   'REDEEM_CODE_INVALID','R-16 unrecognized code remains opaque');
 RESET ROLE;
 SELECT is((SELECT count(*)::integer FROM public.product_memberships
-  WHERE user_id='13000000-0000-4000-8000-000000000006'),0,'R-16 rejection does not join member');
+  WHERE user_id='13000000-0000-4000-8000-000000000006'),1,'R-16 rejection retains preexisting member');
 SELECT is((SELECT count(*)::integer FROM public.redemptions
   WHERE user_id='13000000-0000-4000-8000-000000000006'),0,'R-16 rejection writes no redemption');
 SELECT is((SELECT count(*)::integer FROM public.entitlement_grants
@@ -308,35 +320,37 @@ RESET ROLE;
 SELECT set_config('request.jwt.claim.sub','13000000-0000-4000-8000-000000000008',true);
 SET LOCAL ROLE authenticated;
 SELECT is((public.redeem_code('m3_alpha',
-  current_setting('m3.r16_batch')::jsonb->'codes'->>0)->>'ok'),'true',
+  current_setting('m3.r16_batch_revoked')::jsonb->'codes'->>0)->>'ok'),'true',
   'R-16 revoked lifetime does not block redemption');
 RESET ROLE;
 SELECT set_config('request.jwt.claim.sub','13000000-0000-4000-8000-000000000009',true);
 SET LOCAL ROLE authenticated;
 SELECT is((public.redeem_code('m3_alpha',
-  current_setting('m3.r16_batch')::jsonb->'codes'->>0)->>'ok'),'true',
+  current_setting('m3.r16_batch_other')::jsonb->'codes'->>0)->>'ok'),'true',
   'R-16 different-product lifetime does not block redemption');
 RESET ROLE;
 SELECT set_config('request.jwt.claim.sub','13000000-0000-4000-8000-000000000010',true);
 SET LOCAL ROLE authenticated;
 SELECT is((public.redeem_code('m3_alpha',
-  current_setting('m3.r16_batch')::jsonb->'codes'->>0)->>'ok'),'true',
+  current_setting('m3.r16_batch_finite')::jsonb->'codes'->>0)->>'ok'),'true',
   'R-16 finite duration Pro can extend');
 RESET ROLE;
-SELECT is((SELECT redeemed_count FROM public.redemption_codes
-  WHERE batch_id=(current_setting('m3.r16_batch')::jsonb->>'batch_id')::uuid),4,
-  'R-16 permitted redemptions consume exactly four uses');
+SELECT is((SELECT sum(redeemed_count)::integer FROM public.redemption_codes
+  WHERE batch_id IN (SELECT (current_setting(k)::jsonb->>'batch_id')::uuid
+    FROM unnest(ARRAY['m3.r16_batch','m3.r16_batch_revoked','m3.r16_batch_other','m3.r16_batch_finite']) k)),4,
+  'R-16 four separate single-use codes each consumed once');
 SELECT is((SELECT count(*)::integer FROM public.redemptions
-  WHERE code_id=(SELECT id FROM public.redemption_codes
-    WHERE batch_id=(current_setting('m3.r16_batch')::jsonb->>'batch_id')::uuid)),4,
-  'R-16 redemption facts match code counter');
+  WHERE code_id IN (SELECT id FROM public.redemption_codes
+    WHERE batch_id IN (SELECT (current_setting(k)::jsonb->>'batch_id')::uuid
+      FROM unnest(ARRAY['m3.r16_batch','m3.r16_batch_revoked','m3.r16_batch_other','m3.r16_batch_finite']) k))),4,
+  'R-16 redemption facts match four code counters');
 
 SELECT set_config('request.jwt.claim.sub','13000000-0000-4000-8000-000000000001',true);
 SELECT set_config('request.jwt.claims','{"aal":"aal2"}',true);
 SET LOCAL ROLE authenticated;
 SELECT is((public.admin_grant_entitlement(
   '13000000-0000-4000-8000-000000000002','23000000-0000-4000-8000-000000000001',
-  'pro','explicit_window',NULL,transaction_timestamp()-interval '1 day',NULL,true,
+  'pro','explicit_window',NULL,NULL,NULL,true,
   'R-16 admin direct grant','r16-original')->>'idempotent_replay'),'false',
   'R-16 Admin direct lifetime grant is independent');
 RESET ROLE;
@@ -388,6 +402,8 @@ LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'synthetic audit storage error' USI
 GRANT EXECUTE ON FUNCTION pg_temp.reject_test_audit() TO aisencore_rpc_executor;
 CREATE TRIGGER m3_fail_admin_audit BEFORE INSERT ON public.admin_audit_log
   FOR EACH ROW EXECUTE FUNCTION pg_temp.reject_test_audit();
+INSERT INTO public.product_memberships(user_id,product_id,status)
+ VALUES('13000000-0000-4000-8000-000000000005','23000000-0000-4000-8000-000000000001','active');
 SELECT set_config('request.jwt.claim.sub','13000000-0000-4000-8000-000000000001',true);
 SELECT set_config('request.jwt.claims','{"aal":"aal2"}',true);
 SET LOCAL ROLE authenticated;

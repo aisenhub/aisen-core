@@ -75,14 +75,14 @@ Deno.test('isolated S3 protocol fixture: 1/2 images, conditional replay and erro
       id:prefix[0],feedback_no:50,product_id:prefix[0],user_id:prefix[1],
       content:'S3 two-image test',category:'bug',queue_state:'workbench',
       created_at:'2026-10-26T00:00:00Z',version:1,priority:'high',
-      status:'new',is_starred:false,tags:[],events:[],images:[
+      is_starred:false,events:[],images:[
         {slot:1,mime_type:'image/png',bytes:downloaded1},
         {slot:2,mime_type:'image/jpeg',bytes:downloaded2},
       ],
     };
     const archive=unzipSync(await buildFeedbackZip([sample],{
-      user_comments:false,public_replies:false,internal_notes:false,
-      history:false,tags:false,status:false,identity:false,
+      internal_notes:false,
+      history:false,status:false,identity:false,
     },'selected'));
     check(archive['feedback/FB-50/screenshot-1.png']?.length===one.length,
       'private screenshot 1 must appear in unpacked ZIP');

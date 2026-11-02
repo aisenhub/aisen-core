@@ -1,18 +1,17 @@
 import { zipSync } from 'npm:fflate@0.8.2';
 export type ExportOptions={
-  user_comments:boolean;public_replies:boolean;internal_notes:boolean;
-  history:boolean;tags:boolean;status:boolean;identity:boolean;
+  internal_notes:boolean;
+  history:boolean;status:boolean;identity:boolean;
 };
 export type ExportEvent={
-  event_type:string;visibility:string;message:string|null;from_status:string|null;
-  to_status:string|null;created_at:string;
+  event_type:string;visibility:string;message:string|null;created_at:string;
 };
 export type ExportImage={slot:number;mime_type:string;bytes:Uint8Array};
 export type ExportFeedback={
   id:string;feedback_no:number;product_id:string;user_id:string;
   contact_email:string|null;
   content:string;category:string;queue_state:string;created_at:string;version:number;
-  priority:string|null;status:string|null;is_starred:boolean;tags:string[];
+  priority:string|null;is_starred:boolean;
   events:ExportEvent[];images:ExportImage[];
 };
 const encoder=new TextEncoder();
@@ -27,12 +26,9 @@ function imageExt(mime:string){
 }
 function allowedEvents(events:ExportEvent[],options:ExportOptions){
   return events.filter(e=>{
-    if(e.event_type==='user_reply')return options.user_comments;
-    if(e.event_type==='public_reply')return options.public_replies;
     if(e.visibility==='internal'&&e.event_type==='internal_note')return options.internal_notes;
-    if(['triaged','priority_changed','status_changed','star_changed'].includes(e.event_type))
+    if(['triaged','priority_changed','star_changed'].includes(e.event_type))
       return options.history&&options.status;
-    if(e.event_type==='tags_changed')return options.history&&options.tags;
     return options.history&&e.event_type!=='internal_note';
   });
 }
@@ -46,9 +42,8 @@ function exportedFeedback(item:ExportFeedback,options:ExportOptions){
   };
   if(options.status){
     data.queue_state=item.queue_state;data.priority=item.priority;
-    data.status=item.status;data.is_starred=item.is_starred;
+    data.is_starred=item.is_starred;
   }
-  if(options.tags)data.tags=item.tags;
   if(options.identity){data.user_id=item.user_id;data.contact_email=item.contact_email;}
   return data;
 }
@@ -61,8 +56,7 @@ function markdownFor(item:ExportFeedback,options:ExportOptions):string{
   if(options.identity)sections.push('反馈人：'+item.user_id,...(item.contact_email?['联系邮箱：'+item.contact_email]:[]),'');
   if(options.status)sections.push('## 处理信息','',
     '队列：'+item.queue_state,'优先级：'+(item.priority??'未分配'),
-    '处理状态：'+(item.status??'未受理'),'星标：'+(item.is_starred?'是':'否'),'');
-  if(options.tags)sections.push('标签：'+item.tags.join('、'),'');
+    '星标：'+(item.is_starred?'是':'否'),'');
   if(item.images.length){
     sections.push('## 原始截图','');
     for(const x of item.images)sections.push(
@@ -70,9 +64,7 @@ function markdownFor(item:ExportFeedback,options:ExportOptions):string{
     sections.push('');
   }
   for(const e of fields.events as ExportEvent[]){
-    const section=e.event_type==='user_reply'?'用户补充':
-      e.event_type==='public_reply'?'公开回复':
-      e.event_type==='internal_note'?'内部评论':'历史事件';
+    const section=e.event_type==='internal_note'?'内部评论':'历史事件';
     sections.push('## '+section,'',e.created_at+' · '+e.event_type,'',
       ...(e.message?[quote(e.message),'']:[]));
   }

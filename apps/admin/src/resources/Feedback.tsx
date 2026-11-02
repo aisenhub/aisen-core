@@ -17,7 +17,7 @@ import { supabase } from '../supabaseClient';
 import {
   FeedbackQueueTabs,
 } from './FeedbackV2';
-import { categoryLabels, priorityLabels, statusLabels } from './feedbackLabels';
+import { categoryLabels, priorityLabels } from './feedbackLabels';
 import { FeedbackV3Editor } from './FeedbackV3Editor';
 import { formatAdminInstant } from '../dateDisplay';
 import { adminRadii } from '../theme';
@@ -25,16 +25,15 @@ import { adminRadii } from '../theme';
 type FeedbackRecord={
   id:string;feedback_no:number;product_id:string;user_id:string;
   contact_email?:string|null;
-  content:string;category:string;status:string|null;priority:string|null;
+  content:string;category:string;priority:string|null;
   queue_state:'inbox'|'workbench'|'archived';read_at?:string|null;
-  triaged_at?:string|null;is_starred:boolean;tags:string[];
-  assigned_to?:string|null;version:number;
+  triaged_at?:string|null;is_starred:boolean;
+  version:number;
   created_at:string;updated_at:string;
   attachment_count?:number;
   last_handled_by?:string|null;
 };
-type EventRecord={id:string;event_type:string;visibility:string;from_status?:string;
-  to_status?:string;message?:string;created_at:string};
+type EventRecord={id:string;event_type:string;visibility:string;message?:string;created_at:string};
 type ImageRecord={id:string;slot:number;mime_type:string;size_bytes:number};
 
 function FeedbackPicture({record}:{record:ImageRecord}){
@@ -115,16 +114,12 @@ function FeedbackEventsTimeline(){
           boxShadow:'0 0 0 4px white'}}}>
       <Stack direction="row" sx={{justifyContent:'space-between',gap:1,flexWrap:'wrap',alignItems:'center'}}>
         <Typography sx={{fontWeight:700}}>{event.event_type==='internal_note'?'内部备注':
-          event.event_type==='public_reply'?'回复用户':
-          event.event_type==='user_reply'?'用户补充':
-          event.event_type==='status_changed'?'状态变更':
           event.event_type==='priority_changed'?'优先级调整':
           event.event_type==='triaged'?'已分诊':
           event.event_type==='archived'?'已归档':
           event.event_type==='restored'?'已恢复':
-          event.event_type==='soft_deleted'?'已移入回收站':
           event.event_type==='star_changed'?'星标变更':
-          event.event_type==='tags_changed'?'标签变更':'反馈提交'}</Typography>
+          '反馈提交'}</Typography>
         <Typography variant="caption" color="text.secondary">
           {formatAdminInstant(event.created_at)}
         </Typography>
@@ -132,10 +127,6 @@ function FeedbackEventsTimeline(){
       {event.message?<Typography sx={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',mt:.75}}>
         {event.message}
       </Typography>:null}
-      {event.from_status!==event.to_status&&event.to_status?
-        <Typography variant="body2" color="text.secondary" sx={{mt:.5}}>
-          {statusLabels[event.from_status??'']??event.from_status??'—'} → {statusLabels[event.to_status]??event.to_status}
-        </Typography>:null}
       <Typography variant="caption" color="text.secondary">
         {event.visibility==='public'?'用户可见':'仅管理员可见'}
       </Typography>
@@ -170,8 +161,8 @@ function FeedbackBody(){
   useEffect(()=>{
     if(!record||record.queue_state!=='inbox'||record.read_at||readAttempted.current===record.id)return;
     readAttempted.current=record.id;
-    void callRpc('admin_screen_feedback',{
-      p_feedback_id:record.id,p_expected_version:record.version,p_action:'read',p_priority:null,
+    void callRpc('admin_mark_feedback_read',{
+      p_feedback_id:record.id,p_expected_version:record.version,
     }).then(()=>refresh()).catch(()=>{readAttempted.current=null});
   },[record,refresh]);
   const attachments=useGetList<ImageRecord>('feedback-attachments',{
@@ -186,9 +177,6 @@ function FeedbackBody(){
     {enabled:!!record?.product_id&&!selectedProduct});
   if(!record)return <CircularProgress aria-label="正在加载反馈"/>;
   const contactEmail=record.contact_email;
-  if(String(record.queue_state)==='trashed')return <Alert severity="warning" sx={{m:2}}>
-    此记录属于已取消的旧队列，请从反馈中心的待清理项执行永久删除。
-  </Alert>;
   if(selectedProduct&&record.product_id!==selectedProduct)return <Alert severity="warning" sx={{m:2}}>
     当前反馈不属于所选产品，请切换顶部产品选择器。
   </Alert>;

@@ -65,7 +65,7 @@ Lens头像菜单内，已登录、邮箱已确认、非blocked本人可提交一
 
 ## 6. 测试入口、准出和交接
 
-复用Core008～012适用SQL、`supabase/functions/tests/feedback-*.test.ts`、`scripts/test-feedback-auth-http.py`、`test-fb-real-http.mjs`、`test-fb-v3-browser.mjs`、`test-fb-v2-export-http.mjs`；名字含v2不代表现行ZIP安全测试无用。Lens扩账号/设置浏览器测试，补真实提交/图片/错误/原号恢复，不保留旧联系邮箱断言。
+复用Core008～012适用SQL、`supabase/functions/tests/feedback-*.test.ts`、`scripts/test-feedback-auth-http.py`、`test-fb-real-http.mjs`、`test-admin-operations-other.mjs operations-feedback`、`test-fb-v2-export-http.mjs`；名字含v2不代表现行ZIP安全测试无用。Lens扩账号/设置浏览器测试，补真实提交/图片/错误/原号恢复，不保留旧联系邮箱断言。
 
 代码改后执行相关SQL/Edge/HTTP/浏览器及两仓工程门；图片/ZIP验证实际字节，密钥/截图脱敏。交付稳定multipart/错误矩阵、原号恢复边界、私图链路、对账负例、Admin实收截图、删除旧路径及未测生产项。
 

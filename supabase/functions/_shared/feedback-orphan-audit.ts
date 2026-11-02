@@ -1,4 +1,5 @@
 import {ListObjectsV2Command,S3Client} from 'npm:@aws-sdk/client-s3@3.1156.0';
+import {feedbackKeyPattern as allowedKey} from './feedback-key.ts';
 
 // F07 audit-only helper. This module has no DeleteObject operation, scheduler,
 // credentials or public Edge endpoint. "manual_review" is NOT permission to
@@ -6,9 +7,7 @@ import {ListObjectsV2Command,S3Client} from 'npm:@aws-sdk/client-s3@3.1156.0';
 // require a separately reviewed, live reference recheck before any action.
 const DAY=86_400_000;
 const MAX_PAGE=100; // private.feedback_referenced_keys_core RPC hard cap.
-const uuid='[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
-const allowedKey=new RegExp('^feedback/'+uuid+'/'+uuid+'/'+uuid+
-  '/[12]-[0-9a-f]{64}\\.(?:png|jpg|webp)$','i');
+
 export type FeedbackAuditStatus=
   'referenced'|'manual_review'|'retained_recent'|
   'retained_unknown_age'|'retained_invalid_key';

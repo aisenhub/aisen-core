@@ -1,6 +1,6 @@
 # AisenCore 跨 SaaS 用户反馈系统架构
 
-> **状态：2026-10-27 / 当前 Admin FB-V3 四队列轻量工作流已本地编码，数据库 462/462 pgTAP 与专项真实 AAL2 Chrome 曾 PASS；人工 WCAG/视觉/性能、真实私有 Cloudflare R2 含图、对象安全对账及线上部署仍 OPEN；Lens Chrome 双图→Edge→Postgres→隔离本机 S3 和 Core 私图/AAL2 ZIP 已 PASS（[本地证据](../../Plans/aisenlens-aisencore-local-integration/2026-10-27-f07-private-s3-e2e-evidence.md)）。** 旧 V2 处理状态保留历史读取，不作为新可编辑合同。
+> **状态（2026-11-02修复）**：现行V4三队列/永久删除；41项迁移已本地安装。删除中隔离、已读版本、服务角色存储接口和旧模型清理已编码，SQL543/543、Deno20/20、数据库Lint和构建通过；真实链路准出详见[修复计划](../../Plans/2026-11-02-backend-audit-remediation.md)，真实云R2/人工验收仍OPEN。
 > **单一领域权威**：反馈语义、状态和权限以本文为准；存储归属参见[产品数据与文件](../database/product-data-and-files.md)，客户端/API 调用参见[公共 API](../backend/public-api-and-saas-integration.md)，UI 接入参见[Admin](../applications/admin-console.md)，阶段顺序参见[三阶段总则](../../Plans/aisencore-mvp/three-stage-delivery-gates.md)。
 
 ## 1. 产品范围与原则
@@ -43,19 +43,17 @@
 | `contact_email` | text；新提交由可信RPC强制必填与校验 | 本条未经单独验证的沟通地址，不修改认证邮箱；已保存事实不回填 |
 | `content` | text not null | 反馈原文，拒绝全空白 |
 | `category` | text check | `bug/account/experience/suggestion/other` |
-| `status` | nullable | 仅处理工作台五态非空 |
 | `priority` | nullable 默认 NULL | 仅管理员明确分诊后有值 |
-| `queue_state` | inbox/workbench/archived/trashed | 两阶段及归档/回收站 |
+| `queue_state` | inbox/workbench/archived | 表约束和受保护写仅支持当前三队列 |
 | `read_at/triaged_at` | timestamptz nullable | 阅读及正式晋升时间 |
-| `is_starred/tags` | boolean/text[] | 星标和工作台内部标签 |
-| `archived_at/deleted_at/deleted_from` | nullable | 归档、软删除和恢复原阶段 |
-| `assigned_to` | uuid nullable | 当前有效处理人，可不分配 |
+| `is_starred` | boolean | 当前星标 |
+| `archived_at` | timestamptz nullable | 当前归档时间 |
+| `deletion_started_at/deletion_token/deletion_version` | 一致的删除意图三元组 | 永久删除冻结与恢复；不是业务列表字段 |
 | `request_id` | uuid not null | 用户提交幂等，唯一 `(user_id,product_id,request_id)` |
 | `version` | int default 1 | 并发写入版本 |
 | `created_at/updated_at` | timestamptz not null | 创建/最新业务更新时间 |
-| `resolved_at/closed_at` | timestamptz nullable | 最近解决/关闭时间；重开时修正 |
 
-索引先围绕 `(product_id,status,updated_at desc)` 和全局更新时间的真实管理查询实现，避免预设大量搜索索引。
+索引围绕实际队列/产品筛选与创建/更新时间排序，现有索引和候选调整见[本轮审查](../../reviews/2026-11-02-aisencore-backend-supabase-audit.md)。废弃 status 索引不再作为设计依据。
 
 ### `public.feedback_attachments`
 
@@ -63,13 +61,13 @@
 
 ### `public.feedback_events`
 
-字段：`id`、`feedback_id`、`actor_user_id`、`event_type`、`visibility`（`internal/public`）、`from_status/to_status`、`message`、`operation_id`、`created_at`。事件覆盖状态、优先级、责任人变更、`internal_note`、`public_reply`、`user_reply`。服务端派生 actor 与可见性，不相信客户端声称的角色。事件只追加，公开回复**仅反馈本人可读**，不是互联网公开。
+字段：id、feedback_id、actor_user_id、event_type、visibility、message、operation_id、created_at。当前事件为created/triaged/archived/restored/priority_changed/star_changed/internal_note；不保留旧公开回复/负责人/五态/标签事件路径。actor和可见性由服务端派生，public仅本人读取，不是互联网公开。
 
 管理审计 `admin_audit_log` 只记录最小的操作人、反馈 ID、动作、状态前后和时间，**不得复制**原文、内部备注、截图或预签名 URL。状态/事件/必要审计处于同一数据库事务。
 
 ## 4. 当前 FB-V4 三队列、五分类与永久删除合同
 
-> **V4 为现行 Admin 合同**：历史 V2/V3 中的回收站、自定义标签、旧五态、负责人和对用户主动回复不再是新界面的有效动作；历史数据库数据与测试记录仍予保留。实施与验收参见 [V4 反馈治理计划](../../Plans/aisencore-mvp/2026-10-29-feedback-admin-ux-bulk-delete-remediation-plan.md)。
+> **V4 为现行合同**：回收站、自定义标签、旧五态、负责人和主动公开回复没有有效写入口。普通生命周期保留必要事实；本轮所有者单独授权清空本地旧测试数据，不据此增加自动删除规则。实施/验收见[V4 计划](../../Plans/aisencore-mvp/2026-10-29-feedback-admin-ux-bulk-delete-remediation-plan.md)，2026-11-02 复核缺陷见[审查](../../reviews/2026-11-02-aisencore-backend-supabase-audit.md)。
 
 | 队列 | 当前动作 | 不变量 |
 | --- | --- | --- |
@@ -77,11 +75,13 @@
 | `workbench` 处理工作台 | 保存标记/内部备注、归档、单条/批量永久删除与受控 ZIP | 不编辑五态、负责人或公开回复 |
 | `archived` 已归档 | 重新进入工作台、读取/导出或明确永久删除 | 不从收件箱绕过分诊直接归档 |
 
-使用提交者原有五类别 `bug/account/experience/suggestion/other`（问题反馈/账号问题/体验问题/功能建议/其他）作为唯一类别筛选与列表分类标记；不再显示或更改管理员自定义标签。单产品视角只显示当前产品相关反馈，不重复显示产品名称；全平台视角展示真实所属产品。管理员按当前页选择最多 20 条，支持逐条版本检查的合法批量移动和永久删除，明确报告成功/失败/结果未知。**永久删除必须真实完成**：受保护 SQL 冻结反馈，Edge 逐次校验 AAL2 与管理员资格，删除 R2 原图及其 `.thumb.jpg` 派生对象，然后在同一个数据库事务内删除反馈、事件与附件元数据并记录最小内容无关审计。跨 R2 与 PostgreSQL 无原子事务，失败留待清理任务，不伪称完成；旧 `trashed` 行不得自动清除。
+使用提交者原有五类别 `bug/account/experience/suggestion/other`（问题反馈/账号问题/体验问题/功能建议/其他）作为唯一类别筛选与列表分类标记；不再显示或更改管理员自定义标签。单产品视角只显示当前产品相关反馈，不重复显示产品名称；全平台视角展示真实所属产品。管理员按当前页选择最多 20 条，支持逐条版本检查的合法批量移动和永久删除，明确报告成功/失败/结果未知。**永久删除必须真实完成**：受保护 SQL 冻结反馈，Edge 逐次校验 AAL2 与管理员资格，删除 R2 原图及其 `.thumb.jpg` 派生对象，然后在同一个数据库事务内删除反馈、事件与附件元数据并记录最小内容无关审计。跨 R2 与 PostgreSQL 无原子事务，失败留待清理任务，不伪称完成；旧回收站模型及列已删除；本轮前置本地数据清理有单独所有者授权，不新增按年龄自动删除。
 
 **受控 ZIP**：通过 `feedback-export` Edge 按实时权限及冻结的所选 ID/服务器筛选导出，默认不含内部评论和直接身份；启用敏感选项须二次确认，变更产品/筛选范围时阻断旧确认。含正文、必要原图、manifest/JSONL/Markdown 与 SHA-256 清单，图片缺失或读取失败不得伪造成功。当前技术候选每次最多 20 条、原始图片总量约 20 MiB、ZIP 24 MiB，尚需受控负载、真实 R2 和用户确认。
 
 ## 5. API、授权与跨存储失败恢复
+
+**当前存储权限**：prepare/finish/image-access/export-attachments及private内核仅service_role精确EXECUTE。Edge从已验证JWT取得actor并验证AAL，SQL再次检查当前管理员/封禁或图片属主。浏览器不能直接读Key/Token或完成删除协议；底表列白名单保留invoker/RLS过滤需要的deletion_started_at，隐藏Token/删除版本。删除中列表隐藏，精确原号仅recovery_only，事件/新图片签名拒绝；正常本人DTO统一status=received，不承诺处理进度。首次阅读保持业务version，L0/L1/行锁不变。
 
 ### 5.1 用户提交
 
@@ -95,11 +95,13 @@
 ### 5.2 读/处理/用户补充
 
 - 用户本人反馈清单与公开事件通过受限只读 RPC 或严格安全投影（列白名单）访问，结合 RLS/GRANT 禁止查看他人反馈、其他用户的公开答复及全部内部事件。用户前端不应通过直接 SELECT 管理员内部字段。
-- Admin 使用已有 `DataProvider.getList/getOne` + PostgREST + **Admin RLS** 分页读取；**当前 V3 写入通过 `admin_feedback_v3` 等受保护 RPC** 验证 `aal2`、当前平台管理员资格、blocked 与乐观版本，并原子提交队列/优先级/标签/星标/私有备注/事件/必要审计；旧 `admin_update_feedback` 仅保留与历史数据相关的受保护原合同，不得绕过 V3 队列保护。前端权限缓存不是授权凭证。
-- 当前不开放用户追加说明/回复能力；源码仍有旧 `reply_to_feedback` 等写入口，后续按现行单向合同清点并移除不再使用的写路径、调用者和测试，不保留兼容层。已有历史事件只作事实读取；本次仅改文档，未撤销或删除任何真实函数。
+- Admin使用已有`DataProvider.getList/getOne`+PostgREST+Admin RLS分页读取；当前V4写入由`admin_feedback_v3`受保护RPC承载，只接受`save/triage/archive/reopen`、优先级/星标/内部备注，无`p_tags`参数，拒绝旧动作；验证AAL2、当前管理员资格、blocked、乐观版本并原子审计。首次已读由`admin_mark_feedback_read`完成，只更新read_at、不递增业务version，保留原锁序与实时鉴权；前端权限缓存不是授权凭证。
+- 当前不开放用户追加说明/回复。旧回复/指派/筛选/标签RPC已删除；2026-11-02后续迁移清除旧五态、标签、负责人、回收站列和旧事件字段，调用者全部使用V4模型。真实GoTrue HTTP验证旧入口404；云端尚未迁移。
 - **`feedback-image-access`** Edge 每次验证当前访问者为反馈本人或有权 Admin，再签发短期 GET；R2 Bucket 禁止公网裸读，URL 有效期内无法保证瞬时撤权，前端不持久化/记录 URL。
 
-**当前状态（部分修复/待端到端验收）**：F05 反馈提交的 Auth 用户查询、本人恢复读 RPC 以及图片签发鉴权 RPC 已编码区分显式 401/403 与未知服务故障 503；共享 Deno 测试（上传、ZIP、隔离 S3 三套）11/11 PASS，但尚未在正式 Edge handler 进行真实上游 5xx/断连注入，不能将 F05 认定全部通过。`my_feedback(p_product_key,p_request_id?)` 已在 F06 后继 SQL 迁移编码：普通本人列表按产品过滤再限制 100 条并隐藏回收站，按产品和原号的精确恢复无列表截断；已软删的原号只返回本人最小存在证明，不暴露内部队列/正文/附件。新迁移及受影响 009/010/013 pgTAP 在单独回滚事务中 **116/116 PASS**；迁移尚未持久部署，真实 HTTP/Edge/Lens 未验证，空数组仍不可断言写入绝对失败。按本人/产品/原号同参恢复，不换号造第二单；旧五态投影不能作为 V3 处理进度。F07 已将正式 `feedback-submit` 的图片检查接入固定版本 `jsr:@matmen/imagescript@3.3.0` 的真解码（PNG/JPEG/WebP、最大 12,000,000 像素、最大单边 6000、本地候选界限，PNG/JPEG 尾标识及 WebP RIFF 长度严格验证）。`R2_FEEDBACK_STORAGE_MODE=local-test` 配合受限本机 `R2_FEEDBACK_TEST_ENDPOINT` 才允许隔离 S3 代替真实 R2，普通默认仍使用 Cloudflare R2；共享测试中已证明 putFile/readFile/signedGet/deleteFile 使用同一隔离实例，签名 60 秒且拒绝任意远程主机。Deno 上传/ZIP/S3/正式业务处理函数隔离 HTTP/孤儿只读审计测试 **15/15 PASS**（含 0/1/2 图、并发同号、部分 S3 失败、DB 未知及私图签发/撤权/故障；Auth/DB 响应为隔离模拟而非真实 JWT/数据库）；F07 新增 S3 只读审计（每页 100、最少7天观察窗口、模拟 service_role RPC、零次 DELETE），不等于可执行物理回收。正式 Edge handler 的真实 JWT + 含图 0/1/2 请求、真实 DB 引用/TOCTOU 及安全物理清理仍 NOT RUN，不能将 F07 记为已验收。2026-10-29已批准独立联系邮箱：作为必填新提交字段贯穿Edge/可信RPC/存储/同号比较；真实身份仍只取JWT。字段不进审计快照或默认导出，显式identity敏感导出才包含。已保存记录不转换或补齐，存储允许缺失事实但新可信提交严格拒绝缺失参数，不保留旧签名。
+**当前实现与缺口**：四入口明确区分401/403及未知服务故障503；正常本人DTO统一received，删除中列表隐藏、原号只返回recovery_only、事件与图片拒绝，空数组不证明从未提交。F07有界图片解码、正式Edge/GoTrue/隔离本机S3端到端及故障注入已通过；真实Cloudflare R2及孤儿物理回收仍未验收。新提交contact_email必填且参与原号比较，不进入审计或默认导出。分层证据见[修复计划](../../Plans/2026-11-02-backend-audit-remediation.md)，开放工作仅在[TODO](../../Plans/TODO.md)维护。
+
+**2026-10-29 本地 W3 新实测（覆盖上方历史 NOT RUN 状态）**：当前 `feedback-delete` 实际 Edge+GoTrue AAL2+本地签名 S3+Postgres 的 0/1/2 图与缩略图删除已跑通；对象 DELETE 503 仍保留 deletion intent/两条元数据、恢复后同版本重试清除四对象及 DB，缺失缩略图可视为 S3 已删除；AAL1/普通用户/已撤权 Admin 403、错误产品/版本 409、无内容审计、QA 前后原始记录哈希一致。完整测试 `node scripts/test-f07-edge-images-local-s3.mjs` EXIT0。**续行补证**：真实 Edge 上游删除 200 丢失响应→客户端 UNKNOWN→DB 查证已删/重复请求 409、单条审计 PASS；真实 AAL2 Admin Chrome 选择两条隔离 QA 反馈批量删除，取消不写、确认两条均经 Edge/SQL 删除并留最小审计 PASS；W2 SQL 141/141 pgTAP PASS。**继续本地 Chrome 补证**：两条 QA 反馈批量确认期间改变优先级范围，旧确认失效且无 DB 写入；真实批量第一条成功后给第二条 Edge POST 注入 503，仅一条 DB 留存，UI 说明部分完成，刷新核对幸存项并再次显式确认后全部清除、每条唯一无内容审计，脚本 EXIT0、QA 清理 PASS。**2026-10-30 再补证**：真 AAL2 Chrome 行菜单单条取消保留/确认真删、每条唯一最小审计；创建 21 条隔离 QA 反馈，仅选本页 20 条并批量真实删除，剩余第 21 条无删除及审计、最后 QA 清理 PASS，脚本 EXIT0。**不包括**真实 Cloudflare R2、其他断连及在途竞态、人工可访问性。参考[执行证据](../../Plans/2026-10-29-prelaunch-closeout/2026-10-29-w0-w3-execution-evidence.md)。
 
 错误最低覆盖 401 会话、403 权限、413 文件体积、422 格式/字段、409 版本/幂等冲突、429 限流、503 存储/服务故障、网络 UNKNOWN。Edge 只做需要可信密钥/内容验证的步骤；业务与审计状态仍由单个受保护数据库事务决定。不新建 Node API、Cloudflare Worker 或通用上传代理。
 
@@ -111,7 +113,7 @@
 
 导出确认绑定选中目标、队列、类别与产品范围，敏感字段默认关闭并二次确认；后台每次鉴权。当前已有本地安全压缩缩略图及隔离 S3 测试证据，不等于真实 Cloudflare R2 的新永久删除链路已验收。图片预览仍按授权取得短期 URL，不持久化签名链接。
 
-用户端只允许受控提交本人文字及 0～2 张图片，并按原已授权投影读取本人可见状态/公开历史；不得见内部备注/他人记录/私有对象 key。真实 AisenLens 本地客户端尚未对接验证。人工 WCAG 2.2 AA/全视口/性能/视觉签收仍 OPEN，详见 [唯一 TODO](../../Plans/TODO.md)。
+用户端只允许受控提交本人文字及 0～2 张图片，并按原已授权投影读取本人可见状态/公开历史；不得见内部备注/他人记录/私有对象 key。真实AisenLens本地客户端已有分项实测，完整联合验收仍未完成。人工 WCAG 2.2 AA/全视口/性能/视觉签收仍 OPEN，详见 [唯一 TODO](../../Plans/TODO.md)。
 
 ## 7. 隐私、清理、非目标
 
@@ -124,8 +126,8 @@
 
 | 阶段 | 要完成的可验收工作 |
 | --- | --- |
-| **第一阶段：Core/Admin 本地，合成数据** | 表/RLS/GRANT、可信 RPC、用户受限读写、上传 Edge 的可隔离测试边界与 R2 Mock、幂等/清理模拟，正式 Admin V3 四队列/轻量标记/备注/安全恢复、pgTAP + 本地真实 Auth/AAL2 + 409/413/422/429/503/UNKNOWN/并发负例、WCAG/响应式/性能/所有者视觉签收；Mock 不等于线上 R2 |
-| **第二阶段：AisenLens 本地联调** | 客户端真实提交文字及 0～2 张图、Admin V3 处理、原号 UNKNOWN 恢复、跨产品/账号/断网/重复；不新增回看/进度/追加说明界面，数据须由真实客户端操作产生 |
+| **第一阶段：Core/Admin 本地，合成数据** | 表/RLS/GRANT、可信 RPC、用户受限读写、上传 Edge 的可隔离测试边界与 R2 Mock、幂等/清理模拟，正式Admin V4三队列/标记/备注/永久删除/安全恢复、pgTAP + 本地真实 Auth/AAL2 + 409/413/422/429/503/UNKNOWN/并发负例、WCAG/响应式/性能/所有者视觉签收；Mock 不等于线上 R2 |
+| **第二阶段：AisenLens 本地联调** | 客户端真实提交文字及 0～2 张图、Admin V4处理、原号UNKNOWN恢复、跨产品/账号/断网/重复；不新增回看/进度/追加说明界面，数据须由真实客户端操作产生 |
 | **第三阶段：线上受控验证** | 经授权部署 Supabase Edge、R2 私有 Bucket/密钥、短签名 GET、真实上传/下载、残留对象清理、最小权限、反刷、日志/备份/删除、真实安全/性能和运营验收；推送/云变更/公开上线均需单独授权 |
 
 **实施前必须确认的候选参数**：每图 3 MiB、文字 5,000 字符、读取 URL 60 秒、具体速率/总请求限制、清理时限/执行者、保留/删除政策以及是否未来开放匿名提交或邮件通知。两张图片上限和按产品归属已明确；其他参数不得假称已测试或生产冻结。

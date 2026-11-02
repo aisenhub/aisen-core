@@ -20,9 +20,9 @@ import { adminRadii } from '../theme';
 export type FeedbackV2Record={
   id:string;feedback_no:number;product_id:string;user_id:string;content:string;
   category:string;queue_state:'inbox'|'workbench'|'archived';
-  read_at?:string|null;priority:string|null;status:string|null;is_starred:boolean;
-  tags:string[];version:number;created_at:string;updated_at:string;
-  attachment_count?:number;assigned_to?:string|null;
+  read_at?:string|null;priority:string|null;is_starred:boolean;
+  version:number;created_at:string;updated_at:string;
+  attachment_count?:number;
   last_handled_by?:string|null;
 };
 
@@ -141,7 +141,7 @@ function FeedbackSelectionToolbar({queue,onDeleted}:{queue:FeedbackQueue;onDelet
           await callRpc('admin_feedback_v3',{
             p_feedback_id:item.id,p_expected_version:item.version,p_action:action,
             p_priority:action==='triage'?(item.priority??'normal'):null,
-            p_tags:null,p_is_starred:null,p_internal_note:null,
+            p_is_starred:null,p_internal_note:null,
           });
         }
         remaining.delete(item.id);complete++;
@@ -263,7 +263,7 @@ function FeedbackRowActions({item,queue,onDeleted}:{item:FeedbackV2Record;
         await callRpc('admin_feedback_v3',{
           p_feedback_id:item.id,p_expected_version:item.version,p_action:action,
           p_priority:action==='triage'?(item.priority??'normal'):null,
-          p_tags:null,p_is_starred:null,p_internal_note:null,
+          p_is_starred:null,p_internal_note:null,
         });
         notify('反馈 #'+item.feedback_no+' 已'+actionLabel,{type:'success'});
       }
@@ -513,7 +513,7 @@ export function FeedbackUserHistory(){
   const history=useGetList<FeedbackV2Record>('feedback',{
     pagination:{page,perPage:20},sort:{field:'created_at',order:'DESC'},
     filter:{user_id:userId,...(product?{product_id:product}:{}),
-      ...(stage==='all'?{active_only:true}:{queue_state:stage})},
+      ...(stage==='all'?{}:{queue_state:stage})},
   },{enabled:!!userId,refetchOnWindowFocus:false,retry:false});
   const rows=!history.isError&&!history.isPending&&!history.isFetching?(history.data??[]):[];
   const ids=[...new Set(rows.map(item=>item.product_id).filter(Boolean))];

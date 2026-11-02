@@ -19,10 +19,7 @@ INSERT INTO public.user_feedback(id,user_id,product_id,request_id,content,create
  ('3a000000-0000-4000-8000-000000000003','1a000000-0000-4000-8000-000000000001',
   '2a000000-0000-4000-8000-000000000002','4a000000-0000-4000-8000-000000000001',
   'beta same request UUID',transaction_timestamp()-interval '2 days');
-UPDATE public.user_feedback
-  SET queue_state='trashed',deleted_from='inbox',
-      deleted_at=transaction_timestamp()
- WHERE id='3a000000-0000-4000-8000-000000000002';
+-- V4 has no soft-delete queue. Both Alpha reports remain active.
 UPDATE public.user_feedback SET contact_email='fixture@example.com' WHERE id='3a000000-0000-4000-8000-000000000002';
 -- More than 100 recent records on Beta must never evict an Alpha entry.
 INSERT INTO public.user_feedback(user_id,product_id,request_id,content,created_at)
@@ -51,9 +48,9 @@ SELECT ok((SELECT NOT prosecdef FROM pg_proc WHERE oid=
 SELECT set_config('request.jwt.claim.sub','1a000000-0000-4000-8000-000000000001',true);
 SELECT set_config('request.jwt.claims','{"aal":"aal1"}',true);
 SET LOCAL ROLE authenticated;
-SELECT is(jsonb_array_length(public.my_feedback('f06_alpha')),1,
- 'F06 Alpha list excludes trashed and 106 Beta records');
-SELECT is(public.my_feedback('f06_alpha')->0->>'id',
+SELECT is(jsonb_array_length(public.my_feedback('f06_alpha')),2,
+ 'F06 Alpha list excludes the 106 Beta records');
+SELECT is(public.my_feedback('f06_alpha')->1->>'id',
  '3a000000-0000-4000-8000-000000000001',
  'F06 Alpha record is not evicted by cross-product activity');
 SELECT is(jsonb_array_length(public.my_feedback('f06_beta')),100,
@@ -66,15 +63,15 @@ SELECT is(public.my_feedback('f06_beta','4a000000-0000-4000-8000-000000000001')-
  'F06 exact request resolves the independent Beta record beyond list cap');
 SELECT is(jsonb_array_length(public.my_feedback('f06_alpha',
  '4a000000-0000-4000-8000-000000000002')),1,
- 'F06 soft-deleted original still has a recovery proof');
-SELECT is(public.my_feedback('f06_alpha','4a000000-0000-4000-8000-000000000002')
- ->0->>'recovery_only','true',
- 'F06 trash reply indicates recovery-only without exposing queue');
+ 'F06 exact request finds the existing active original');
 SELECT ok(NOT (public.my_feedback('f06_alpha','4a000000-0000-4000-8000-000000000002')
- ->0 ? 'queue_state') AND NOT
+ ->0 ? 'recovery_only'),
+ 'V4 active report never emits obsolete soft-delete recovery marker');
+SELECT ok(NOT (public.my_feedback('f06_alpha','4a000000-0000-4000-8000-000000000002')
+ ->0 ? 'queue_state') AND
  (public.my_feedback('f06_alpha','4a000000-0000-4000-8000-000000000002')
  ->0 ? 'content'),
- 'F06 soft-deleted record hides queue and original content in recovery proof');
+ 'V4 active report exposes owner content but hides internal queue');
 SELECT is(jsonb_array_length(public.my_feedback('f06_beta',
  '4a000000-0000-4000-8000-000000000002')),0,
  'F06 no cross-product recovery proof for an Alpha-only request');
@@ -89,19 +86,19 @@ SELECT is(jsonb_array_length(public.my_feedback('f06_alpha',
  '4a000000-0000-4000-8000-000000000001')),0,
  'F06 another user cannot see exact request or existence');
 RESET ROLE;
--- An accepted report may be moved to trash while the original HTTP
--- response is lost. Identical replay must find it, not create a second row.
+-- A committed V4 report may lose HTTP acknowledgement. Same request resolves
+-- the existing active record, never creates a second feedback.
 SET LOCAL ROLE service_role;
 SELECT is((public.feedback_submit_from_edge(
  '1a000000-0000-4000-8000-000000000001','f06_alpha',
  '4a000000-0000-4000-8000-000000000002','alpha in trash','other',
  '[]'::jsonb,'fixture@example.com')->>'replayed'),'true',
- 'F06 service-side exact replay survives trash and does not invent new feedback');
+ 'F06 service-side exact replay converges to the existing active report');
 SELECT throws_ok($$SELECT public.feedback_submit_from_edge(
  '1a000000-0000-4000-8000-000000000001','f06_alpha',
  '4a000000-0000-4000-8000-000000000002','altered content','other',
  '[]'::jsonb,'fixture@example.com')$$,'PT409','REQUEST_CONFLICT',
- 'F06 conflicting retry never silently replaces a trashed original');
+ 'F06 conflicting retry never replaces an active original');
 RESET ROLE;
 SELECT is((SELECT count(*)::integer FROM public.user_feedback
  WHERE user_id='1a000000-0000-4000-8000-000000000001'
@@ -114,7 +111,7 @@ INSERT INTO public.platform_account_restrictions(user_id,kind,reason_code,create
 SELECT set_config('request.jwt.claim.sub','1a000000-0000-4000-8000-000000000001',true);
 SET LOCAL ROLE authenticated;
 SELECT throws_ok($$SELECT public.my_feedback('f06_alpha')$$,'PT403','ACCOUNT_RESTRICTED',
- 'F06 blocked owner cannot read even own recovery proof');
+ 'F06 blocked owner cannot read any protected feedback');
 RESET ROLE;
 SELECT set_config('request.jwt.claim.sub','',true);
 SET LOCAL ROLE authenticated;

@@ -1,6 +1,12 @@
 # AisenCore｜当前执行计划索引
 
-> **2026-10-28 状态**：Core×Lens 第二阶段实际本地联合开发已开始，真实 Auth/兑换/反馈与隔离本地对象已有分项 PASS，Admin D3 四队列与导航已分段复测 PASS，其余负例和整体签收仍 OPEN。第一阶段正式签收与独立 WCAG/性能门禁仍未关闭；旧 D1/D2/D3/S1/D4 是技术工作流，**不是五个交付阶段**。
+**2026-11-02后端修复施工**：[B0～B5详细计划](./2026-11-02-backend-audit-remediation.md)按复核报告逐项红测试、正向迁移、调用链清理和实测；所有者已授权本地修复，云端操作仍需另批。
+
+**2026-11-02后端复核与本地修复**：[审查结果§9](../reviews/2026-11-02-aisencore-backend-supabase-audit.md)覆盖修复前快照；41项迁移已安装，SQL543/543、Deno20/20与真实JWT/隔离S3/Admin回归通过。仅保留AisenLens和管理员，历史两产品/demo/业务行数不再作为当前基线。云端/人工及未稳定复现的本地运行时问题按唯一TODO继续跟踪。
+
+> **当前阶段**：Core×Lens本地联合开发与第一阶段遗留并行；部分Auth/兑换/反馈/私有S3已有证据，下一步准备上线测试。正式人工签收、云端完整验证和发布准入仍OPEN；旧D1/D2/D3/S1/D4为技术工作流，非新的交付阶段。
+
+**2026-10-29收尾证据**：[原审查](../reviews/2026-10-29-aisencore-prelaunch-closeout-audit.md)、[计划](./2026-10-29-prelaunch-closeout/README.md)、[W0–W3实证](./2026-10-29-prelaunch-closeout/2026-10-29-w0-w3-execution-evidence.md)。冻结安装、旧RPC、005夹具及部分真实批量Chrome已通过；实际剩余项以唯一TODO为准。
 
 ## 当前阅读与执行顺序
 
@@ -31,7 +37,7 @@
 
 - 需求唯一真源：[spec](../spec/requirements.md)；长期安全和业务权限：[architecture](../architecture/README.md)；工程纪律：[AGENTS](../../AGENTS.md)。
 - 历史技术工作流（记录代码/SQL 的真实测试依据，**不作为当前主任务表**）：[D1 数据库/锁](./aisencore-mvp/d1-database-and-trusted-rpc.md)、[D2 Auth/MFA](./aisencore-mvp/d2-auth-public-api-and-mfa.md)、[D3 Admin](./aisencore-mvp/d3-admin-console.md)、[D3 合同测试矩阵](./aisencore-mvp/d3-acceptance-matrix.md)、[Admin 体验改进依据](./aisencore-mvp/d3-admin-experience-upgrade.md)与[第一阶段整改审查基线](./aisencore-mvp/phase1-delivery-remediation-plan.md)。
-- [FB-V2 历史安全/ZIP 记录](./aisencore-mvp/fb-v2-inbox-workbench.md)用于旧 RPC、ZIP 与实际安全证据溯源；**当前反馈可编辑合同已经是 V3**，不要恢复 V2 五态、负责人或管理员公开回复。
+- [FB-V2 历史安全/ZIP 记录](./aisencore-mvp/fb-v2-inbox-workbench.md)用于旧 RPC、ZIP 与实际安全证据溯源；**当前反馈可编辑合同是 V4 三队列与永久删除**；V3/V2 是历史安全与测试证据，不恢复回收站、公开回复或管理员自定义标签。
 - [前端性能审查原始测量](./aisencore-mvp/admin-frontend-performance-review-2026-10-26.md)保留基线，不把早期 NOT RUN 当做当前项目未实现。
 - [阶段文档治理审计记录](../development/testing/document-governance-audit-2026-10-27.md)解释已移除过程文件的提炼、删除及验证；历史 Git 版本可回溯。
 
