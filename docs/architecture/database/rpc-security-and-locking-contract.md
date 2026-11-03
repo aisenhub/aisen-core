@@ -8,6 +8,7 @@
 - 有状态业务操作交给 **非 exposed schema 的 private SECURITY DEFINER 内核**；内核应具受控、最小权限的 NOLOGIN owner、固定空 search_path、全限定的表/函数名；禁止可被输入操纵的 SQL 对象名和动态 SQL。
 - public invoker 包装器要调用 private 内核，authenticated 通常须具备受控的 private schema USAGE 和**精确内核签名**的 EXECUTE。**非 exposed 不意味着内核绝不可能被直接 SQL 调用**：每个内核必须再次验证 auth.uid()、可信 JWT、目标用户/产品/属主与操作资格；管理写入同时验证当前 aal2、platform_admins.active 和非 blocked。
 - 创建/更新函数的同一版本化迁移必须收紧 PUBLIC 默认 EXECUTE、anon/authenticated 的函数授权、schema 权限、表 GRANT/RLS、默认权限、函数 owner 与搜索路径；对客户端禁止受保护表直接 DML。管理 RLS 的 private.is_platform_admin() 只返回当前会话是否合格，不提供查询任意他人资格的接口。
+- 表、视图和序列的现有与实际创建角色默认 ACL 同时默认拒绝：Data API 角色不保留业务序列权限，也不保留业务表/管理视图的 TRUNCATE、REFERENCES、TRIGGER、MAINTAIN。匿名产品读取仅限既有公开列；内部执行角色只保留真实写入需要的能力，并检查继承后的有效权限。序列安全测试不得调整业务序列值。
 - **一项状态变更、计数变化及审计在一个 PostgreSQL RPC 事务内完成**。独立 Edge Function、Auth Admin API、R2 操作与数据库事务之间不能宣称 ACID；必须由对应备份/身份方案定义幂等和补偿。
 
 ## 2. 唯一锁总序（F02，当前保守版本）

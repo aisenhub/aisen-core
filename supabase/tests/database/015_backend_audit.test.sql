@@ -59,5 +59,19 @@ SELECT throws_ok($$INSERT INTO public.user_feedback(product_id,user_id,request_i
  VALUES('f2000000-0000-4000-8000-000000000001','f1000000-0000-4000-8000-000000000002',gen_random_uuid(),'Invalid contact','invalid')$$,'23514',NULL,'table rejects malformed contact');
 SELECT ok(NOT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='public' AND table_name='user_feedback'
  AND column_name IN ('status','assigned_to','resolved_at','closed_at','tags','deleted_at','deleted_from')),'V4 has one current schema');
+SELECT ok(NOT has_sequence_privilege('anon','public.pro_credit_entries_sequence_seq','UPDATE'),'anon cannot update Pro identity sequence');
+SELECT ok(NOT has_sequence_privilege('authenticated','public.user_feedback_feedback_no_seq','UPDATE'),'authenticated cannot update feedback sequence');
+SELECT ok(NOT has_table_privilege('anon','public.admin_feedback_summaries','TRUNCATE'),'anon cannot truncate admin feedback view');
+SELECT ok(NOT has_table_privilege('service_role','public.user_feedback','TRUNCATE'),'service role cannot truncate feedback table');
+SELECT set_config('request.jwt.claim.sub','f1000000-0000-4000-8000-000000000001',true);
+SELECT set_config('request.jwt.claims','{"aal":"aal2"}',true);
+SET LOCAL ROLE authenticated;
+SELECT throws_ok($$SELECT public.admin_create_product('backend_audit','Duplicate',NULL)$$,'PT409','STATE_CONFLICT','duplicate product key has stable conflict');
+SELECT throws_ok($$SELECT public.admin_create_product('audit_blank_name','   ',NULL)$$,'PT422','INVALID_ARGUMENT','blank product name has stable validation error');
+SELECT throws_ok($$SELECT public.feedback_submit_preflight('INVALID-KEY',NULL)$$,'PT422','INVALID_ARGUMENT','preflight rejects invalid product key format');
+SELECT is((SELECT provolatile FROM pg_proc WHERE oid='public.admin_find_grant_request(text)'::regprocedure),'s','grant lookup wrapper is stable');
+SELECT is((SELECT provolatile FROM pg_proc WHERE oid='private.admin_find_grant_request_core(text)'::regprocedure),'s','grant lookup core is stable');
+SELECT is((SELECT provolatile FROM pg_proc WHERE oid='public.admin_lookup_users(uuid[],text,integer,integer)'::regprocedure),'s','user lookup wrapper is stable');
+SELECT is((SELECT provolatile FROM pg_proc WHERE oid='private.admin_lookup_users_core(uuid[],text,integer,integer)'::regprocedure),'s','user lookup core is stable');
 SELECT * FROM finish();
 ROLLBACK;

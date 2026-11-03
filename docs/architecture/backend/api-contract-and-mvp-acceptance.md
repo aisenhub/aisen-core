@@ -70,6 +70,8 @@
 
 ## 4. 错误模型
 
+反馈提交的同号请求若精确查询得到删除中 `recovery_only` 证明，返回 HTTP `409`、业务码 `DELETE_PENDING`；该结果不允许解码/上传新附件，也不允许客户端换新编号绕过删除。查询后发生删除竞争时，可信提交 RPC 的明确 `DELETE_PENDING` 错误保持同一对外语义；未知数据库或存储故障仍为 `503/UNKNOWN`，不透传内部错误。
+
 两种承载方式共享**同一套稳定业务码**：
 
 - **无副作用的 `CheckAccess`**：对已认证且**完成可信计算**的授权结论固定使用 **HTTP 200 + `allowed` / `reason`**；业务层的 `ACCOUNT_RESTRICTED`、`PRODUCT_UNAVAILABLE`、`MEMBERSHIP_REQUIRED/LEFT/SUSPENDED`、`ENTITLEMENT_REQUIRED` 在这里是响应 `reason`，**不是 HTTP 403**。未认证用 401，无法可信判定用 503/5xx；不返回“伪造的 deny”掩盖故障。

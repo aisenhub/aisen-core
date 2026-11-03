@@ -1,6 +1,6 @@
 import {boundedForm,cors,fail,feedbackIdentityFailure,feedbackObjectKey,
   feedbackRpcReadFailure,json} from '../_shared/feedback.ts';
-import {makeFeedbackThumbnail,feedbackThumbnailKey} from '../_shared/feedback-image.ts';
+import {makeFeedbackThumbnail,feedbackThumbnailKey,validateFeedbackImage} from '../_shared/feedback-image.ts';
 
 const MAX_IMAGE=3*1024*1024;
 const MAX_BODY=7*1024*1024;
@@ -9,11 +9,11 @@ const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export type CommitAttachment={slot:number;object_key:string;mime_type:string;size_bytes:number};
 export type CommitArgs={p_user_id:string;p_product_key:string;p_request_id:string;
   p_content:string;p_category:string;p_contact_email:string;p_attachments:CommitAttachment[]};
-export type RpcReply<T>={data:T|null;error:{code?:string}|null};
+export type RpcReply<T>={data:T|null;error:{code?:string;message?:string}|null};
 export type FeedbackPorts={
   actor?:string|null;
   getIdentity:()=>Promise<{user?:{email_confirmed_at?:string|null}|null;error?:unknown}>;
-  myFeedback:(productKey:string,requestId:string)=>Promise<RpcReply<{product_id:string}[]>>;
+  myFeedback:(productKey:string,requestId:string)=>Promise<RpcReply<{product_id:string;recovery_only?:boolean}[]>>;
   preflight:(productKey:string,requestId:string)=>Promise<RpcReply<{product_id?:string}>>;
   commit:(args:CommitArgs)=>Promise<RpcReply<{replayed?:boolean}>>;
   putFile:(key:string,data:Uint8Array,mime:string)=>Promise<boolean>;
@@ -78,16 +78,21 @@ export async function submitFeedback(req:Request,ports:FeedbackPorts):Promise<Re
     return fail('SUBMISSION_UNAVAILABLE',503);
   if(previous&&previous.product_id!==productId)
     return fail('REQUEST_CONFLICT',409);
+  if(previous?.recovery_only)
+    return fail('DELETE_PENDING',409);
   const pending:{slot:number;key:string;mime:string;size:number;
-    bytes:Uint8Array;thumbnail:Uint8Array}[]=[];
+    bytes:Uint8Array;thumbnail?:Uint8Array}[]=[];
   for(const [index,file] of images.entries()){
     const bytes=new Uint8Array(await (file as File).arrayBuffer());
     if(!bytes.length||bytes.length>MAX_IMAGE)return fail('IMAGE_TOO_LARGE',413);
-    const parsed=await makeFeedbackThumbnail(bytes,(file as File).type);
+    const parsed=previous
+      ? await validateFeedbackImage(bytes,(file as File).type)
+      : await makeFeedbackThumbnail(bytes,(file as File).type);
     if(!parsed)return fail('UNSUPPORTED_IMAGE',422);
     const key=await feedbackObjectKey(productId,actor,requestId,index+1,bytes,parsed.ext);
+    const thumbnail='thumbnail' in parsed ? parsed.thumbnail as Uint8Array : undefined;
     pending.push({slot:index+1,key,mime:parsed.mime,size:bytes.length,bytes,
-      thumbnail:parsed.thumbnail});
+      thumbnail,});
   }
   // A repeated ID must match every immutable attachment, not merely the
   // number of photos. No R2 write occurs before this comparison.
@@ -101,7 +106,8 @@ export async function submitFeedback(req:Request,ports:FeedbackPorts):Promise<Re
       })),
     })}
     catch{return fail('SUBMISSION_UNKNOWN',503)}
-    if(check.error)return fail(check.error.code==='PT409'?'REQUEST_CONFLICT':'SUBMISSION_UNKNOWN',
+    if(check.error)return fail(check.error.message==='DELETE_PENDING'?'DELETE_PENDING':
+      check.error.code==='PT409'?'REQUEST_CONFLICT':'SUBMISSION_UNKNOWN',
       check.error.code==='PT409'?409:503);
     return json(check.data,check.data?.replayed?200:201);
   }
@@ -114,7 +120,8 @@ export async function submitFeedback(req:Request,ports:FeedbackPorts):Promise<Re
       await ports.putFile(file.key,file.bytes,file.mime);
       // The original and its JPEG derivative share one content-derived key.
       // A partial 503 keeps them for later reference-aware reconciliation.
-      await ports.putFile(feedbackThumbnailKey(file.key),file.thumbnail,'image/jpeg');
+      if(file.thumbnail)
+        await ports.putFile(feedbackThumbnailKey(file.key),file.thumbnail,'image/jpeg');
     }
     const result=await ports.commit({
       p_user_id:actor,p_product_key:productKey,p_request_id:requestId,
@@ -125,7 +132,8 @@ export async function submitFeedback(req:Request,ports:FeedbackPorts):Promise<Re
     });
     if(result.error){
       // Keep possible orphan for safe reference-aware reconciliation.
-      return fail(result.error.code==='PT409'?'REQUEST_CONFLICT':
+      return fail(result.error.message==='DELETE_PENDING'?'DELETE_PENDING':
+        result.error.code==='PT409'?'REQUEST_CONFLICT':
         result.error.code==='PT403'?'ACCESS_DENIED':
         result.error.code==='PT429'?'RATE_LIMITED':'SUBMISSION_UNKNOWN',
         result.error.code==='PT409'?409:result.error.code==='PT403'?403:
