@@ -4,7 +4,7 @@
 >
 > **当前本地工作区目录**：`E:\Projects\Aisencore`
 >
-> **实施状态（2026-11-02修复）**：当前本地41项迁移，账本/单次码/反馈V4修复已安装；SQL543/543、Deno20/20、数据库Lint、类型/Lint/Build通过，真实JWT权益/永久/并发和Lens双图→隔离S3→Core/Admin链路已有PASS。分层证据见[修复计划](../Plans/2026-11-02-backend-audit-remediation.md)；人工/完整安全性能、真实云R2/SMTP及发布仍独立验收。
+> **实施状态（2026-11-03复核整改）**：当前本地43项迁移，账本/单次码/反馈V4及复核整改已安装；SQL554/554、Deno20/20、数据库Lint、类型/Lint/Build通过，真实JWT权益/永久/并发和Lens双图→隔离S3→Core/Admin链路已有PASS。复核整改覆盖权限收紧、反馈重放/删除错误、产品参数和批次统计；查询后删除竞态、人工/完整安全性能、真实云R2/SMTP及发布仍独立验收。分层证据见[后端计划](../Plans/2026-11-02-backend-audit-remediation.md)和[复核计划](../Plans/2026-11-03-prelaunch-audit-remediation.md)。
 
 ## 1. 项目定位与原则
 

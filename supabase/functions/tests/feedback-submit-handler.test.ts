@@ -58,7 +58,8 @@ Deno.test('F07 production submission service: real loopback HTTP with 0/1/2 imag
   const ledger=new Map<string,{args:CommitArgs;id:string}>();
   let failIdentity=false,confirmed=true,failRead=false,failPreflight=false,
     failCommit=false,returnUnknownAfterCommit=false,deny=false,
-    throwIdentity=false,throwRead=false,throwPreflight=false,throwCommit=false;
+    throwIdentity=false,throwRead=false,throwPreflight=false,throwCommit=false,
+    pendingDeletion=false;
   const ports:FeedbackPorts={
     actor:owner,
     getIdentity:async()=>{
@@ -68,7 +69,8 @@ Deno.test('F07 production submission service: real loopback HTTP with 0/1/2 imag
     },
     myFeedback:async(_key,id)=>{
       if(throwRead)throw Error('transport unavailable');
-      return {data:ledger.has(id)?[{product_id:product}]:[],
+      return {data:pendingDeletion?[{product_id:product,recovery_only:true}]:
+        ledger.has(id)?[{product_id:product}]:[],
         error:failRead?{code:'PGRST500'}:null};
     },
     preflight:async()=>{
@@ -208,6 +210,13 @@ Deno.test('F07 production submission service: real loopback HTTP with 0/1/2 imag
     check(putCount===beforeReplay,'safe replay must not re-upload');
     check((await submit(single,'different text',[png],['image/png'])).status===409,
       'same request with different content must refuse');
+    const pendingBefore=putCount;
+    pendingDeletion=true;
+    const pendingResponse=await submit(next(),'delete pending',[png.slice(0,9)],['image/png']);
+    check(pendingResponse.status===409&&pendingResponse.body.message==='DELETE_PENDING',
+      'delete-pending recovery must return stable business error before image decode');
+    check(putCount===pendingBefore,'delete-pending recovery must not write storage');
+    pendingDeletion=false;
     const both=next();
     check((await submit(both,'two images',[jpg,webp],
       ['image/jpeg','image/webp'])).status===201,'2 JPEG/WebP must commit 201');

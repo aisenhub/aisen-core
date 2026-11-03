@@ -1,10 +1,12 @@
 # AisenCore｜当前执行计划索引
 
+**2026-11-03 上线前复核整改**：[逐项计划与证据](./2026-11-03-prelaunch-audit-remediation.md)覆盖权限、反馈重放/删除错误、产品参数与只读声明，并先测量 SQL 性能、复现本地 502；所有者已授权本地修复，云配置与部署仍独立授权。
+
 **当前产品关联修复**：[邮箱确认后自动关联详细计划](./2026-11-02-confirmed-product-membership.md)，同步Core/Lens单一合同及真实邮件/Free/兑换/隔离回归。
 
 **2026-11-02后端修复施工**：[B0～B5详细计划](./2026-11-02-backend-audit-remediation.md)按复核报告逐项红测试、正向迁移、调用链清理和实测；所有者已授权本地修复，云端操作仍需另批。
 
-**2026-11-02后端复核与本地修复**：[审查结果§9](../reviews/2026-11-02-aisencore-backend-supabase-audit.md)覆盖修复前快照；41项迁移已安装，SQL543/543、Deno20/20与真实JWT/隔离S3/Admin回归通过。仅保留AisenLens和管理员，历史两产品/demo/业务行数不再作为当前基线。云端/人工及未稳定复现的本地运行时问题按唯一TODO继续跟踪。
+**2026-11-02/03后端复核与本地修复**：[审查结果](../reviews/2026-11-02-aisencore-backend-supabase-audit.md)与[复核整改报告](../reviews/2026-11-02-aisencore-prelaunch-security-performance-audit.md)记录基线与证据；43项迁移已安装，SQL554/554、Deno20/20、Admin typecheck/lint/build与真实JWT/隔离S3/ZIP回归通过。仅保留AisenLens和管理员，历史两产品/demo/业务行数不再作为当前基线。云端/人工及启动竞态、邮箱规模和其他未稳定复现问题按唯一TODO继续跟踪。
 
 > **当前阶段**：Core×Lens本地联合开发与第一阶段遗留并行；部分Auth/兑换/反馈/私有S3已有证据，下一步准备上线测试。正式人工签收、云端完整验证和发布准入仍OPEN；旧D1/D2/D3/S1/D4为技术工作流，非新的交付阶段。
 

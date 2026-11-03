@@ -30,7 +30,7 @@ CASES = (
     ("012_feedback_v3_lightweight.test.sql", 28),
     ("013_feedback_scoped_recovery.test.sql", 24),
     ("014_feedback_contact.test.sql", 15),
-    ("015_backend_audit.test.sql", 18),
+    ("015_backend_audit.test.sql", 29),
     ("016_dashboard_and_integrity.test.sql", 8),
 )
 

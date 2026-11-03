@@ -1,6 +1,6 @@
 # AisenCore 跨 SaaS 用户反馈系统架构
 
-> **状态（2026-11-02修复）**：现行V4三队列/永久删除；41项迁移已本地安装。删除中隔离、已读版本、服务角色存储接口和旧模型清理已编码，SQL543/543、Deno20/20、数据库Lint和构建通过；真实链路准出详见[修复计划](../../Plans/2026-11-02-backend-audit-remediation.md)，真实云R2/人工验收仍OPEN。
+> **状态（2026-11-03复核整改）**：现行V4三队列/永久删除；43项迁移已本地安装。删除中隔离、已读版本、服务角色存储接口、重放缩略图跳过和错误合同已编码，SQL554/554、Deno20/20、数据库Lint和构建通过；真实查询后删除竞态、云R2/人工验收仍OPEN。详见[后端计划](../../Plans/2026-11-02-backend-audit-remediation.md)和[复核整改计划](../../Plans/2026-11-03-prelaunch-audit-remediation.md)。
 > **单一领域权威**：反馈语义、状态和权限以本文为准；存储归属参见[产品数据与文件](../database/product-data-and-files.md)，客户端/API 调用参见[公共 API](../backend/public-api-and-saas-integration.md)，UI 接入参见[Admin](../applications/admin-console.md)，阶段顺序参见[三阶段总则](../../Plans/aisencore-mvp/three-stage-delivery-gates.md)。
 
 ## 1. 产品范围与原则
@@ -89,6 +89,8 @@
 2. Edge 为每图生成唯一不可覆盖 R2 key 并写入**私有**对象；不向客户端暴露 R2 长期密钥、任意 key 写入凭证。
 3. 可信 `feedback_submit_from_edge` RPC 在同一 PostgreSQL 事务内创建反馈、附件元数据、首条事件；绝不接受普通客户端伪造的 R2 key 直写，限制仅可信 Edge 可提交已核实元数据，避免可被普通角色调用的 `SECURITY DEFINER` 越权入口。
 4. 返回本人可见的最小摘要及 `id/feedback_no/status=received`。同一身份+产品+`request_id` 重试必须正文/类别/联系邮箱/图片全部一致才返回原结果，否则409；超时视为 UNKNOWN，先按本人 `request_id` 查询再重试，不换 ID 导致重复反馈。
+
+原号精确查询返回 `recovery_only` 时，提交入口返回 `409 DELETE_PENDING`，不再解码或上传图片；查询后才开始删除的竞争也必须由最终提交 RPC 返回同一错误。它说明原请求当前不能重放，不代表查无或授权换号重提，不返回删除 Token、对象 Key 或 SQL 异常。正常原号重放仍完整验证原图并比较全部不可变参数，但不生成或上传无用缩略图。每小时提交配额在最终 L1 锁内复核；预检拒绝先于图片解码，请求体资源与入口防刷另行验收。
 
 **不具备跨服务 ACID**：R2 成功但 DB 未提交可能形成孤儿，清理任务必须按受控对象标识/请求记录扫描清除并记录失败；DB 已提交但响应丢失应通过幂等查询恢复；两图只写一图时不得生成“成功完成”的可见反馈。清理执行者/周期/最小 R2 权限与实际异常注入须在部署前验证，不把 Mock 当真实 R2。
 
